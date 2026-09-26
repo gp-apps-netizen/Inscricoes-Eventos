@@ -400,6 +400,21 @@ function camposDoEvento(e){
   return[];
 }
 function respostaDe(i,f){const r=(i.respostas||{})[f.id];if(r!==undefined&&r!=='')return r;return f.id==='extra'?(i.extra||''):'';}
+function membrosGrupo(i){return i&&i.grupo?inscritos.filter(x=>x.grupo===i.grupo):[];}
+function responsavelGrupo(i){const m=membrosGrupo(i);if(!m.length)return null;const ids=i.grupoIds||[];return m.find(x=>x.id===ids[0])||m[0];}
+async function marcarPagoGrupo(grupo,excetoId){
+  const ev=eventoSel();
+  const alvo=inscritos.filter(x=>x.grupo===grupo&&!x.pago&&x.id!==excetoId);
+  if(!alvo.length)return 0;
+  const b=db.batch();
+  alvo.forEach(x=>b.update(db.collection('inscricoes').doc(x.id),{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:cobra(ev)?ev.pix.valor:0}));
+  await b.commit();return alvo.length;
+}
+async function pagarGrupo(id){
+  const i=inscritos.find(x=>x.id===id),n=membrosGrupo(i).filter(x=>!x.pago).length;
+  if(!confirm(`Confirmar o pagamento de ${n} pessoa(s) do grupo?`))return;
+  try{await marcarPagoGrupo(i.grupo);fecharModal();toast('Pagamento do grupo confirmado');}catch(e){toast('Erro: '+e.message);}
+}
 function fmtResposta(v,f){if(v===''||v==null)return '';if(f.tipo==='data'&&/^\d{4}-\d{2}-\d{2}$/.test(v)){const[a,m,d]=v.split('-');return `${d}/${m}/${a}`;}return String(v);}
 function renderCamposEditor(){
   const el=$('camposEditor');if(!el)return;
@@ -630,6 +645,7 @@ function dadosHTML(i){
     ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
     ${camposDoEvento(ev).map(f=>{const v=fmtResposta(respostaDe(i,f),f);return v?`<div class="kv"><span>${esc(f.label)}:</span> ${esc(v)}</div>`:'';}).join('')}
     ${cobra(ev)?`<div class="kv"><span>Pagamento:</span> ${i.pago?'<b style="color:var(--ok)">Pago</b>'+(i.pagoEm?' em '+esc(fmtTs(i.pagoEm)):''):'<b style="color:var(--warn)">Pendente</b> ('+esc(moeda(ev.pix.valor))+')'}</div>`:''}
+    ${i.grupo?(()=>{const m=membrosGrupo(i),r=responsavelGrupo(i);return `<div class="kv"><span>Grupo:</span> ${m.length||(i.grupoIds||[]).length} pessoas${r&&r.id!==i.id?' · inscrito por '+esc(r.nome):r?' · responsável':''}</div>`;})():''}
     <div class="kv"><span>Código:</span> ${esc(i.codigo)} · <span>Inscrito em:</span> ${esc(fmtTs(i.criadoEm))}</div>`;
 }
 function mostrarResultado(o){
@@ -638,22 +654,25 @@ function mostrarResultado(o){
     ${o.msg?`<div>${o.msg}</div>`:''}${o.insc?dadosHTML(o.insc):''}
     <div style="height:12px"></div>
     ${o.botaoCheck?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}')">Confirmar entrada</button><div style="height:8px"></div>`:''}
-    ${o.botaoPagar?(podePagar()?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento — confirmar entrada</button><div style="height:8px"></div>`:'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
+    ${o.botaoPagar?(podePagar()?(()=>{const g=o.insc.grupo?inscritos.filter(x=>x.grupo===o.insc.grupo&&!x.pago):[];return (g.length>1?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true,true)">👥 Recebi o Pix do grupo (${g.length} · ${esc(moeda(g.length*eventoSel().pix.valor))}) — confirmar entrada</button><div style="height:8px"></div>`:'')+`<button class="btn ${g.length>1?'':'ok'} full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento ${g.length>1?'só desta pessoa':''} — confirmar entrada</button><div style="height:8px"></div>`;})():'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
       <button class="btn full" onclick="fazerCheckin('${o.insc.id}')">Liberar entrada sem pagamento</button><div style="height:8px"></div>`:''}
     <button class="btn full" onclick="retomar()">${escaneando?'Ler próximo':'Fechar'}</button></div>`;
   $('resultado').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-async function fazerCheckin(id,auto,pagar){
+async function fazerCheckin(id,auto,pagar,grupoTambem){
   try{
     const ev=eventoSel();
+    let grupo=null;
     await db.runTransaction(async t=>{
       const r=db.collection('inscricoes').doc(id),s=await t.get(r);
       if(!s.exists)throw new Error('NAOEXISTE');
       if(s.data().checkin)throw new Error('JA');
       const up={checkin:true,checkinEm:TS(),checkinPor:usuario()};
       if(pagar&&!s.data().pago)Object.assign(up,{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:cobra(ev)?ev.pix.valor:0});
+      grupo=s.data().grupo||null;
       t.update(r,up);
     });
+    if(pagar&&grupoTambem&&grupo){try{const n=await marcarPagoGrupo(grupo,id);if(n)toast(`Pagamento de mais ${n} pessoa(s) do grupo confirmado`);}catch(e){toast('Erro no pagamento do grupo: '+e.message);}}
     const i=(await db.collection('inscricoes').doc(id).get()).data();
     mostrarResultado({tipo:'ok',titulo:'Entrada confirmada',insc:{id,...i}});
     if(auto&&escaneando)setTimeout(()=>{if(ocupado)retomar();},2500);
@@ -676,7 +695,7 @@ function renderInscritos(){
   let l=inscritos.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:filtro==='pend'?!i.pago:!i.checkin));
   if(q)l=l.filter(i=>(i.nome||'').toLowerCase().includes(q)||(i.codigo||'').toLowerCase()===q||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
   $('listaInscritos').innerHTML=!selId?'<div class="empty">Selecione um evento.</div>':!l.length?'<div class="empty">Nenhuma inscrição'+(q||filtro!=='todos'?' encontrada':' ainda')+'.</div>':
-    l.map(i=>`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}</span></div>
+    l.map(i=>`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}${i.grupo?' · 👥 grupo':''}</span></div>
       <div class="tags">${px?`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`:''}
       <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div></div>`).join('');
 }
@@ -688,6 +707,7 @@ function detalhe(id){
     ${i.pago&&i.pagoPor?`<div class="kv"><span>Pagamento confirmado por ${esc(i.pagoPor)}</span></div>`:''}
     <div style="height:14px"></div>
     ${px?(i.pago?`<button class="btn full donoOnly" onclick="marcarPago('${id}',false)">Desfazer pagamento</button><div class="donoOnly" style="height:8px"></div>`:(podePagar()?`<button class="btn ok full" onclick="marcarPago('${id}',true)">💲 Confirmar pagamento</button><div style="height:8px"></div>`:'')):''}
+    ${px&&podePagar()&&i.grupo&&membrosGrupo(i).filter(x=>!x.pago).length>1?(()=>{const n=membrosGrupo(i).filter(x=>!x.pago).length;return `<button class="btn ok full" onclick="pagarGrupo('${id}')">👥 Confirmar pagamento do grupo (${n} · ${esc(moeda(n*eventoSel().pix.valor))})</button><div style="height:8px"></div>`;})():''}
     ${i.checkin?`<button class="btn full" onclick="desfazerCheckin('${id}')">Desfazer entrada</button>`:`<button class="btn ${px?'':'ok'} full" onclick="fecharModal();fazerCheckinLista('${id}')">Confirmar entrada</button>`}
     <div style="height:8px"></div>
     <div class="row"><button class="btn" onclick="window.open('${linkVoucher(id)}','_blank')">Ver voucher</button>
@@ -720,9 +740,9 @@ async function excluirInscricao(id){
 function exportarCSV(){
   const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
   const c=ev.campos||{},px=cobra(ev),cx=camposDoEvento(ev);
-  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Inscrito em');if(px)cab.push('Pago','Pago em','Valor pago');cab.push('Presente','Entrada em');
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em','Valor pago');cab.push('Presente','Entrada em');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
-  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));r.push(fmtTs(i.criadoEm));
+  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(rg?rg.nome:'',fmtTs(i.criadoEm));
     if(px)r.push(i.pago?'Sim':'Não',fmtTs(i.pagoEm),i.pago?Number(i.valorPago!=null?i.valorPago:ev.pix.valor).toFixed(2).replace('.',','):'');
     r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinEm));return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});

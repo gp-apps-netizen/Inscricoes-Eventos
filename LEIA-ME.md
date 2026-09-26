@@ -52,3 +52,10 @@ Para encerrar as inscrições de um evento: Editar → desmarque **Inscrições 
   lista de opções (uma por linha) e Sim/Não. Cada campo pode ser obrigatório e ter a ordem trocada (▲ ▼).
   As respostas aparecem nos dados do inscrito, na leitura do voucher e na planilha exportada.
 - Publique de novo o `regras-firestore.txt` (mantendo o seu e-mail).
+
+## Novidades da v2.3
+- **Inscrição em grupo:** no formulário, "+ Inscrever mais uma pessoa" (até 10 de uma vez). Cada pessoa ganha o seu
+  voucher; telefone e e-mail das demais podem ficar em branco (usa os da pessoa 1). Com Pix, sai um único Pix com o total.
+- No controle, o inscrito mostra "Grupo: N pessoas · inscrito por …", há o botão "Confirmar pagamento do grupo"
+  e, no Leitor, "Recebi o Pix do grupo — confirmar entrada". A planilha ganhou a coluna "Grupo (inscrito por)".
+- Publique de novo o `regras-firestore.txt` (mantendo o seu e-mail).

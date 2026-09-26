@@ -148,12 +148,14 @@ const configurado=!String(firebaseConfig.apiKey).startsWith('COLE');
 let db;
 if(configurado){firebase.initializeApp(firebaseConfig);db=firebase.firestore();}
 const P=new URLSearchParams(location.search);
+const MAX_GRUPO=10;
 let evento=null;
 
 (async function inicio(){
   if(!configurado){topo('Inscrição','Configuração pendente');tela('<div class="card">Cole a configuração do Firebase no arquivo <b>inscricao.html</b>.</div>');return;}
   try{
-    if(P.get('v'))return await abrirVoucher(P.get('v'));
+    if(P.get('v'))return await abrirVouchers([P.get('v')],true);
+    if(P.get('vs'))return await abrirVouchers(P.get('vs').split(',').filter(Boolean).slice(0,MAX_GRUPO),false);
     if(P.get('e'))return await abrirFormulario(P.get('e'));
     listaMeus();
   }catch(e){topo('Inscrição','Não foi possível carregar');tela(`<div class="card"><div class="msg bad">${esc(e.code==='unavailable'?'Sem conexão com a internet. Tente novamente.':e.message)}</div></div>`);}
@@ -165,136 +167,215 @@ function listaMeus(){
   tela(`<div class="card">${l.length?l.map(v=>`<a class="item" href="?v=${esc(v.id)}"><b>${esc(v.titulo)}</b><br><span class="muted">${esc(v.nome)} · ${esc(v.codigo||'')}</span></a>`).join(''):'<p class="muted center">Nenhum voucher salvo neste aparelho.<br>Use o link de inscrição enviado pelo organizador.</p>'}</div>`);
 }
 
-/* ================== Formulário ================== */
+/* ================== Formulário (uma ou várias pessoas) ================== */
+let seqP=0;
 async function abrirFormulario(eid){
   const d=await db.collection('eventos').doc(eid).get();
   if(!d.exists){topo('Inscrição','Evento não encontrado');tela('<div class="card"><p class="muted center">Este link de inscrição não é válido ou o evento foi removido.</p></div>');return;}
   evento={id:d.id,...d.data()};
   topo('Inscrição',evento.titulo,metaEv(evento));
-  const ja=meus().find(v=>v.eventoId===eid);
-  const aviso=ja?`<div class="msg ok">Você já se inscreveu neste evento neste aparelho. <a href="?v=${esc(ja.id)}"><b>Ver meu voucher</b></a></div>`:'';
+  const ja=meus().filter(v=>v.eventoId===eid);
+  const aviso=ja.length?`<div class="msg ok">Já existe inscrição feita neste aparelho para este evento. <a href="?vs=${esc(ja.map(v=>v.id).join(','))}"><b>Ver voucher${ja.length>1?'s':''}</b></a></div>`:'';
   if(!evento.aberto){tela(`<div class="card">${banner(evento)}${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}<div class="msg bad">As inscrições para este evento estão encerradas.</div>${aviso}</div>`);return;}
-  const c=evento.campos||{};
+  seqP=0;
   tela(`<div class="card">
     ${banner(evento)}
     ${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
-    ${cobra(evento)?`<div class="preco"><span>Valor da inscrição</span><b>${esc(moeda(evento.pix.valor))}</b></div><div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
-    <form id="form" novalidate>
-      <label>Nome completo *</label><input id="fNome" autocomplete="name" maxlength="120">
-      ${c.cpf?`<label>CPF *</label><input id="fCpf" inputmode="numeric" placeholder="000.000.000-00" oninput="mascaraCPF(this)">`:''}
-      ${c.telefone?`<label>Telefone / WhatsApp *</label><input id="fTel" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" oninput="mascaraTel(this)">`:''}
-      ${c.email?`<label>E-mail *</label><input id="fEmail" type="email" autocomplete="email" maxlength="120">`:''}
-      ${camposDoEvento(evento).map((f,k)=>campoHTML(f,k)).join('')}
+    ${cobra(evento)?`<div class="preco"><span>Valor por pessoa</span><b>${esc(moeda(evento.pix.valor))}</b></div><div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
+  </div>
+  <form id="form" novalidate>
+    <div id="pessoas"></div>
+    <div class="card">
+      <button class="btn" type="button" id="btnAddP" onclick="addPessoa()">👥 + Inscrever mais uma pessoa</button>
+      <div class="muted center" style="margin-top:8px">Você pode inscrever até ${MAX_GRUPO} pessoas de uma vez. Cada uma recebe o seu próprio voucher.</div>
+      <div id="total"></div>
       <div id="erro"></div>
       <button class="btn pri" id="btnEnviar" type="submit">Confirmar inscrição</button>
-      <p class="priv">Seus dados serão usados somente para a organização e o controle de entrada deste evento.</p>
-    </form></div>`);
+      <p class="priv">Os dados serão usados somente para a organização e o controle de entrada deste evento.</p>
+    </div>
+  </form>`);
+  addPessoa(true);
   $('form').onsubmit=e=>{e.preventDefault();enviar();};
+}
+function pessoaHTML(n,primeira){
+  const c=evento.campos||{},p='p'+n+'_';
+  return `<div class="card pessoa" data-p="${n}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <b class="ptit">Pessoa 1</b>
+      ${primeira?'':`<button type="button" class="btn" style="width:auto;margin:0;padding:6px 12px;font-size:14px;color:var(--bad)" onclick="remPessoa(${n})">Remover</button>`}
+    </div>
+    <label>Nome completo *</label><input id="${p}nome" autocomplete="${primeira?'name':'off'}" maxlength="120">
+    ${c.cpf?`<label>CPF *</label><input id="${p}cpf" inputmode="numeric" placeholder="000.000.000-00" oninput="mascaraCPF(this)">`:''}
+    ${c.telefone?`<label>Telefone / WhatsApp ${primeira?'*':'<span class="muted">(se vazio, usa o da pessoa 1)</span>'}</label><input id="${p}tel" inputmode="tel" ${primeira?'autocomplete="tel"':''} placeholder="(00) 00000-0000" oninput="mascaraTel(this)">`:''}
+    ${c.email?`<label>E-mail ${primeira?'*':'<span class="muted">(se vazio, usa o da pessoa 1)</span>'}</label><input id="${p}email" type="email" ${primeira?'autocomplete="email"':''} maxlength="120">`:''}
+    ${camposDoEvento(evento).map((f,k)=>campoHTML(f,k).replace(/id="fx(\d+)"/,`id="${p}fx$1"`).replace(/for="fx(\d+)"/,`for="${p}fx$1"`)).join('')}
+  </div>`;
+}
+function blocos(){return [...document.querySelectorAll('.pessoa')];}
+function addPessoa(primeira){
+  if(blocos().length>=MAX_GRUPO)return alert('Máximo de '+MAX_GRUPO+' pessoas por vez.');
+  $('pessoas').insertAdjacentHTML('beforeend',pessoaHTML(++seqP,!!primeira));
+  atualizarPessoas();
+  if(!primeira){const b=blocos();b[b.length-1].scrollIntoView({behavior:'smooth',block:'start'});$('p'+seqP+'_nome').focus({preventScroll:true});}
+}
+function remPessoa(n){const el=document.querySelector(`.pessoa[data-p="${n}"]`);if(el)el.remove();atualizarPessoas();}
+function atualizarPessoas(){
+  const b=blocos();
+  b.forEach((el,k)=>el.querySelector('.ptit').textContent=b.length>1?'Pessoa '+(k+1):'Seus dados');
+  $('btnAddP').classList.toggle('hidden',b.length>=MAX_GRUPO);
+  $('btnEnviar').textContent=b.length>1?`Confirmar ${b.length} inscrições`:'Confirmar inscrição';
+  $('total').innerHTML=cobra(evento)&&b.length>1?`<div class="preco"><span>Total (${b.length} pessoas)</span><b>${esc(moeda(evento.pix.valor*b.length))}</b></div>`:'';
 }
 
 async function enviar(){
-  const c=evento.campos||{};const erros=[];
+  const c=evento.campos||{},erros=[],pessoas=[];
   document.querySelectorAll('.err').forEach(i=>i.classList.remove('err'));
-  const marca=(id,msg)=>{$(id).classList.add('err');erros.push(msg);};
-  const nome=$('fNome').value.trim().replace(/\s+/g,' ');
-  if(nome.length<3)marca('fNome','Informe seu nome completo.');
-  const cpf=c.cpf?$('fCpf').value.replace(/\D/g,''):'';
-  if(c.cpf&&!cpfValido(cpf))marca('fCpf','CPF inválido.');
-  const tel=c.telefone?$('fTel').value.trim():'';
-  if(c.telefone&&tel.replace(/\D/g,'').length<10)marca('fTel','Telefone incompleto.');
-  const email=c.email?$('fEmail').value.trim():'';
-  if(c.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))marca('fEmail','E-mail inválido.');
-  const extra='',respostas={};
-  camposDoEvento(evento).forEach((f,k)=>{
-    const v=$('fx'+k).value.trim();
-    if(f.obrigatorio&&!v)marca('fx'+k,'Preencha o campo "'+f.label+'".');
-    if(v)respostas[f.id]=v.slice(0,500);
+  const b=blocos();
+  b.forEach((el,k)=>{
+    const p='p'+el.dataset.p+'_',quem=b.length>1?`Pessoa ${k+1}: `:'';
+    const marca=(id,msg)=>{$(p+id).classList.add('err');erros.push(quem+msg);};
+    const val=id=>($(p+id)?$(p+id).value.trim():'');
+    const nome=val('nome').replace(/\s+/g,' ');
+    if(nome.length<3)marca('nome','informe o nome completo.');
+    const cpf=c.cpf?val('cpf').replace(/\D/g,''):'';
+    if(c.cpf&&!cpfValido(cpf))marca('cpf','CPF inválido.');
+    let tel=c.telefone?val('tel'):'';
+    if(c.telefone&&k>0&&!tel)tel=pessoas[0]?pessoas[0].telefone:'';
+    else if(c.telefone&&tel.replace(/\D/g,'').length<10)marca('tel','telefone incompleto.');
+    let email=c.email?val('email'):'';
+    if(c.email&&k>0&&!email)email=pessoas[0]?pessoas[0].email:'';
+    else if(c.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))marca('email','e-mail inválido.');
+    const respostas={};
+    camposDoEvento(evento).forEach((f,j)=>{
+      const v=val('fx'+j);
+      if(f.obrigatorio&&!v)marca('fx'+j,'preencha "'+f.label+'".');
+      if(v)respostas[f.id]=v.slice(0,500);
+    });
+    pessoas.push({nome,cpf,telefone:tel,email,respostas,el});
   });
-  if(erros.length){$('erro').innerHTML=`<div class="msg bad">${erros.map(esc).join('<br>')}</div>`;return;}
+  if(c.cpf){const vistos={};pessoas.forEach((p,k)=>{if(p.cpf&&vistos[p.cpf]!==undefined){$('p'+p.el.dataset.p+'_cpf').classList.add('err');erros.push(`Pessoa ${k+1}: CPF repetido no grupo.`);}vistos[p.cpf]=k;});}
+  if(erros.length){$('erro').innerHTML=`<div class="msg bad">${erros.map(esc).join('<br>')}</div>`;$('erro').scrollIntoView({behavior:'smooth',block:'center'});return;}
   $('erro').innerHTML='';$('btnEnviar').disabled=true;$('btnEnviar').textContent='Enviando…';
 
-  const ref=db.collection('inscricoes').doc();
-  const dados={eventoId:evento.id,codigo:gerarCodigo(),nome,cpf,telefone:tel,email,extra,respostas,checkin:false,checkinEm:null,pago:false,pagoEm:null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};
-  const b=db.batch();b.set(ref,dados);
-  if(c.cpf)b.set(db.collection('bloqueios').doc(evento.id+'_'+cpf),{eventoId:evento.id,inscricaoId:ref.id});
-  try{
-    await b.commit();
-    guardar({id:ref.id,eventoId:evento.id,titulo:evento.titulo,nome,codigo:dados.codigo});
-    history.replaceState(null,'','?v='+ref.id);
-    mostrarVoucher({id:ref.id,...dados},evento,true);
-  }catch(e){
-    let msg=e.message;
-    if(e.code==='permission-denied'){
-      let aberto=true;try{aberto=(await db.collection('eventos').doc(evento.id).get()).data().aberto;}catch(x){}
-      msg=!aberto?'As inscrições foram encerradas.':c.cpf?'Este CPF já está inscrito neste evento. Se você perdeu o voucher, fale com a organização.':'Não foi possível concluir a inscrição.';
-    }else if(e.code==='unavailable')msg='Sem conexão com a internet. Tente novamente.';
-    $('erro').innerHTML=`<div class="msg bad">${esc(msg)}</div>`;
-    $('btnEnviar').disabled=false;$('btnEnviar').textContent='Confirmar inscrição';
+  const refs=pessoas.map(()=>db.collection('inscricoes').doc());
+  const grupo=pessoas.length>1?{grupo:'G'+gerarCodigo(),grupoIds:refs.map(r=>r.id)}:{};
+  const ok=[],falhas=[];let encerrado=false;
+  for(let k=0;k<pessoas.length;k++){
+    const p=pessoas[k],ref=refs[k];
+    const dados={eventoId:evento.id,codigo:gerarCodigo(),nome:p.nome,cpf:p.cpf,telefone:p.telefone,email:p.email,extra:'',respostas:p.respostas,...grupo,
+      checkin:false,checkinEm:null,pago:false,pagoEm:null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};
+    const bt=db.batch();bt.set(ref,dados);
+    if(c.cpf)bt.set(db.collection('bloqueios').doc(evento.id+'_'+p.cpf),{eventoId:evento.id,inscricaoId:ref.id});
+    try{
+      await bt.commit();ok.push({id:ref.id,...dados,pessoa:k});
+      guardar({id:ref.id,eventoId:evento.id,titulo:evento.titulo,nome:p.nome,codigo:dados.codigo});
+    }catch(e){
+      let motivo='não foi possível concluir';
+      if(e.code==='permission-denied'){
+        if(!encerrado){try{encerrado=!(await db.collection('eventos').doc(evento.id).get()).data().aberto;}catch(x){}}
+        motivo=encerrado?'as inscrições foram encerradas':c.cpf?'este CPF já está inscrito neste evento':'não foi possível concluir';
+      }else if(e.code==='unavailable')motivo='sem conexão com a internet';
+      falhas.push({nome:p.nome,motivo,pessoa:k});
+    }
   }
+  if(!ok.length){
+    $('erro').innerHTML=`<div class="msg bad">${falhas.map(f=>esc((pessoas.length>1?f.nome+': ':'')+f.motivo.charAt(0).toUpperCase()+f.motivo.slice(1)+'.')).join('<br>')}${c.cpf?'<br>Se você perdeu o voucher, fale com a organização.':''}</div>`;
+    $('btnEnviar').disabled=false;atualizarPessoas();return;
+  }
+  history.replaceState(null,'',ok.length>1?'?vs='+ok.map(i=>i.id).join(','):'?v='+ok[0].id);
+  mostrarVouchers(ok,evento,{novo:true,falhas,grupoTodo:ok});
 }
 
-/* ================== Voucher ================== */
-async function abrirVoucher(vid){
-  const d=await db.collection('inscricoes').doc(vid).get();
-  if(!d.exists){topo('Voucher','Voucher não encontrado');tela('<div class="card"><p class="muted center">Este voucher não existe ou a inscrição foi cancelada.</p></div>');return;}
-  const i={id:d.id,...d.data()};
-  const e=await db.collection('eventos').doc(i.eventoId).get();
+/* ================== Vouchers (um ou vários) ================== */
+async function abrirVouchers(ids,unico){
+  const docs=(await Promise.all(ids.map(id=>db.collection('inscricoes').doc(id).get().catch(()=>null)))).filter(d=>d&&d.exists);
+  if(!docs.length){topo('Voucher','Voucher não encontrado');tela('<div class="card"><p class="muted center">Este voucher não existe ou a inscrição foi cancelada.</p></div>');return;}
+  const lista=docs.map(d=>({id:d.id,...d.data()}));
+  const e=await db.collection('eventos').doc(lista[0].eventoId).get();
   const ev=e.exists?{id:e.id,...e.data()}:{titulo:'Evento'};
-  guardar({id:i.id,eventoId:i.eventoId,titulo:ev.titulo,nome:i.nome,codigo:i.codigo});
-  mostrarVoucher(i,ev,false);
+  lista.forEach(i=>guardar({id:i.id,eventoId:i.eventoId,titulo:ev.titulo,nome:i.nome,codigo:i.codigo}));
+  // Se o voucher faz parte de um grupo, carrega o grupo para calcular o Pix total
+  let grupoTodo=lista;
+  const gids=lista[0].grupoIds;
+  if(Array.isArray(gids)&&gids.length>1){
+    const faltam=gids.filter(id=>!lista.find(i=>i.id===id)).slice(0,MAX_GRUPO);
+    const extras=(await Promise.all(faltam.map(id=>db.collection('inscricoes').doc(id).get().catch(()=>null)))).filter(d=>d&&d.exists).map(d=>({id:d.id,...d.data()}));
+    grupoTodo=[...lista,...extras];
+  }
+  mostrarVouchers(lista,ev,{novo:false,falhas:[],grupoTodo,unico});
 }
+
 let atual=null;
-function mostrarVoucher(i,ev,novo){
-  atual={i,ev,img:null};
+function mostrarVouchers(lista,ev,o){
+  atual={lista,ev,img:null,pix:''};
   if(ev.imagem){const im=new Image();im.src=ev.imagem;atual.img=im;}
-  topo('Voucher de inscrição',ev.titulo,metaEv(ev));
+  const px=cobra(ev),varios=lista.length>1;
+  const pend=(o.grupoTodo||lista).filter(i=>!i.pago);
+  atual.pend=pend;
+  topo(varios?'Vouchers de inscrição':'Voucher de inscrição',ev.titulo,metaEv(ev));
+  const outrosDoGrupo=(o.grupoTodo||[]).length>lista.length;
+  tela(`
+    ${o.novo?`<div class="card"><div class="msg ok" style="margin-top:0">✅ ${varios?lista.length+' inscrições realizadas!':'Inscrição realizada!'}${px&&pend.length?' Falta só o pagamento via Pix (abaixo).':''}</div>
+      ${o.falhas.length?`<div class="msg bad">Não foi possível inscrever:<br>${o.falhas.map(f=>'• '+esc(f.nome)+' — '+esc(f.motivo)).join('<br>')}</div>`:''}
+      ${varios?`<div class="muted" style="margin-top:10px">Cada pessoa tem o seu voucher abaixo. Salve ou compartilhe todos.</div>
+        <button class="btn pri" onclick="compartilharTodos()">📤 Compartilhar todos os vouchers</button>
+        <button class="btn" onclick="copiarTexto(location.href,'Link dos vouchers copiado!')">🔗 Copiar link de todos</button>`:''}
+    </div>`:''}
+    ${varios&&!o.novo?`<div class="card"><button class="btn pri" style="margin-top:0" onclick="compartilharTodos()">📤 Compartilhar todos os vouchers</button></div>`:''}
+    ${outrosDoGrupo?`<div class="card"><div class="muted">Este voucher faz parte de uma inscrição em grupo (${o.grupoTodo.length} pessoas).</div>
+      <a class="btn" style="text-decoration:none" href="?vs=${esc(o.grupoTodo.map(i=>i.id).join(','))}">👥 Ver todos os vouchers do grupo</a></div>`:''}
+    ${px&&pend.length?cartaoPix(ev,pend):''}
+    ${lista.map((i,k)=>cartaoVoucher(i,ev,k,varios)).join('')}
+    ${ev.descricao?`<div class="card"><p class="desc" style="margin:0">${esc(ev.descricao)}</p></div>`:''}`);
+  lista.forEach((i,k)=>new QRCode($('qr'+k),{text:linkVoucher(i.id),width:varios?180:220,height:varios?180:220,correctLevel:QRCode.CorrectLevel.M}));
+  if(px&&pend.length)new QRCode($('qrPix'),{text:atual.pix,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+}
+function cartaoVoucher(i,ev,k,varios){
   const px=cobra(ev);
-  tela(`<div class="card voucher">
-    ${banner(ev)}
-    ${novo?`<div class="msg ok" style="margin-top:0">✅ Inscrição realizada!${px&&!i.pago?' Falta só o pagamento via Pix (abaixo).':''}</div>`:''}
+  return `<div class="card voucher">
+    ${k===0||varios?banner(ev):''}
     ${i.checkin?'<div class="msg bad" style="margin-top:0">Este voucher já foi utilizado na entrada.</div>':''}
-    ${px?`<div style="margin-top:12px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span></div>`:''}
-    <div class="muted" style="margin-top:12px">Participante</div>
+    ${px?`<div style="margin-top:4px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span></div>`:''}
+    <div class="muted" style="margin-top:12px">${varios?'Participante '+(k+1):'Participante'}</div>
     <div class="nome">${esc(i.nome)}</div>
-    <div class="qrbox"><div id="qr"></div></div>
+    <div class="qrbox"><div id="qr${k}"></div></div>
     <div class="muted">Código</div><div class="codigo">${esc(i.codigo)}</div>
     <p class="muted">Apresente este QR code na entrada do evento.</p>
-    <button class="btn pri" onclick="compartilhar()">📤 Salvar / compartilhar voucher</button>
-    <div class="row"><button class="btn" onclick="baixar()">⬇ Baixar imagem</button><button class="btn" onclick="copiarLink()">🔗 Copiar link</button></div>
-  </div>
-  ${px&&!i.pago?cartaoPix(i,ev):''}
-  ${ev.descricao?`<div class="card"><p class="desc" style="margin:0">${esc(ev.descricao)}</p></div>`:''}`);
-  new QRCode($('qr'),{text:linkVoucher(i.id),width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
-  if(px&&!i.pago)new QRCode($('qrPix'),{text:atual.pix,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+    <button class="btn ${varios?'':'pri'}" onclick="compartilhar(${k})">📤 Salvar / compartilhar ${varios?'este voucher':'voucher'}</button>
+    <div class="row"><button class="btn" onclick="baixar(${k})">⬇ Baixar imagem</button><button class="btn" onclick="copiarLink(${k})">🔗 Copiar link</button></div>
+  </div>`;
 }
-function cartaoPix(i,ev){
-  const p=ev.pix;atual.pix=brcode(p,'INSC'+i.codigo);
+function cartaoPix(ev,pend){
+  const p={...ev.pix,valor:ev.pix.valor*pend.length};
+  atual.pix=brcode(p,(pend.length>1?'GRP':'INSC')+pend[0].codigo);
   return `<div class="card pix center">
     <h3>Pagamento via Pix</h3>
     <div class="valor">${esc(moeda(p.valor))}</div>
-    <div class="muted">Abra o app do seu banco, escolha <b>Pix → Ler QR code</b> ou <b>Pix copia e cola</b>.</div>
+    ${pend.length>1?`<div class="muted">${pend.length} pessoas × ${esc(moeda(ev.pix.valor))}: ${pend.map(i=>esc(i.nome.split(' ')[0])).join(', ')}</div>`:''}
+    <div class="muted" style="margin-top:6px">Abra o app do seu banco, escolha <b>Pix → Ler QR code</b> ou <b>Pix copia e cola</b>.</div>
     <div class="qrbox"><div id="qrPix"></div></div>
     <textarea class="copia" id="pixCopia" readonly onclick="this.select()">${esc(atual.pix)}</textarea>
     <button class="btn pri" onclick="copiarTexto(atual.pix,'Código Pix copiado! Cole no app do banco.')">📋 Copiar Pix copia e cola</button>
     <div style="margin-top:14px">
-      <div class="kvp"><span>Recebedor</span><b>${esc(p.nome)}</b></div>
-      <div class="kvp"><span>Chave Pix</span><b>${esc(p.chave)}</b></div>
+      <div class="kvp"><span>Recebedor</span><b>${esc(ev.pix.nome)}</b></div>
+      <div class="kvp"><span>Chave Pix</span><b>${esc(ev.pix.chave)}</b></div>
     </div>
-    <button class="btn" onclick="copiarTexto(${esc(JSON.stringify(p.chave))},'Chave Pix copiada!')">Copiar só a chave</button>
-    ${p.whats?`<button class="btn" onclick="enviarComprovante()">💬 Enviar comprovante pelo WhatsApp</button>`:''}
+    <button class="btn" onclick="copiarTexto(${esc(JSON.stringify(ev.pix.chave))},'Chave Pix copiada!')">Copiar só a chave</button>
+    ${ev.pix.whats?`<button class="btn" onclick="enviarComprovante()">💬 Enviar comprovante pelo WhatsApp</button>`:''}
     <p class="muted" style="margin-bottom:0">Depois que a organização confirmar o pagamento, esta página mostra <b>Pagamento confirmado</b>.</p>
     <button class="btn" onclick="location.reload()">🔄 Atualizar situação</button>
   </div>`;
 }
 function copiarTexto(t,ok){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert(ok)).catch(()=>prompt('Copie:',t));}
 function enviarComprovante(){
-  const {i,ev}=atual;let d=String(ev.pix.whats||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
-  const msg=`Olá! Segue o comprovante do Pix da minha inscrição.\nEvento: ${ev.titulo}\nNome: ${i.nome}\nCódigo: ${i.codigo}\nValor: ${moeda(ev.pix.valor)}`;
+  const {ev,pend}=atual;let d=String(ev.pix.whats||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
+  const msg=`Olá! Segue o comprovante do Pix da${pend.length>1?'s':''} inscriç${pend.length>1?'ões':'ão'}.\nEvento: ${ev.titulo}\n`+
+    pend.map(i=>`• ${i.nome} (código ${i.codigo})`).join('\n')+`\nValor: ${moeda(ev.pix.valor*pend.length)}`;
   window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
 }
 function quebra(x,t,cx,y,maxW,lh,maxL){const ps=String(t).split(' ');let l='',n=1;for(const p of ps){const tt=l?l+' '+p:p;if(x.measureText(tt).width>maxW&&l){if(n>=maxL){x.fillText(l+'…',cx,y);return y;}x.fillText(l,cx,y);y+=lh;n++;l=p;}else l=tt;}x.fillText(l,cx,y);return y;}
-function imagemVoucher(){
-  const {i,ev}=atual;
+function imagemVoucher(k){
+  const i=atual.lista[k],ev=atual.ev;
   const tmp=document.createElement('div');new QRCode(tmp,{text:linkVoucher(i.id),width:520,height:520,correctLevel:QRCode.CorrectLevel.M});
   const q=tmp.querySelector('canvas');
   const W=800,H=1180,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
@@ -319,17 +400,22 @@ function imagemVoucher(){
   x.fillStyle='#6b6f85';x.font='22px system-ui,sans-serif';x.fillText('Apresente este QR code na entrada',W/2,1160);
   return c;
 }
-function nomeArq(){return 'voucher-'+atual.i.codigo+'.png';}
-function baixar(){const a=document.createElement('a');a.href=imagemVoucher().toDataURL('image/png');a.download=nomeArq();a.click();}
-function compartilhar(){
-  imagemVoucher().toBlob(async blob=>{
-    const f=new File([blob],nomeArq(),{type:'image/png'});
-    if(navigator.canShare&&navigator.canShare({files:[f]})){
-      try{await navigator.share({files:[f],title:'Voucher — '+atual.ev.titulo,text:'Meu voucher: '+linkVoucher(atual.i.id)});}catch(e){}
-    }else baixar();
-  },'image/png');
+function nomeArq(k){const i=atual.lista[k];return 'voucher-'+i.codigo+'-'+i.nome.split(' ')[0].normalize('NFD').replace(/[^\w]/g,'').toLowerCase()+'.png';}
+function baixar(k){const a=document.createElement('a');a.href=imagemVoucher(k).toDataURL('image/png');a.download=nomeArq(k);a.click();}
+const blobDe=k=>new Promise(r=>imagemVoucher(k).toBlob(b=>r(new File([b],nomeArq(k),{type:'image/png'})),'image/png'));
+async function compartilhar(k){
+  const f=await blobDe(k);
+  if(navigator.canShare&&navigator.canShare({files:[f]})){
+    try{await navigator.share({files:[f],title:'Voucher — '+atual.ev.titulo,text:'Voucher de '+atual.lista[k].nome+': '+linkVoucher(atual.lista[k].id)});}catch(e){}
+  }else baixar(k);
 }
-function copiarLink(){const t=linkVoucher(atual.i.id);(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert('Link do voucher copiado!')).catch(()=>prompt('Copie o link:',t));}
+async function compartilharTodos(){
+  const fs=await Promise.all(atual.lista.map((_,k)=>blobDe(k)));
+  if(navigator.canShare&&navigator.canShare({files:fs})){
+    try{await navigator.share({files:fs,title:'Vouchers — '+atual.ev.titulo});}catch(e){}
+  }else atual.lista.forEach((_,k)=>setTimeout(()=>baixar(k),k*400));
+}
+function copiarLink(k){copiarTexto(linkVoucher(atual.lista[k].id),'Link do voucher copiado!');}
 </script>
 </body>
 </html>
