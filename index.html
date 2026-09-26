@@ -154,9 +154,9 @@ const firebaseConfig = {
       <div style="height:10px"></div>
       <button id="btnScan" class="btn pri full" onclick="toggleScan()">📷 Abrir câmera</button>
       <div class="card" style="margin-top:12px">
-        <label style="margin-top:0">Ou digite o código do voucher</label>
+        <label style="margin-top:0">Ou busque por código, nome ou CPF</label>
         <div class="row">
-          <input id="codManual" placeholder="Ex.: K7P2QX" style="flex:2;text-transform:uppercase" onkeydown="if(event.key==='Enter')buscarManual()">
+          <input id="codManual" placeholder="Ex.: K7P2QX ou Maria Silva" style="flex:2" autocomplete="off" onkeydown="if(event.key==='Enter')buscarManual()">
           <button class="btn" onclick="buscarManual()">Buscar</button>
         </div>
       </div>
@@ -584,14 +584,27 @@ async function lido(txt){
 }
 function retomar(){$('resultado').innerHTML='';ocupado=false;if(escaneando){try{scanner.resume();}catch(e){}}}
 async function buscarManual(){
-  const cod=$('codManual').value.trim().toUpperCase();if(!cod)return;
+  const txt=$('codManual').value.trim();if(!txt)return;
+  const cod=txt.toUpperCase().replace(/\s/g,'');
   const local=inscritos.find(i=>(i.codigo||'')===cod);
   if(local)return consultar(local.id);
-  try{
-    const s=await db.collection('inscricoes').where('codigo','==',cod).limit(1).get();
-    if(!s.empty)return consultar(s.docs[0].id);
-  }catch(e){}
-  mostrarResultado({tipo:'bad',titulo:'Código não encontrado',msg:'Nenhuma inscrição com o código '+esc(cod)+'.'});
+  // Busca por nome (sem acento), CPF ou telefone no evento selecionado
+  const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const q=norm(txt),qd=txt.replace(/\D/g,''),partes=q.split(/\s+/).filter(Boolean);
+  const achados=inscritos.filter(i=>partes.every(p=>norm(i.nome).includes(p))||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
+  if(achados.length===1)return consultar(achados[0].id);
+  if(achados.length>1){
+    $('resultado').innerHTML=`<div class="card" style="margin-top:12px;padding:4px 14px">
+      <div class="muted" style="padding:10px 0 4px">${achados.length} inscritos encontrados — toque para abrir:</div>
+      ${achados.slice(0,30).map(i=>`<div class="item" onclick="consultar('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):''}</span></div>
+        <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div>`).join('')}
+      <div style="padding:10px 0"><button class="btn full" onclick="$('resultado').innerHTML=''">Fechar</button></div></div>`;
+    return;
+  }
+  if(/^[A-Z0-9]{6}$/.test(cod)){
+    try{const s=await db.collection('inscricoes').where('codigo','==',cod).limit(1).get();if(!s.empty)return consultar(s.docs[0].id);}catch(e){}
+  }
+  mostrarResultado({tipo:'bad',titulo:'Não encontrado',msg:'Nenhuma inscrição neste evento com o código, nome ou CPF "'+esc(txt)+'".'});
 }
 async function consultar(id){
   try{
