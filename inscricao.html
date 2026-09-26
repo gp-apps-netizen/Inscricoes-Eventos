@@ -43,6 +43,8 @@ input.err,select.err,textarea.err{border-color:var(--bad)}
 .hidden{display:none!important}
 .spin{width:32px;height:32px;border:3px solid var(--pri2);border-top-color:var(--pri);border-radius:50%;animation:s 1s linear infinite;margin:30px auto}
 @keyframes s{to{transform:rotate(360deg)}}
+.chkp{display:flex;align-items:center;gap:10px;margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--pri2);color:var(--pri);font-size:15px;cursor:pointer}
+.chkp input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--pri)}
 .priv{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.4}
 .banner{display:block;width:calc(100% + 36px);margin:-18px -18px 16px;max-height:260px;object-fit:cover;border-radius:15px 15px 0 0}
 .preco{display:flex;justify-content:space-between;align-items:center;background:var(--pri2);color:var(--pri);border-radius:10px;padding:10px 12px;margin:10px 0 4px;font-size:15px}
@@ -103,6 +105,10 @@ function topo(sm,t,m){$('topSmall').textContent=sm;$('topTitulo').textContent=t;
 function tela(html){$('conteudo').innerHTML=html;}
 function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo&&ev.pix.valor>0);}
+function temMeia(ev){return cobra(ev)&&!!ev.pix.meia&&ev.pix.valorMeia>0;}
+function valorDe(i,ev){if(!cobra(ev)||i.isento)return 0;return i.meia&&temMeia(ev)?Number(ev.pix.valorMeia):Number(ev.pix.valor);}
+function criancasGratis(ev){return cobra(ev)&&!!ev.pix.criancasGratis;}
+function idadeNaData(nasc,ev){const ref=ev&&ev.data?new Date(ev.data+'T12:00:00'):new Date(),n=new Date(nasc+'T12:00:00');let a=ref.getFullYear()-n.getFullYear();if(ref.getMonth()<n.getMonth()||(ref.getMonth()===n.getMonth()&&ref.getDate()<n.getDate()))a--;return a;}
 function banner(ev){return ev&&ev.imagem?`<img class="banner" src="${ev.imagem}" alt="">`:'';}
 function camposDoEvento(e){
   if(!e)return[];
@@ -181,7 +187,7 @@ async function abrirFormulario(eid){
   tela(`<div class="card">
     ${banner(evento)}
     ${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
-    ${cobra(evento)?`<div class="preco"><span>Valor por pessoa</span><b>${esc(moeda(evento.pix.valor))}</b></div><div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
+    ${cobra(evento)?`<div class="preco"><span>Valor por pessoa</span><b>${esc(moeda(evento.pix.valor))}</b></div>${temMeia(evento)?`<div class="preco"><span>Meia-entrada${evento.pix.meiaQuem?' <small>('+esc(evento.pix.meiaQuem)+')</small>':''}</span><b>${esc(moeda(evento.pix.valorMeia))}</b></div>`:''}<div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
   </div>
   <form id="form" novalidate>
     <div id="pessoas"></div>
@@ -205,12 +211,23 @@ function pessoaHTML(n,primeira){
       ${primeira?'':`<button type="button" class="btn" style="width:auto;margin:0;padding:6px 12px;font-size:14px;color:var(--bad)" onclick="remPessoa(${n})">Remover</button>`}
     </div>
     <label>Nome completo *</label><input id="${p}nome" autocomplete="${primeira?'name':'off'}" maxlength="120">
-    ${c.cpf?`<label>CPF *</label><input id="${p}cpf" inputmode="numeric" placeholder="000.000.000-00" oninput="mascaraCPF(this)">`:''}
+    ${criancasGratis(evento)?`<label class="chkp"><input type="checkbox" id="${p}cri" onchange="toggleCrianca(${n})"> 🎈 Criança de até ${esc(evento.pix.idadeMax)} anos — inscrição gratuita</label>
+      <div id="${p}criBox" class="hidden"><label>Data de nascimento *</label><input id="${p}nasc" type="date"></div>`:''}
+    ${temMeia(evento)?`<label class="chkp" id="${p}meiaLbl"><input type="checkbox" id="${p}meia" onchange="toggleMeia(${n})"> 🎟 Pagar meia-entrada (${esc(moeda(evento.pix.valorMeia))})</label>
+      <div id="${p}meiaBox" class="hidden">
+        ${evento.pix.meiaQuem?`<div class="muted" style="margin-top:6px">Têm direito: ${esc(evento.pix.meiaQuem)}. Leve o comprovante no dia.</div>`:'<div class="muted" style="margin-top:6px">Leve o comprovante no dia.</div>'}
+        <label>Motivo da meia-entrada *</label><input id="${p}meiaMot" maxlength="80" placeholder="Ex.: estudante, idoso, professor">
+      </div>`:''}
+    ${c.cpf?`<label id="${p}cpfLbl">CPF *</label><input id="${p}cpf" inputmode="numeric" placeholder="000.000.000-00" oninput="mascaraCPF(this)">`:''}
     ${c.telefone?`<label>Telefone / WhatsApp ${primeira?'*':'<span class="muted">(se vazio, usa o da pessoa 1)</span>'}</label><input id="${p}tel" inputmode="tel" ${primeira?'autocomplete="tel"':''} placeholder="(00) 00000-0000" oninput="mascaraTel(this)">`:''}
     ${c.email?`<label>E-mail ${primeira?'*':'<span class="muted">(se vazio, usa o da pessoa 1)</span>'}</label><input id="${p}email" type="email" ${primeira?'autocomplete="email"':''} maxlength="120">`:''}
     ${camposDoEvento(evento).map((f,k)=>campoHTML(f,k).replace(/id="fx(\d+)"/,`id="${p}fx$1"`).replace(/for="fx(\d+)"/,`for="${p}fx$1"`)).join('')}
   </div>`;
 }
+function toggleMeia(n){const p='p'+n+'_';$(p+'meiaBox').classList.toggle('hidden',!$(p+'meia').checked);atualizarPessoas();}
+function ehMeia(el){const c=el.querySelector('input[id$="_meia"]');return !!(c&&c.checked)&&!ehCrianca(el);}
+function toggleCrianca(n){const p='p'+n+'_',on=$(p+'cri').checked;if($(p+'meiaLbl')){$(p+'meiaLbl').classList.toggle('hidden',on);$(p+'meiaBox').classList.toggle('hidden',on||!$(p+'meia').checked);}$(p+'criBox').classList.toggle('hidden',!on);if($(p+'cpfLbl'))$(p+'cpfLbl').innerHTML=on?'CPF <span class="muted">(opcional para criança)</span>':'CPF *';atualizarPessoas();}
+function ehCrianca(el){const c=el.querySelector('input[id$="_cri"]');return !!(c&&c.checked);}
 function blocos(){return [...document.querySelectorAll('.pessoa')];}
 function addPessoa(primeira){
   if(blocos().length>=MAX_GRUPO)return alert('Máximo de '+MAX_GRUPO+' pessoas por vez.');
@@ -224,7 +241,10 @@ function atualizarPessoas(){
   b.forEach((el,k)=>el.querySelector('.ptit').textContent=b.length>1?'Pessoa '+(k+1):'Seus dados');
   $('btnAddP').classList.toggle('hidden',b.length>=MAX_GRUPO);
   $('btnEnviar').textContent=b.length>1?`Confirmar ${b.length} inscrições`:'Confirmar inscrição';
-  $('total').innerHTML=cobra(evento)&&b.length>1?`<div class="preco"><span>Total (${b.length} pessoas)</span><b>${esc(moeda(evento.pix.valor*b.length))}</b></div>`:'';
+  const cri=b.filter(ehCrianca).length,meia=b.filter(ehMeia).length,int=b.length-cri-meia;
+  const partes=[];if(int)partes.push(int+' inteira'+(int>1?'s':''));if(meia)partes.push(meia+' meia'+(meia>1?'s':''));if(cri)partes.push(cri+' criança'+(cri>1?'s':'')+' grátis');
+  const tot=int*evento.pix.valor+meia*(temMeia(evento)?evento.pix.valorMeia:0);
+  $('total').innerHTML=cobra(evento)&&(b.length>1||cri||meia)?`<div class="preco"><span>Total (${partes.join(' + ')})</span><b>${esc(moeda(tot))}</b></div>`:'';
 }
 
 async function enviar(){
@@ -237,8 +257,19 @@ async function enviar(){
     const val=id=>($(p+id)?$(p+id).value.trim():'');
     const nome=val('nome').replace(/\s+/g,' ');
     if(nome.length<3)marca('nome','informe o nome completo.');
+    const crianca=criancasGratis(evento)&&ehCrianca(el);
+    let nasc='';
+    if(crianca){
+      nasc=val('nasc');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(nasc))marca('nasc','informe a data de nascimento da criança.');
+      else{const id=idadeNaData(nasc,evento);
+        if(id<0||new Date(nasc+'T12:00:00')>new Date())marca('nasc','data de nascimento inválida.');
+        else if(id>evento.pix.idadeMax)marca('nasc',`pela data de nascimento terá ${id} anos no evento — a gratuidade é até ${evento.pix.idadeMax} anos. Desmarque "Criança" para inscrever como pagante.`);}
+    }
+    const meia=temMeia(evento)&&ehMeia(el);let meiaMotivo='';
+    if(meia){meiaMotivo=val('meiaMot');if(meiaMotivo.length<3)marca('meiaMot','informe o motivo da meia-entrada.');}
     const cpf=c.cpf?val('cpf').replace(/\D/g,''):'';
-    if(c.cpf&&!cpfValido(cpf))marca('cpf','CPF inválido.');
+    if(c.cpf&&!(crianca&&!cpf)&&!cpfValido(cpf))marca('cpf','CPF inválido.');
     let tel=c.telefone?val('tel'):'';
     if(c.telefone&&k>0&&!tel)tel=pessoas[0]?pessoas[0].telefone:'';
     else if(c.telefone&&tel.replace(/\D/g,'').length<10)marca('tel','telefone incompleto.');
@@ -251,7 +282,7 @@ async function enviar(){
       if(f.obrigatorio&&!v)marca('fx'+j,'preencha "'+f.label+'".');
       if(v)respostas[f.id]=v.slice(0,500);
     });
-    pessoas.push({nome,cpf,telefone:tel,email,respostas,el});
+    pessoas.push({nome,cpf,telefone:tel,email,respostas,el,crianca,nasc,meia,meiaMotivo});
   });
   if(c.cpf){const vistos={};pessoas.forEach((p,k)=>{if(p.cpf&&vistos[p.cpf]!==undefined){$('p'+p.el.dataset.p+'_cpf').classList.add('err');erros.push(`Pessoa ${k+1}: CPF repetido no grupo.`);}vistos[p.cpf]=k;});}
   if(erros.length){$('erro').innerHTML=`<div class="msg bad">${erros.map(esc).join('<br>')}</div>`;$('erro').scrollIntoView({behavior:'smooth',block:'center'});return;}
@@ -262,10 +293,10 @@ async function enviar(){
   const ok=[],falhas=[];let encerrado=false;
   for(let k=0;k<pessoas.length;k++){
     const p=pessoas[k],ref=refs[k];
-    const dados={eventoId:evento.id,codigo:gerarCodigo(),nome:p.nome,cpf:p.cpf,telefone:p.telefone,email:p.email,extra:'',respostas:p.respostas,...grupo,
+    const dados={eventoId:evento.id,codigo:gerarCodigo(),nome:p.nome,cpf:p.cpf,telefone:p.telefone,email:p.email,extra:'',respostas:p.respostas,...grupo,...(criancasGratis(evento)?{crianca:p.crianca,nascimento:p.nasc,isento:p.crianca}:{}),...(p.meia?{meia:true,meiaMotivo:p.meiaMotivo.slice(0,80)}:{}),
       checkin:false,checkinEm:null,pago:false,pagoEm:null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};
     const bt=db.batch();bt.set(ref,dados);
-    if(c.cpf)bt.set(db.collection('bloqueios').doc(evento.id+'_'+p.cpf),{eventoId:evento.id,inscricaoId:ref.id});
+    if(c.cpf&&p.cpf)bt.set(db.collection('bloqueios').doc(evento.id+'_'+p.cpf),{eventoId:evento.id,inscricaoId:ref.id});
     try{
       await bt.commit();ok.push({id:ref.id,...dados,pessoa:k});
       guardar({id:ref.id,eventoId:evento.id,titulo:evento.titulo,nome:p.nome,codigo:dados.codigo});
@@ -310,7 +341,7 @@ function mostrarVouchers(lista,ev,o){
   atual={lista,ev,img:null,pix:''};
   if(ev.imagem){const im=new Image();im.src=ev.imagem;atual.img=im;}
   const px=cobra(ev),varios=lista.length>1;
-  const pend=(o.grupoTodo||lista).filter(i=>!i.pago);
+  const pend=(o.grupoTodo||lista).filter(i=>!i.pago&&!i.isento);
   atual.pend=pend;
   topo(varios?'Vouchers de inscrição':'Voucher de inscrição',ev.titulo,metaEv(ev));
   const outrosDoGrupo=(o.grupoTodo||[]).length>lista.length;
@@ -335,7 +366,7 @@ function cartaoVoucher(i,ev,k,varios){
   return `<div class="card voucher">
     ${k===0||varios?banner(ev):''}
     ${i.checkin?'<div class="msg bad" style="margin-top:0">Este voucher já foi utilizado na entrada.</div>':''}
-    ${px?`<div style="margin-top:4px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span></div>`:''}
+    ${i.isento?'<div style="margin-top:4px"><span class="st ok">🎈 Criança — inscrição gratuita</span></div>':px?`<div style="margin-top:4px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span>${i.meia?' <span class="st pend">🎟 Meia-entrada</span>':''}</div>`:''}
     <div class="muted" style="margin-top:12px">${varios?'Participante '+(k+1):'Participante'}</div>
     <div class="nome">${esc(i.nome)}</div>
     <div class="qrbox"><div id="qr${k}"></div></div>
@@ -346,12 +377,12 @@ function cartaoVoucher(i,ev,k,varios){
   </div>`;
 }
 function cartaoPix(ev,pend){
-  const p={...ev.pix,valor:ev.pix.valor*pend.length};
+  const tot=pend.reduce((s,i)=>s+valorDe(i,ev),0),p={...ev.pix,valor:Math.round(tot*100)/100};
   atual.pix=brcode(p,(pend.length>1?'GRP':'INSC')+pend[0].codigo);
   return `<div class="card pix center">
     <h3>Pagamento via Pix</h3>
     <div class="valor">${esc(moeda(p.valor))}</div>
-    ${pend.length>1?`<div class="muted">${pend.length} pessoas × ${esc(moeda(ev.pix.valor))}: ${pend.map(i=>esc(i.nome.split(' ')[0])).join(', ')}</div>`:''}
+    ${pend.length>1||pend.some(i=>i.meia)?`<div class="muted">${pend.map(i=>esc(i.nome.split(' ')[0])+' '+esc(moeda(valorDe(i,ev)))+(i.meia?' (meia)':'')).join(' · ')}</div>`:''}
     <div class="muted" style="margin-top:6px">Abra o app do seu banco, escolha <b>Pix → Ler QR code</b> ou <b>Pix copia e cola</b>.</div>
     <div class="qrbox"><div id="qrPix"></div></div>
     <textarea class="copia" id="pixCopia" readonly onclick="this.select()">${esc(atual.pix)}</textarea>
@@ -370,7 +401,7 @@ function copiarTexto(t,ok){(navigator.clipboard?navigator.clipboard.writeText(t)
 function enviarComprovante(){
   const {ev,pend}=atual;let d=String(ev.pix.whats||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
   const msg=`Olá! Segue o comprovante do Pix da${pend.length>1?'s':''} inscriç${pend.length>1?'ões':'ão'}.\nEvento: ${ev.titulo}\n`+
-    pend.map(i=>`• ${i.nome} (código ${i.codigo})`).join('\n')+`\nValor: ${moeda(ev.pix.valor*pend.length)}`;
+    pend.map(i=>`• ${i.nome} (código ${i.codigo})${i.meia?' — meia':''}`).join('\n')+`\nValor: ${moeda(pend.reduce((s,i)=>s+valorDe(i,ev),0))}`;
   window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
 }
 function quebra(x,t,cx,y,maxW,lh,maxL){const ps=String(t).split(' ');let l='',n=1;for(const p of ps){const tt=l?l+' '+p:p;if(x.measureText(tt).width>maxW&&l){if(n>=maxL){x.fillText(l+'…',cx,y);return y;}x.fillText(l,cx,y);y+=lh;n++;l=p;}else l=tt;}x.fillText(l,cx,y);return y;}

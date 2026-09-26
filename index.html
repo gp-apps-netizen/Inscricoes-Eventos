@@ -381,7 +381,7 @@ function renderEventos(){
         <div style="flex:1"><h3>${esc(e.titulo)}</h3>
           <div class="muted">${esc(fmtData(e))}${e.local?' · '+esc(e.local):''}</div></div>
         <div class="tags"><span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>
-        ${cobra(e)?`<span class="tag neu">Pix ${esc(moeda(e.pix.valor))}</span>`:''}</div>
+        ${cobra(e)?`<span class="tag neu">Pix ${esc(moeda(e.pix.valor))}${e.pix.meia?' · meia '+esc(moeda(e.pix.valorMeia)):''}</span>`:''}</div>
       </div>${cont}
       <div class="row" style="margin-top:10px">
         ${sel?'':`<button class="btn sm" onclick="selecionarEvento('${e.id}')">Selecionar</button>`}
@@ -400,18 +400,22 @@ function camposDoEvento(e){
   return[];
 }
 function respostaDe(i,f){const r=(i.respostas||{})[f.id];if(r!==undefined&&r!=='')return r;return f.id==='extra'?(i.extra||''):'';}
+const devePagar=i=>!i.pago&&!i.isento;
+function valorDe(i,ev){ev=ev||eventos.find(e=>e.id===i.eventoId);if(!cobra(ev)||i.isento)return 0;return i.meia&&ev.pix.meia?Number(ev.pix.valorMeia||0):Number(ev.pix.valor);}
+const somaValor=(l,ev)=>l.reduce((s,x)=>s+valorDe(x,ev),0);
+function idadeTxt(i){if(!i.nascimento)return '';const ev=eventos.find(e=>e.id===i.eventoId)||{};const ref=ev.data?new Date(ev.data+'T12:00:00'):new Date(),n=new Date(i.nascimento+'T12:00:00');let a=ref.getFullYear()-n.getFullYear();if(ref.getMonth()<n.getMonth()||(ref.getMonth()===n.getMonth()&&ref.getDate()<n.getDate()))a--;const[y,m,d]=i.nascimento.split('-');return `${d}/${m}/${y} (${a} ${a===1?'ano':'anos'})`;}
 function membrosGrupo(i){return i&&i.grupo?inscritos.filter(x=>x.grupo===i.grupo):[];}
 function responsavelGrupo(i){const m=membrosGrupo(i);if(!m.length)return null;const ids=i.grupoIds||[];return m.find(x=>x.id===ids[0])||m[0];}
 async function marcarPagoGrupo(grupo,excetoId){
   const ev=eventoSel();
-  const alvo=inscritos.filter(x=>x.grupo===grupo&&!x.pago&&x.id!==excetoId);
+  const alvo=inscritos.filter(x=>x.grupo===grupo&&devePagar(x)&&x.id!==excetoId);
   if(!alvo.length)return 0;
   const b=db.batch();
-  alvo.forEach(x=>b.update(db.collection('inscricoes').doc(x.id),{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:cobra(ev)?ev.pix.valor:0}));
+  alvo.forEach(x=>b.update(db.collection('inscricoes').doc(x.id),{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:valorDe(x,ev)}));
   await b.commit();return alvo.length;
 }
 async function pagarGrupo(id){
-  const i=inscritos.find(x=>x.id===id),n=membrosGrupo(i).filter(x=>!x.pago).length;
+  const i=inscritos.find(x=>x.id===id),n=membrosGrupo(i).filter(devePagar).length;
   if(!confirm(`Confirmar o pagamento de ${n} pessoa(s) do grupo?`))return;
   try{await marcarPagoGrupo(i.grupo);fecharModal();toast('Pagamento do grupo confirmado');}catch(e){toast('Erro: '+e.message);}
 }
@@ -483,6 +487,18 @@ function abrirEvento(id){
       <label>Nome de quem recebe *</label><input id="pxNome" value="${esc(p.nome)}" maxlength="25" placeholder="Como aparece no banco">
       <label>Cidade de quem recebe</label><input id="pxCidade" value="${esc(p.cidade)}" maxlength="15" placeholder="Ex.: Sao Paulo">
       <label>WhatsApp para receber comprovantes</label><input id="pxWhats" inputmode="tel" value="${esc(p.whats)}" placeholder="(00) 00000-0000">
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxMeia" ${p.meia?'checked':''} onchange="$('pxMeiaBox').classList.toggle('hidden',!this.checked);if(this.checked&&!$('pxMeiaVal').value&&lerValor($('pxValor').value))$('pxMeiaVal').value=(lerValor($('pxValor').value)/2).toFixed(2).replace('.',',')"> Aceitar meia-entrada</label>
+      <div id="pxMeiaBox" class="${p.meia?'':'hidden'}">
+        <label>Valor da meia (R$) *</label><input id="pxMeiaVal" inputmode="decimal" placeholder="12,50" value="${p.valorMeia?esc(Number(p.valorMeia).toFixed(2).replace('.',',')):''}">
+        <label>Quem tem direito</label><input id="pxMeiaQuem" maxlength="150" value="${esc(p.meiaQuem||'')}" placeholder="Ex.: estudantes, idosos 60+, professores">
+        <div class="muted" style="margin-top:4px">O participante marca "Meia-entrada" e informa o motivo. Na entrada, o leitor avisa para conferir o comprovante.</div>
+      </div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxCri" ${p.criancasGratis?'checked':''} onchange="$('pxCriBox').classList.toggle('hidden',!this.checked)"> Crianças não pagam</label>
+      <div id="pxCriBox" class="${p.criancasGratis?'':'hidden'}">
+        <label>Grátis para crianças de até quantos anos? *</label>
+        <input id="pxIdade" type="number" inputmode="numeric" min="0" max="17" value="${p.idadeMax!=null?esc(p.idadeMax):'5'}">
+        <div class="muted" style="margin-top:4px">A idade é calculada pela data de nascimento na data do evento. A criança recebe o voucher dela normalmente.</div>
+      </div>
       <div class="muted" style="margin-top:6px">O participante vê o QR code e o Pix copia e cola com o valor já preenchido. Você confirma o pagamento na lista de inscritos ou na hora da leitura do voucher.</div>
     </div>
 
@@ -510,7 +526,11 @@ async function salvarEvento(id){
   if(camposExtras.length>20)return toast('Máximo de 20 campos personalizados');
   const extra=false;
   const pix={ativo:$('pxAtivo').checked,valor:lerValor($('pxValor').value),tipo:$('pxTipo').value,chave:$('pxChave').value.trim(),
-    nome:$('pxNome').value.trim(),cidade:$('pxCidade').value.trim(),whats:$('pxWhats').value.trim()};
+    nome:$('pxNome').value.trim(),cidade:$('pxCidade').value.trim(),whats:$('pxWhats').value.trim(),
+    meia:$('pxMeia').checked,valorMeia:lerValor($('pxMeiaVal').value),meiaQuem:$('pxMeiaQuem').value.trim(),
+    criancasGratis:$('pxCri').checked,idadeMax:Math.max(0,Math.min(17,parseInt($('pxIdade').value,10)||0))};
+  if(pix.ativo&&pix.meia&&!(pix.valorMeia>0&&pix.valorMeia<pix.valor))return toast('O valor da meia deve ser maior que zero e menor que o valor inteiro');
+  if(pix.ativo&&pix.criancasGratis&&!(parseInt($('pxIdade').value,10)>=0))return toast('Informe a idade máxima das crianças');
   if(pix.ativo){
     if(!(pix.valor>0))return toast('Informe o valor da inscrição');
     if(!pix.chave)return toast('Informe a chave Pix');
@@ -632,7 +652,7 @@ async function consultar(id){
     }
     if(i.checkin){mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Entrada registrada em '+esc(fmtTs(i.checkinEm))+'.',insc:i});return;}
     const ev=eventoSel();
-    if(cobra(ev)&&!i.pago){mostrarResultado({tipo:'warn',titulo:'Pagamento pendente',msg:'Inscrição válida, mas o Pix de <b>'+esc(moeda(ev.pix.valor))+'</b> ainda não foi confirmado.',insc:i,botaoPagar:true});return;}
+    if(cobra(ev)&&devePagar(i)){mostrarResultado({tipo:'warn',titulo:'Pagamento pendente',msg:'Inscrição válida, mas o Pix de <b>'+esc(moeda(valorDe(i,ev)))+'</b>'+(i.meia?' (meia-entrada)':'')+' ainda não foi confirmado.',insc:i,botaoPagar:true});return;}
     if($('autoCheck').checked){await fazerCheckin(i.id,true);return;}
     mostrarResultado({tipo:'ok',titulo:'Inscrição válida',insc:i,botaoCheck:true});
   }catch(e){mostrarResultado({tipo:'bad',titulo:'Erro na consulta',msg:esc(e.message)});}
@@ -644,7 +664,9 @@ function dadosHTML(i){
     ${i.telefone?`<div class="kv"><span>Telefone:</span> ${esc(i.telefone)}</div>`:''}
     ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
     ${camposDoEvento(ev).map(f=>{const v=fmtResposta(respostaDe(i,f),f);return v?`<div class="kv"><span>${esc(f.label)}:</span> ${esc(v)}</div>`:'';}).join('')}
-    ${cobra(ev)?`<div class="kv"><span>Pagamento:</span> ${i.pago?'<b style="color:var(--ok)">Pago</b>'+(i.pagoEm?' em '+esc(fmtTs(i.pagoEm)):''):'<b style="color:var(--warn)">Pendente</b> ('+esc(moeda(ev.pix.valor))+')'}</div>`:''}
+    ${i.meia?`<div class="kv" style="background:var(--warnbg);color:var(--warn);padding:6px 8px;border-radius:8px;margin:6px 0"><b>🎟 MEIA-ENTRADA</b> — conferir comprovante: ${esc(i.meiaMotivo||'—')}</div>`:''}
+    ${i.crianca?`<div class="kv"><span>Criança:</span> <b>${i.isento?'isenta':'sim'}</b>${i.nascimento?' · nasc. '+esc(idadeTxt(i)):''}</div>`:''}
+    ${cobra(ev)&&!i.isento?`<div class="kv"><span>Pagamento:</span> ${i.pago?'<b style="color:var(--ok)">Pago</b>'+(i.pagoEm?' em '+esc(fmtTs(i.pagoEm)):''):'<b style="color:var(--warn)">Pendente</b> ('+esc(moeda(valorDe(i,ev)))+')'}</div>`:''}
     ${i.grupo?(()=>{const m=membrosGrupo(i),r=responsavelGrupo(i);return `<div class="kv"><span>Grupo:</span> ${m.length||(i.grupoIds||[]).length} pessoas${r&&r.id!==i.id?' · inscrito por '+esc(r.nome):r?' · responsável':''}</div>`;})():''}
     <div class="kv"><span>Código:</span> ${esc(i.codigo)} · <span>Inscrito em:</span> ${esc(fmtTs(i.criadoEm))}</div>`;
 }
@@ -654,7 +676,7 @@ function mostrarResultado(o){
     ${o.msg?`<div>${o.msg}</div>`:''}${o.insc?dadosHTML(o.insc):''}
     <div style="height:12px"></div>
     ${o.botaoCheck?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}')">Confirmar entrada</button><div style="height:8px"></div>`:''}
-    ${o.botaoPagar?(podePagar()?(()=>{const g=o.insc.grupo?inscritos.filter(x=>x.grupo===o.insc.grupo&&!x.pago):[];return (g.length>1?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true,true)">👥 Recebi o Pix do grupo (${g.length} · ${esc(moeda(g.length*eventoSel().pix.valor))}) — confirmar entrada</button><div style="height:8px"></div>`:'')+`<button class="btn ${g.length>1?'':'ok'} full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento ${g.length>1?'só desta pessoa':''} — confirmar entrada</button><div style="height:8px"></div>`;})():'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
+    ${o.botaoPagar?(podePagar()?(()=>{const g=o.insc.grupo?inscritos.filter(x=>x.grupo===o.insc.grupo&&devePagar(x)):[];return (g.length>1?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true,true)">👥 Recebi o Pix do grupo (${g.length} · ${esc(moeda(somaValor(g,eventoSel())))}) — confirmar entrada</button><div style="height:8px"></div>`:'')+`<button class="btn ${g.length>1?'':'ok'} full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento ${g.length>1?'só desta pessoa':''} — confirmar entrada</button><div style="height:8px"></div>`;})():'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
       <button class="btn full" onclick="fazerCheckin('${o.insc.id}')">Liberar entrada sem pagamento</button><div style="height:8px"></div>`:''}
     <button class="btn full" onclick="retomar()">${escaneando?'Ler próximo':'Fechar'}</button></div>`;
   $('resultado').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -668,7 +690,7 @@ async function fazerCheckin(id,auto,pagar,grupoTambem){
       if(!s.exists)throw new Error('NAOEXISTE');
       if(s.data().checkin)throw new Error('JA');
       const up={checkin:true,checkinEm:TS(),checkinPor:usuario()};
-      if(pagar&&!s.data().pago)Object.assign(up,{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:cobra(ev)?ev.pix.valor:0});
+      if(pagar&&!s.data().pago)Object.assign(up,{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:valorDe(s.data(),ev)});
       grupo=s.data().grupo||null;
       t.update(r,up);
     });
@@ -690,13 +712,13 @@ function renderInscritos(){
   const tot=inscritos.length,pres=inscritos.filter(i=>i.checkin).length,pagos=inscritos.filter(i=>i.pago);
   $('stTotal').textContent=tot;$('stPres').textContent=pres;$('stAus').textContent=tot-pres;
   $('stPagos').textContent=pagos.length;
-  $('stValor').textContent=moeda(pagos.reduce((s,i)=>s+Number(i.valorPago!=null?i.valorPago:(px?ev.pix.valor:0)),0));
+  $('stValor').textContent=moeda(pagos.reduce((s,i)=>s+Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)),0));
   const q=$('busca').value.trim().toLowerCase(),qd=q.replace(/\D/g,'');
-  let l=inscritos.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:filtro==='pend'?!i.pago:!i.checkin));
+  let l=inscritos.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:filtro==='pend'?devePagar(i):!i.checkin));
   if(q)l=l.filter(i=>(i.nome||'').toLowerCase().includes(q)||(i.codigo||'').toLowerCase()===q||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
   $('listaInscritos').innerHTML=!selId?'<div class="empty">Selecione um evento.</div>':!l.length?'<div class="empty">Nenhuma inscrição'+(q||filtro!=='todos'?' encontrada':' ainda')+'.</div>':
     l.map(i=>`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}${i.grupo?' · 👥 grupo':''}</span></div>
-      <div class="tags">${px?`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`:''}
+      <div class="tags">${i.meia?'<span class="tag warn">Meia</span>':''}${px?(i.isento?'<span class="tag neu">Criança · isenta</span>':`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`):(i.crianca?'<span class="tag neu">Criança</span>':'')}
       <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div></div>`).join('');
 }
 function detalhe(id){
@@ -706,8 +728,8 @@ function detalhe(id){
     <div class="kv" style="margin-top:6px"><span>Situação:</span> ${i.checkin?'<b style="color:var(--ok)">Presente</b> — '+esc(fmtTs(i.checkinEm))+(i.checkinPor?' <span>por '+esc(i.checkinPor)+'</span>':''):'Aguardando entrada'}</div>
     ${i.pago&&i.pagoPor?`<div class="kv"><span>Pagamento confirmado por ${esc(i.pagoPor)}</span></div>`:''}
     <div style="height:14px"></div>
-    ${px?(i.pago?`<button class="btn full donoOnly" onclick="marcarPago('${id}',false)">Desfazer pagamento</button><div class="donoOnly" style="height:8px"></div>`:(podePagar()?`<button class="btn ok full" onclick="marcarPago('${id}',true)">💲 Confirmar pagamento</button><div style="height:8px"></div>`:'')):''}
-    ${px&&podePagar()&&i.grupo&&membrosGrupo(i).filter(x=>!x.pago).length>1?(()=>{const n=membrosGrupo(i).filter(x=>!x.pago).length;return `<button class="btn ok full" onclick="pagarGrupo('${id}')">👥 Confirmar pagamento do grupo (${n} · ${esc(moeda(n*eventoSel().pix.valor))})</button><div style="height:8px"></div>`;})():''}
+    ${px&&!i.isento?(i.pago?`<button class="btn full donoOnly" onclick="marcarPago('${id}',false)">Desfazer pagamento</button><div class="donoOnly" style="height:8px"></div>`:(podePagar()?`<button class="btn ok full" onclick="marcarPago('${id}',true)">💲 Confirmar pagamento</button><div style="height:8px"></div>`:'')):''}
+    ${px&&podePagar()&&i.grupo&&membrosGrupo(i).filter(devePagar).length>1?(()=>{const n=membrosGrupo(i).filter(devePagar).length;return `<button class="btn ok full" onclick="pagarGrupo('${id}')">👥 Confirmar pagamento do grupo (${n} · ${esc(moeda(somaValor(membrosGrupo(i).filter(devePagar),eventoSel())))})</button><div style="height:8px"></div>`;})():''}
     ${i.checkin?`<button class="btn full" onclick="desfazerCheckin('${id}')">Desfazer entrada</button>`:`<button class="btn ${px?'':'ok'} full" onclick="fecharModal();fazerCheckinLista('${id}')">Confirmar entrada</button>`}
     <div style="height:8px"></div>
     <div class="row"><button class="btn" onclick="window.open('${linkVoucher(id)}','_blank')">Ver voucher</button>
@@ -721,7 +743,7 @@ async function marcarPago(id,sim){
   if(!sim&&!confirm('Desfazer a confirmação de pagamento?'))return;
   const ev=eventoSel();
   try{
-    await db.collection('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:cobra(ev)?ev.pix.valor:0}:{pago:false,pagoEm:null,pagoPor:null,valorPago:null});
+    await db.collection('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:valorDe(inscritos.find(x=>x.id===id)||{},ev)}:{pago:false,pagoEm:null,pagoPor:null,valorPago:null});
     fecharModal();toast(sim?'Pagamento confirmado':'Pagamento desfeito');
   }catch(e){toast('Erro: '+e.message);}
 }
@@ -740,10 +762,10 @@ async function excluirInscricao(id){
 function exportarCSV(){
   const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
   const c=ev.campos||{},px=cobra(ev),cx=camposDoEvento(ev);
-  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em','Valor pago');cab.push('Presente','Entrada em');
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em','Valor pago');cab.push('Presente','Entrada em');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
-  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(rg?rg.nome:'',fmtTs(i.criadoEm));
-    if(px)r.push(i.pago?'Sim':'Não',fmtTs(i.pagoEm),i.pago?Number(i.valorPago!=null?i.valorPago:ev.pix.valor).toFixed(2).replace('.',','):'');
+  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(i.meia?'Sim — '+(i.meiaMotivo||''):'Não',i.crianca?(i.isento?'Sim (isenta)':'Sim'):'Não',idadeTxt(i),rg?rg.nome:'',fmtTs(i.criadoEm));
+    if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm),i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
     r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinEm));return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inscritos-'+ev.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.csv';a.click();

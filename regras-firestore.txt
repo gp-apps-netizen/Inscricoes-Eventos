@@ -2,10 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // >>> TROQUE pelo(s) e-mail(s) da(s) conta(s) de administrador (dono) <<<
+    // E-mail(s) da(s) conta(s) de administrador (dono)
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email in ['SEU_EMAIL_AQUI@gmail.com'];
+        && request.auth.token.email in ['godoygpx@gmail.com'];
     }
 
     // Usuários de check-in cadastrados na aba "Equipe"
@@ -58,7 +58,7 @@ service cloud.firestore {
         || (membroPodePagar() && alterou().hasOnly(['checkin','checkinEm','checkinPor','pago','pagoEm','pagoPor','valorPago']));
 
       allow create: if isAdmin() || (
-        request.resource.data.keys().hasOnly(['eventoId','codigo','nome','cpf','telefone','email','extra','respostas','grupo','grupoIds','checkin','checkinEm','pago','pagoEm','criadoEm'])
+        request.resource.data.keys().hasOnly(['eventoId','codigo','nome','cpf','telefone','email','extra','respostas','grupo','grupoIds','crianca','nascimento','isento','meia','meiaMotivo','checkin','checkinEm','pago','pagoEm','criadoEm'])
         && request.resource.data.eventoId is string
         && evento(request.resource.data.eventoId).aberto == true
         && texto(request.resource.data.codigo, 8)
@@ -74,13 +74,25 @@ service cloud.firestore {
         && texto(request.resource.data.get('grupo', ''), 20)
         && request.resource.data.get('grupoIds', []) is list
         && request.resource.data.get('grupoIds', []).size() <= 10
+        // Meia-entrada: só se o evento aceita meia
+        && texto(request.resource.data.get('meiaMotivo', ''), 80)
+        && (request.resource.data.get('meia', false) == false
+            || evento(request.resource.data.eventoId).pix.meia == true)
+        // Criança isenta: só se o evento oferece gratuidade para crianças
+        && request.resource.data.get('crianca', false) is bool
+        && texto(request.resource.data.get('nascimento', ''), 10)
+        && (request.resource.data.get('isento', false) == false
+            || (request.resource.data.get('crianca', false) == true
+                && evento(request.resource.data.eventoId).pix.criancasGratis == true))
         && request.resource.data.checkin == false
         && request.resource.data.checkinEm == null
         && request.resource.data.get('pago', false) == false
         && request.resource.data.get('pagoEm', null) == null
         && request.resource.data.criadoEm == request.time
         // Se o evento pede CPF, precisa criar junto o bloqueio (impede CPF duplicado)
+        // (criança pode ficar sem CPF)
         && (evento(request.resource.data.eventoId).campos.cpf != true
+            || (request.resource.data.get('crianca', false) == true && request.resource.data.cpf == '')
             || existsAfter(/databases/$(database)/documents/bloqueios/$(request.resource.data.eventoId + '_' + request.resource.data.cpf)))
       );
     }

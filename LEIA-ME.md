@@ -14,7 +14,7 @@ São dois arquivos no mesmo repositório:
 
 ## 2. Regras de segurança
 Firestore → **Regras** → apague tudo, cole o conteúdo de `regras-firestore.txt`,
-troque `SEU_EMAIL_AQUI@gmail.com` pelo e-mail do passo 1.4 e clique em **Publicar**.
+o e-mail godoygpx@gmail.com já está configurado; clique em **Publicar**.
 
 ## 3. Colar a configuração
 Configurações do projeto (engrenagem) → **Seus apps** → ícone Web `</>` → registre o app →
@@ -45,17 +45,29 @@ Para encerrar as inscrições de um evento: Editar → desmarque **Inscrições 
   ou na leitura do voucher (tela amarela "Pagamento pendente").
 - **Equipe de check-in:** aba "Equipe" (só o dono vê). Cadastre nome, e-mail e senha; marque se a pessoa pode
   confirmar pagamentos. A pessoa entra no mesmo link do controle e vê só Eventos, Leitor e Inscritos.
-- **Importante:** publique de novo as regras do arquivo `regras-firestore.txt` (mantendo o seu e-mail no lugar indicado).
+- **Importante:** publique de novo as regras do arquivo `regras-firestore.txt` .
 
 ## Novidades da v2.1
 - **Campos personalizados:** em Editar evento → "+ Adicionar campo". Tipos: texto curto, texto longo, número, data,
   lista de opções (uma por linha) e Sim/Não. Cada campo pode ser obrigatório e ter a ordem trocada (▲ ▼).
   As respostas aparecem nos dados do inscrito, na leitura do voucher e na planilha exportada.
-- Publique de novo o `regras-firestore.txt` (mantendo o seu e-mail).
+- Publique de novo o `regras-firestore.txt`.
 
 ## Novidades da v2.3
 - **Inscrição em grupo:** no formulário, "+ Inscrever mais uma pessoa" (até 10 de uma vez). Cada pessoa ganha o seu
   voucher; telefone e e-mail das demais podem ficar em branco (usa os da pessoa 1). Com Pix, sai um único Pix com o total.
 - No controle, o inscrito mostra "Grupo: N pessoas · inscrito por …", há o botão "Confirmar pagamento do grupo"
   e, no Leitor, "Recebi o Pix do grupo — confirmar entrada". A planilha ganhou a coluna "Grupo (inscrito por)".
-- Publique de novo o `regras-firestore.txt` (mantendo o seu e-mail).
+- Publique de novo o `regras-firestore.txt`.
+
+## Novidades da v2.4
+- **Crianças grátis:** em Editar evento → Pix → "Crianças não pagam" e a idade máxima. No formulário, cada pessoa
+  tem a opção "Criança de até X anos — inscrição gratuita" (pede data de nascimento; CPF fica opcional).
+  A idade é calculada na data do evento. O Pix cobra só os pagantes; a criança recebe voucher marcado como gratuito.
+- Publique de novo o `regras-firestore.txt`.
+
+## Novidades da v2.5
+- **Meia-entrada:** em Editar evento → Pix → "Aceitar meia-entrada" (valor da meia, sugerido como metade, e quem tem direito).
+  No formulário, cada pessoa pode marcar "Pagar meia-entrada" e informar o motivo. O Pix soma inteiras + meias.
+  No controle aparece a marca "Meia" e, na leitura, o aviso "MEIA-ENTRADA — conferir comprovante".
+- Publique de novo o `regras-firestore.txt`.
