@@ -591,19 +591,22 @@ function mostrarLink(id){
   abrirModal(`<h2>${esc(e.titulo)}</h2><div class="muted">Link de inscrição — divulgue por mensagem ou imprima o QR em um cartaz.</div>
     <div class="qrbox"><div id="qrLink"></div></div>
     <div class="linkbox">${esc(link)}</div><div style="height:10px"></div>
+    ${e.imagem?`<button class="btn pri full" onclick="compartilharComImagem('${id}')">📤 Compartilhar imagem + link (WhatsApp)</button><div class="muted center" style="margin-top:4px">Envia a imagem do evento com o link na legenda.</div><div style="height:8px"></div>`:''}
     <div class="row"><button class="btn" onclick="copiar('${link}')">Copiar link</button>
-    <button class="btn" onclick="compartilharWhats('${id}')">WhatsApp</button></div>
+    <button class="btn" onclick="compartilharWhats('${id}')">${e.imagem?'Só o link':'WhatsApp'}</button></div>
     <div style="height:8px"></div>
     <div class="row"><button class="btn" onclick="baixarQRLink('${id}')">⬇ Baixar QR (imagem)</button><button class="btn" onclick="window.open('${link}','_blank')">Abrir</button></div>
     <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
   new QRCode($('qrLink'),{text:link,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
 }
 function copiar(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Link copiado')).catch(()=>prompt('Copie o link:',t));}
-function baixarQRLink(id){
+async function baixarQRLink(id){
   const e=eventos.find(x=>x.id===id),link=linkInscricao(id);
+  let im=null;if(e.imagem){im=new Image();im.src=e.imagem;try{await im.decode();}catch(x){im=null;}}
   const tmp=document.createElement('div');new QRCode(tmp,{text:link,width:600,height:600,correctLevel:QRCode.CorrectLevel.M});
   const q=tmp.querySelector('canvas');const W=800,H=1000,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
   x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#4338ca';x.fillRect(0,0,W,190);
+  if(im&&im.naturalWidth){const k=Math.max(W/im.naturalWidth,190/im.naturalHeight),dw=im.naturalWidth*k,dh=im.naturalHeight*k;x.drawImage(im,(W-dw)/2,(190-dh)/2,dw,dh);x.fillStyle='rgba(20,22,60,.6)';x.fillRect(0,0,W,190);}
   x.fillStyle='#fff';x.textAlign='center';x.font='bold 26px system-ui,sans-serif';x.fillText('INSCRIÇÕES ABERTAS',W/2,52);
   x.font='bold 38px system-ui,sans-serif';quebra(x,e.titulo,W/2,108,W-60,46,2);
   x.drawImage(q,100,220,600,600);
@@ -612,7 +615,26 @@ function baixarQRLink(id){
   const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='qr-inscricao-'+e.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.png';a.click();
 }
 function quebra(x,t,cx,y,maxW,lh,maxL){const ps=String(t).split(' ');let l='',n=1;for(const p of ps){const tt=l?l+' '+p:p;if(x.measureText(tt).width>maxW&&l){if(n>=maxL){x.fillText(l+'…',cx,y);return y;}x.fillText(l,cx,y);y+=lh;n++;l=p;}else l=tt;}x.fillText(l,cx,y);return y;}
-function compartilharWhats(id){const e=eventos.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent('Inscrição: '+e.titulo+'\n'+linkInscricao(id)),'_blank');}
+function textoConvite(e){
+  const meta=[fmtData(e),e.local].filter(Boolean).join(' · ');
+  return `*${e.titulo}*`+(meta?`\n📅 ${meta}`:'')+`\n\n📝 Faça sua inscrição:\n${linkInscricao(e.id)}`;
+}
+function compartilharWhats(id){const e=eventos.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(textoConvite(e)),'_blank');}
+async function compartilharComImagem(id){
+  const e=eventos.find(x=>x.id===id),texto=textoConvite(e);
+  try{
+    const blob=await (await fetch(e.imagem)).blob();
+    const f=new File([blob],'evento-'+e.titulo.normalize('NFD').replace(/[^\w]+/g,'-').toLowerCase().slice(0,40)+'.jpg',{type:'image/jpeg'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){
+      // A legenda vai junto com a imagem; alguns apps só aceitam texto colado, por isso também copiamos
+      try{await navigator.clipboard.writeText(texto);}catch(x){}
+      await navigator.share({files:[f],text:texto,title:e.titulo});
+      return;
+    }
+  }catch(err){if(err&&err.name==='AbortError')return;}
+  toast('Este aparelho não compartilha imagem por aqui. Enviando só o link.');
+  compartilharWhats(id);
+}
 
 /* ================== Leitor ================== */
 let scanner=null,escaneando=false,ocupado=false;
