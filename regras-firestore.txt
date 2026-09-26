@@ -59,9 +59,9 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         // equipe: só registra/desfaz entrada
-        || (membroNoEvento(resource.data.eventoId) && alterou().hasOnly(['checkin','checkinEm','checkinPor']))
+        || (membroNoEvento(resource.data.eventoId) && alterou().hasOnly(['checkin','checkinEm','checkinPor','checkinPorNome']))
         // equipe com permissão de pagamento: também confirma o Pix
-        || (membroPodePagar() && membroNoEvento(resource.data.eventoId) && alterou().hasOnly(['checkin','checkinEm','checkinPor','pago','pagoEm','pagoPor','valorPago']));
+        || (membroPodePagar() && membroNoEvento(resource.data.eventoId) && alterou().hasOnly(['checkin','checkinEm','checkinPor','checkinPorNome','pago','pagoEm','pagoPor','pagoPorNome','valorPago']));
 
       allow create: if isAdmin() || (
         request.resource.data.keys().hasOnly(['eventoId','codigo','nome','cpf','telefone','email','extra','respostas','grupo','grupoIds','crianca','nascimento','isento','meia','meiaMotivo','checkin','checkinEm','pago','pagoEm','criadoEm'])

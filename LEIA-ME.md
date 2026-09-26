@@ -83,3 +83,9 @@ Para encerrar as inscrições de um evento: Editar → desmarque **Inscrições 
   check-in, vê a lista e inscreve pessoas, mas não vê preços, total arrecadado nem valores na planilha.
   Ele continua vendo se a pessoa está "Pago" ou "A pagar", para saber se libera a entrada.
 - Leitor ganhou o botão "+ Inscrever pessoa no local".
+
+## Novidades da v2.8
+- **Quem fez o check-in:** cada entrada guarda o nome de quem confirmou. Aparece na lista de inscritos (✓ Nome),
+  nos detalhes, no aviso de "voucher já utilizado", na planilha (coluna "Check-in por") e no filtro
+  "Check-in feito por". Na aba Equipe, cada usuário mostra quantos check-ins fez no evento selecionado.
+- Publique de novo o `regras-firestore.txt`.
