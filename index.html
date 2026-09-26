@@ -161,6 +161,7 @@ const firebaseConfig = {
         </div>
       </div>
       <div id="resultado"></div>
+      <button class="btn full" style="margin-top:12px" onclick="abrirLinkPublico()">+ Inscrever pessoa no local</button>
     </section>
 
     <!-- INSCRITOS -->
@@ -171,7 +172,7 @@ const firebaseConfig = {
         <div class="stat"><b id="stPres">0</b><span>Presentes</span></div>
         <div class="stat"><b id="stAus">0</b><span>Faltam</span></div>
       </div>
-      <div class="card pixOnly" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px">
+      <div class="card pixOnly valOnly" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px">
         <span class="muted">Arrecadado (Pix confirmados)</span><b id="stValor">R$ 0,00</b>
       </div>
       <input id="busca" placeholder="Buscar por nome, CPF, telefone ou código" oninput="renderInscritos()">
@@ -250,7 +251,7 @@ function fmtCPF(c){c=String(c||'');return c.length===11?c.replace(/(\d{3})(\d{3}
 function linkInscricao(id){return new URL('inscricao.html?e='+id,location.href.split(/[?#]/)[0]).href;}
 function linkVoucher(id){return new URL('inscricao.html?v='+id,location.href.split(/[?#]/)[0]).href;}
 function beep(ok){try{navigator.vibrate&&navigator.vibrate(ok?120:[250,100,250]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.15:.45));}catch(e){}}
-function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function moeda(v){if(typeof verValores==='function'&&!verValores())return 'R$ •••';return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo);}
 function lerValor(s){s=String(s||'').replace(/[^\d,.]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:Math.round(n*100)/100;}
 function comprimirImagem(file){
@@ -302,6 +303,8 @@ let papel=null,perm={},equipe=[],eventosTodos=[],unsubM=null;
 const usuario=()=>(auth.currentUser&&auth.currentUser.email||'').toLowerCase();
 const ehDono=()=>papel==='dono';
 const podePagar=()=>papel==='dono'||!!perm.podePagar;
+// Ver valores: cadastros antigos continuam vendo; novos só se marcado
+const verValores=()=>papel==='dono'||perm.verValores!==false;
 // Equipe: todosEventos === false => só os eventos da lista perm.eventos
 const restrito=()=>papel==='equipe'&&perm.todosEventos===false;
 function liberado(eid){return !restrito()||(perm.eventos||[]).includes(eid);}
@@ -395,7 +398,7 @@ function renderEventos(){
         <div style="flex:1"><h3>${esc(e.titulo)}</h3>
           <div class="muted">${esc(fmtData(e))}${e.local?' · '+esc(e.local):''}</div></div>
         <div class="tags"><span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>
-        ${cobra(e)?`<span class="tag neu">Pix ${esc(moeda(e.pix.valor))}${e.pix.meia?' · meia '+esc(moeda(e.pix.valorMeia)):''}</span>`:''}</div>
+        ${cobra(e)&&verValores()?`<span class="tag neu">Pix ${esc(moeda(e.pix.valor))}${e.pix.meia?' · meia '+esc(moeda(e.pix.valorMeia)):''}</span>`:''}</div>
       </div>${cont}
       <div class="row" style="margin-top:10px">
         ${sel?'':`<button class="btn sm" onclick="selecionarEvento('${e.id}')">Selecionar</button>`}
@@ -667,7 +670,7 @@ async function consultar(id){
     }
     if(i.checkin){mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Entrada registrada em '+esc(fmtTs(i.checkinEm))+'.',insc:i});return;}
     const ev=eventoSel();
-    if(cobra(ev)&&devePagar(i)){mostrarResultado({tipo:'warn',titulo:'Pagamento pendente',msg:'Inscrição válida, mas o Pix de <b>'+esc(moeda(valorDe(i,ev)))+'</b>'+(i.meia?' (meia-entrada)':'')+' ainda não foi confirmado.',insc:i,botaoPagar:true});return;}
+    if(cobra(ev)&&devePagar(i)){mostrarResultado({tipo:'warn',titulo:'Pagamento pendente',msg:'Inscrição válida, mas o pagamento'+(verValores()?' de <b>'+esc(moeda(valorDe(i,ev)))+'</b>':'')+(i.meia?' (meia-entrada)':'')+' ainda não foi confirmado.',insc:i,botaoPagar:true});return;}
     if($('autoCheck').checked){await fazerCheckin(i.id,true);return;}
     mostrarResultado({tipo:'ok',titulo:'Inscrição válida',insc:i,botaoCheck:true});
   }catch(e){mostrarResultado({tipo:'bad',titulo:'Erro na consulta',msg:esc(e.message)});}
@@ -681,7 +684,7 @@ function dadosHTML(i){
     ${camposDoEvento(ev).map(f=>{const v=fmtResposta(respostaDe(i,f),f);return v?`<div class="kv"><span>${esc(f.label)}:</span> ${esc(v)}</div>`:'';}).join('')}
     ${i.meia?`<div class="kv" style="background:var(--warnbg);color:var(--warn);padding:6px 8px;border-radius:8px;margin:6px 0"><b>🎟 MEIA-ENTRADA</b> — conferir comprovante: ${esc(i.meiaMotivo||'—')}</div>`:''}
     ${i.crianca?`<div class="kv"><span>Criança:</span> <b>${i.isento?'isenta':'sim'}</b>${i.nascimento?' · nasc. '+esc(idadeTxt(i)):''}</div>`:''}
-    ${cobra(ev)&&!i.isento?`<div class="kv"><span>Pagamento:</span> ${i.pago?'<b style="color:var(--ok)">Pago</b>'+(i.pagoEm?' em '+esc(fmtTs(i.pagoEm)):''):'<b style="color:var(--warn)">Pendente</b> ('+esc(moeda(valorDe(i,ev)))+')'}</div>`:''}
+    ${cobra(ev)&&!i.isento?`<div class="kv"><span>Pagamento:</span> ${i.pago?'<b style="color:var(--ok)">Pago</b>'+(i.pagoEm?' em '+esc(fmtTs(i.pagoEm)):''):'<b style="color:var(--warn)">Pendente</b>'+(verValores()?' ('+esc(moeda(valorDe(i,ev)))+')':'')}</div>`:''}
     ${i.grupo?(()=>{const m=membrosGrupo(i),r=responsavelGrupo(i);return `<div class="kv"><span>Grupo:</span> ${m.length||(i.grupoIds||[]).length} pessoas${r&&r.id!==i.id?' · inscrito por '+esc(r.nome):r?' · responsável':''}</div>`;})():''}
     <div class="kv"><span>Código:</span> ${esc(i.codigo)} · <span>Inscrito em:</span> ${esc(fmtTs(i.criadoEm))}</div>`;
 }
@@ -691,7 +694,7 @@ function mostrarResultado(o){
     ${o.msg?`<div>${o.msg}</div>`:''}${o.insc?dadosHTML(o.insc):''}
     <div style="height:12px"></div>
     ${o.botaoCheck?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}')">Confirmar entrada</button><div style="height:8px"></div>`:''}
-    ${o.botaoPagar?(podePagar()?(()=>{const g=o.insc.grupo?inscritos.filter(x=>x.grupo===o.insc.grupo&&devePagar(x)):[];return (g.length>1?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true,true)">👥 Recebi o Pix do grupo (${g.length} · ${esc(moeda(somaValor(g,eventoSel())))}) — confirmar entrada</button><div style="height:8px"></div>`:'')+`<button class="btn ${g.length>1?'':'ok'} full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento ${g.length>1?'só desta pessoa':''} — confirmar entrada</button><div style="height:8px"></div>`;})():'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
+    ${o.botaoPagar?(podePagar()?(()=>{const g=o.insc.grupo?inscritos.filter(x=>x.grupo===o.insc.grupo&&devePagar(x)):[];return (g.length>1?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true,true)">👥 Recebi o Pix do grupo (${g.length}${verValores()?' · '+esc(moeda(somaValor(g,eventoSel()))):''}) — confirmar entrada</button><div style="height:8px"></div>`:'')+`<button class="btn ${g.length>1?'':'ok'} full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento ${g.length>1?'só desta pessoa':''} — confirmar entrada</button><div style="height:8px"></div>`;})():'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
       <button class="btn full" onclick="fazerCheckin('${o.insc.id}')">Liberar entrada sem pagamento</button><div style="height:8px"></div>`:''}
     <button class="btn full" onclick="retomar()">${escaneando?'Ler próximo':'Fechar'}</button></div>`;
   $('resultado').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -723,6 +726,7 @@ async function fazerCheckin(id,auto,pagar,grupoTambem){
 function renderInscritos(){
   const ev=eventoSel(),px=cobra(ev);
   document.querySelectorAll('.pixOnly').forEach(el=>el.classList.toggle('hidden',!px));
+  document.querySelectorAll('.valOnly').forEach(el=>el.classList.toggle('hidden',!px||!verValores()));
   if(!px&&filtro==='pend'){filtro='todos';document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x.dataset.f==='todos'));}
   const tot=inscritos.length,pres=inscritos.filter(i=>i.checkin).length,pagos=inscritos.filter(i=>i.pago);
   $('stTotal').textContent=tot;$('stPres').textContent=pres;$('stAus').textContent=tot-pres;
@@ -744,7 +748,7 @@ function detalhe(id){
     ${i.pago&&i.pagoPor?`<div class="kv"><span>Pagamento confirmado por ${esc(i.pagoPor)}</span></div>`:''}
     <div style="height:14px"></div>
     ${px&&!i.isento?(i.pago?`<button class="btn full donoOnly" onclick="marcarPago('${id}',false)">Desfazer pagamento</button><div class="donoOnly" style="height:8px"></div>`:(podePagar()?`<button class="btn ok full" onclick="marcarPago('${id}',true)">💲 Confirmar pagamento</button><div style="height:8px"></div>`:'')):''}
-    ${px&&podePagar()&&i.grupo&&membrosGrupo(i).filter(devePagar).length>1?(()=>{const n=membrosGrupo(i).filter(devePagar).length;return `<button class="btn ok full" onclick="pagarGrupo('${id}')">👥 Confirmar pagamento do grupo (${n} · ${esc(moeda(somaValor(membrosGrupo(i).filter(devePagar),eventoSel())))})</button><div style="height:8px"></div>`;})():''}
+    ${px&&podePagar()&&i.grupo&&membrosGrupo(i).filter(devePagar).length>1?(()=>{const n=membrosGrupo(i).filter(devePagar).length;return `<button class="btn ok full" onclick="pagarGrupo('${id}')">👥 Confirmar pagamento do grupo (${n}${verValores()?' · '+esc(moeda(somaValor(membrosGrupo(i).filter(devePagar),eventoSel()))):''})</button><div style="height:8px"></div>`;})():''}
     ${i.checkin?`<button class="btn full" onclick="desfazerCheckin('${id}')">Desfazer entrada</button>`:`<button class="btn ${px?'':'ok'} full" onclick="fecharModal();fazerCheckinLista('${id}')">Confirmar entrada</button>`}
     <div style="height:8px"></div>
     <div class="row"><button class="btn" onclick="window.open('${linkVoucher(id)}','_blank')">Ver voucher</button>
@@ -777,10 +781,10 @@ async function excluirInscricao(id){
 function exportarCSV(){
   const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
   const c=ev.campos||{},px=cobra(ev),cx=camposDoEvento(ev);
-  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em','Valor pago');cab.push('Presente','Entrada em');
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(i.meia?'Sim — '+(i.meiaMotivo||''):'Não',i.crianca?(i.isento?'Sim (isenta)':'Sim'):'Não',idadeTxt(i),rg?rg.nome:'',fmtTs(i.criadoEm));
-    if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm),i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
+    if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm));if(px&&verValores())r.push(i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
     r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinEm));return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inscritos-'+ev.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.csv';a.click();
@@ -801,21 +805,24 @@ function assinarEquipe(){
 function renderEquipe(){
   $('listaEquipe').innerHTML=!equipe.length?'<div class="empty">Nenhum usuário cadastrado.<br>Toque em <b>+ Cadastrar usuário</b>.</div>':
     equipe.map(m=>`<div class="item" onclick="detalheMembro('${esc(m.id)}')"><div class="nm"><b>${esc(m.nome||m.email)}</b><span class="muted">${esc(m.email)}</span></div>
-      <div class="tags"><span class="tag ${m.ativo?'ok':'bad'}">${m.ativo?'Ativo':'Desativado'}</span>${m.podePagar?'<span class="tag neu">Confirma Pix</span>':''}<span class="tag neu">${m.todosEventos===false?((m.eventos||[]).length+' evento'+((m.eventos||[]).length===1?'':'s')):'Todos os eventos'}</span></div></div>`).join('');
+      <div class="tags"><span class="tag ${m.ativo?'ok':'bad'}">${m.ativo?'Ativo':'Desativado'}</span>${m.verValores!==false?'<span class="tag neu">Vê valores</span>':'<span class="tag neu">Só check-in</span>'}${m.podePagar?'<span class="tag neu">Confirma Pix</span>':''}<span class="tag neu">${m.todosEventos===false?((m.eventos||[]).length+' evento'+((m.eventos||[]).length===1?'':'s')):'Todos os eventos'}</span></div></div>`).join('');
 }
 function formMembro(){
   abrirModal(`<h2>Cadastrar usuário de check-in</h2>
     <label>Nome *</label><input id="mbNome" maxlength="60">
     <label>E-mail *</label><input id="mbEmail" type="email" autocomplete="off" maxlength="120">
     <label>Senha inicial * <span class="muted">(mínimo 6 caracteres)</span></label><input id="mbSenha" type="text" autocomplete="off" maxlength="40">
-    <label class="chk" style="margin-top:8px"><input type="checkbox" id="mbPagar"> Pode confirmar pagamentos (Pix)</label>
+    <div class="secao" style="margin-top:14px">Permissões</div>
+    <div class="muted">Sempre pode: fazer check-in, ver a lista de inscritos e inscrever pessoas.</div>
+    <label class="chk" style="margin-top:4px"><input type="checkbox" id="mbValores"> Pode ver valores (preços e total arrecadado)</label>
+    <label class="chk"><input type="checkbox" id="mbPagar"> Pode confirmar pagamentos (Pix)</label>
     ${seletorEventos('mb',{todosEventos:false,eventos:selId?[selId]:[]})}
     <div class="muted" style="margin-top:6px">A pessoa entra neste mesmo app com esse e-mail e senha. Ela vê só as abas Eventos, Leitor e Inscritos, sem poder criar ou editar eventos nem excluir inscrições.</div>
     <div style="height:12px"></div>
     <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnMb" onclick="salvarMembro()">Cadastrar</button></div>`);
 }
 async function salvarMembro(){
-  const nome=$('mbNome').value.trim(),email=$('mbEmail').value.trim().toLowerCase(),senha=$('mbSenha').value,podePagar=$('mbPagar').checked,acesso=lerSeletor('mb');
+  const nome=$('mbNome').value.trim(),email=$('mbEmail').value.trim().toLowerCase(),senha=$('mbSenha').value,podePagar=$('mbPagar').checked,verValores=$('mbValores').checked,acesso=lerSeletor('mb');
   if(!acesso.todosEventos&&!acesso.eventos.length)return toast('Escolha pelo menos um evento (ou marque Todos os eventos)');
   if(!nome)return toast('Informe o nome');
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return toast('E-mail inválido');
@@ -831,7 +838,7 @@ async function salvarMembro(){
     try{await a2.createUserWithEmailAndPassword(email,senha);}
     catch(e){if(e.code==='auth/email-already-in-use')jaExistia=true;else throw e;}
     await a2.signOut().catch(()=>{});
-    await db.collection('equipe').doc(email).set({nome,email,podePagar,...acesso,ativo:true,criadoEm:TS()});
+    await db.collection('equipe').doc(email).set({nome,email,podePagar,verValores,...acesso,ativo:true,criadoEm:TS()});
     fecharModal();
     if(jaExistia)alert('Usuário adicionado à equipe.\n\nEste e-mail já tinha uma conta, então a senha informada NÃO foi aplicada. A pessoa entra com a senha que já usa, ou toca em "Esqueci a senha" na tela de login.');
     else alert(`Usuário cadastrado!\n\nEnvie para ${nome}:\n• Link: ${location.href.split(/[?#]/)[0]}\n• E-mail: ${email}\n• Senha: ${senha}`);
@@ -846,6 +853,9 @@ function detalheMembro(id){
     <div class="kv"><span>E-mail:</span> ${esc(m.email)}</div>
     <div class="kv"><span>Cadastrado em:</span> ${esc(fmtTs(m.criadoEm))}</div>
     <label class="chk" style="margin-top:10px"><input type="checkbox" ${m.ativo?'checked':''} onchange="atualizarMembro('${esc(id)}',{ativo:this.checked})"> Acesso ativo</label>
+    <div class="secao" style="margin-top:14px">Permissões</div>
+    <div class="muted">Sempre pode: fazer check-in, ver a lista de inscritos e inscrever pessoas.</div>
+    <label class="chk" style="margin-top:4px"><input type="checkbox" ${m.verValores!==false?'checked':''} onchange="atualizarMembro('${esc(id)}',{verValores:this.checked})"> Pode ver valores (preços e total arrecadado)</label>
     <label class="chk"><input type="checkbox" ${m.podePagar?'checked':''} onchange="atualizarMembro('${esc(id)}',{podePagar:this.checked})"> Pode confirmar pagamentos (Pix)</label>
     ${seletorEventos('dm',m)}
     <button class="btn full" style="margin-top:6px" onclick="salvarAcesso('${esc(id)}')">Salvar eventos liberados</button>

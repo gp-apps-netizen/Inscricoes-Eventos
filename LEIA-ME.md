@@ -77,3 +77,9 @@ Para encerrar as inscrições de um evento: Editar → desmarque **Inscrições 
   só os eventos que ele pode controlar. Ele vê apenas esses eventos, e as regras do Firestore bloqueiam os demais.
   Usuários cadastrados antes continuam com acesso a todos até você mudar.
 - Publique de novo o `regras-firestore.txt`.
+
+## Novidades da v2.7
+- **Permissões da equipe:** "Pode ver valores" e "Pode confirmar pagamentos". Sem "ver valores", o usuário faz
+  check-in, vê a lista e inscreve pessoas, mas não vê preços, total arrecadado nem valores na planilha.
+  Ele continua vendo se a pessoa está "Pago" ou "A pagar", para saber se libera a entrada.
+- Leitor ganhou o botão "+ Inscrever pessoa no local".
