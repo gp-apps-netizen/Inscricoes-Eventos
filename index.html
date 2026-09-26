@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle de Inscrições</title>
+<meta name="theme-color" content="#4338ca">
+<link rel="manifest" id="manifestLink">
+<link rel="icon" id="favIcon">
+<link rel="apple-touch-icon" id="appleIcon">
+<style>
+:root{--bg:#f4f5fb;--card:#fff;--text:#1c1d29;--muted:#6b6f85;--line:#e3e5ee;--pri:#4338ca;--pri2:#eef0ff;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;--warn:#92400e;--warnbg:#fef3c7}
+@media (prefers-color-scheme:dark){:root{--bg:#12131a;--card:#1c1d27;--text:#eceef6;--muted:#9a9db3;--line:#2d2f3d;--pri:#818cf8;--pri2:#262a4a;--ok:#4ade80;--okbg:#14301f;--bad:#f87171;--badbg:#3a1a1a;--warn:#fbbf24;--warnbg:#3a2e10}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:16px}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:12px 16px calc(12px) 16px;padding-top:calc(12px + env(safe-area-inset-top))}
+@media (prefers-color-scheme:dark){header{background:#2b2f6b}}
+.hrow{display:flex;align-items:center;gap:10px}
+.hrow h1{font-size:18px;margin:0;flex:1}
+header select{width:100%;margin-top:10px;padding:10px;border-radius:10px;border:0;font-size:15px;background:rgba(255,255,255,.95);color:#1c1d29}
+.iconbtn{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 12px;font-size:14px}
+main{padding:16px;padding-bottom:100px;max-width:720px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.muted{color:var(--muted);font-size:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:10px 14px;font-size:15px;cursor:pointer}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+@media (prefers-color-scheme:dark){.btn.pri{color:#12131a}}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.bad{color:var(--bad)}
+.btn.full{width:100%}
+.btn.sm{padding:7px 10px;font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>.btn{flex:1}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+input,textarea,select.f{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card);color:var(--text);font-family:inherit}
+textarea{min-height:70px;resize:vertical}
+.chk{display:flex;align-items:center;gap:10px;padding:8px 0;color:var(--text);font-size:15px;margin:0}
+.chk input{width:20px;height:20px;accent-color:var(--pri)}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav.tabs button{flex:1;background:none;border:0;padding:10px 4px 12px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button.on{color:var(--pri);font-weight:600}
+nav.tabs svg{width:24px;height:24px}
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.tag.ok{background:var(--okbg);color:var(--ok)}
+.tag.bad{background:var(--badbg);color:var(--bad)}
+.tag.neu{background:var(--pri2);color:var(--pri)}
+.ev h3{margin:0 0 4px;font-size:17px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px}
+.stat span{font-size:12px;color:var(--muted)}
+.item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.item:last-child{border-bottom:0}
+.item .nm{flex:1;min-width:0}
+.item .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:flex;background:var(--pri2);border-radius:10px;padding:3px;margin:10px 0}
+.seg button{flex:1;border:0;background:none;padding:8px;border-radius:8px;color:var(--pri);font-size:14px}
+.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#reader{width:100%;border-radius:14px;overflow:hidden;background:#000;min-height:0}
+#reader video{border-radius:14px}
+.result{border-radius:14px;padding:16px;margin-top:12px;border:2px solid}
+.result.ok{background:var(--okbg);border-color:var(--ok)}
+.result.bad{background:var(--badbg);border-color:var(--bad)}
+.result.warn{background:var(--warnbg);border-color:var(--warn)}
+.result h2{margin:0 0 6px;font-size:20px}
+.result .big{font-size:22px;font-weight:700;margin:6px 0}
+.kv{font-size:15px;margin:3px 0}
+.kv span{color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.modal.show{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.sheet h2{margin:0 0 8px;font-size:19px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1c1d29;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:90%}
+#toast.show{opacity:1}
+.center{text-align:center}
+.qrbox{display:flex;justify-content:center;padding:14px;background:#fff;border-radius:12px;margin:10px 0}
+.linkbox{word-break:break-all;font-size:13px;background:var(--pri2);color:var(--pri);padding:10px;border-radius:10px}
+.login{max-width:380px;margin:12vh auto 0;padding:16px}
+.login h1{text-align:center;font-size:22px}
+.empty{text-align:center;padding:30px 10px;color:var(--muted)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ================== CONFIGURAÇÃO ================== -->
+<script>
+// Cole aqui a configuração do seu projeto Firebase (a MESMA nos dois arquivos: index.html e inscricao.html)
+const firebaseConfig = {
+  apiKey: "AIzaSyD7YTTaQSmXe0JRIkHq-u6L1F1CTWw0JaY",
+  authDomain: "inscricoes-eventos.firebaseapp.com",
+  projectId: "inscricoes-eventos",
+  storageBucket: "inscricoes-eventos.firebasestorage.app",
+  messagingSenderId: "882008815212",
+  appId: "1:882008815212:web:1395f3a4999fa3a5664a49",
+  measurementId: "G-NGK7BES79S"
+};
+</script>
+
+<div id="telaConfig" class="login hidden">
+  <h1>Configuração pendente</h1>
+  <div class="card">Abra o arquivo <b>index.html</b> e cole a configuração do seu projeto Firebase no bloco <b>firebaseConfig</b> (no início do arquivo). Faça o mesmo no <b>inscricao.html</b>.</div>
+</div>
+
+<div id="telaLogin" class="login hidden">
+  <h1>Controle de Inscrições</h1>
+  <div class="card">
+    <label>E-mail</label>
+    <input id="lgEmail" type="email" autocomplete="username">
+    <label>Senha</label>
+    <input id="lgSenha" type="password" autocomplete="current-password">
+    <div style="height:14px"></div>
+    <button class="btn pri full" onclick="entrar()">Entrar</button>
+    <div style="height:8px"></div>
+    <button class="btn full" onclick="esqueci()">Esqueci a senha</button>
+    <p id="lgErro" class="muted center" style="color:var(--bad)"></p>
+  </div>
+</div>
+
+<div id="telaApp" class="hidden">
+  <header>
+    <div class="hrow">
+      <h1>Controle de Inscrições</h1>
+      <button class="iconbtn" onclick="sair()">Sair</button>
+    </div>
+    <select id="selEvento" onchange="selecionarEvento(this.value)"></select>
+  </header>
+
+  <main>
+    <!-- EVENTOS -->
+    <section id="tabEventos">
+      <button class="btn pri full" onclick="abrirEvento()">+ Novo evento</button>
+      <div style="height:12px"></div>
+      <div id="listaEventos"></div>
+    </section>
+
+    <!-- LEITOR -->
+    <section id="tabLeitor" class="hidden">
+      <div class="card">
+        <div class="muted">Lendo vouchers do evento:</div>
+        <b id="leitorEvento">—</b>
+        <label class="chk" style="margin-top:8px"><input type="checkbox" id="autoCheck" onchange="localStorage.setItem('insc_auto',this.checked?'1':'')"> Confirmar entrada automaticamente ao ler</label>
+      </div>
+      <div id="reader"></div>
+      <div style="height:10px"></div>
+      <button id="btnScan" class="btn pri full" onclick="toggleScan()">📷 Abrir câmera</button>
+      <div class="card" style="margin-top:12px">
+        <label style="margin-top:0">Ou digite o código do voucher</label>
+        <div class="row">
+          <input id="codManual" placeholder="Ex.: K7P2QX" style="flex:2;text-transform:uppercase" onkeydown="if(event.key==='Enter')buscarManual()">
+          <button class="btn" onclick="buscarManual()">Buscar</button>
+        </div>
+      </div>
+      <div id="resultado"></div>
+    </section>
+
+    <!-- INSCRITOS -->
+    <section id="tabInscritos" class="hidden">
+      <div class="stats">
+        <div class="stat"><b id="stTotal">0</b><span>Inscritos</span></div>
+        <div class="stat"><b id="stPres">0</b><span>Presentes</span></div>
+        <div class="stat"><b id="stAus">0</b><span>Faltam</span></div>
+      </div>
+      <input id="busca" placeholder="Buscar por nome, CPF, telefone ou código" oninput="renderInscritos()">
+      <div class="seg" id="filtro">
+        <button class="on" data-f="todos">Todos</button>
+        <button data-f="pres">Presentes</button>
+        <button data-f="aus">Faltam</button>
+      </div>
+      <div class="card" style="padding:4px 14px"><div id="listaInscritos"></div></div>
+      <div class="row">
+        <button class="btn" onclick="exportarCSV()">⬇ Exportar planilha</button>
+        <button class="btn" onclick="abrirLinkPublico()">+ Inscrever pessoa</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-tab="Eventos" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Eventos</button>
+    <button data-tab="Leitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/><path d="M13 7h4v4M7 13h4v4"/></svg>Leitor</button>
+    <button data-tab="Inscritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2"/></svg>Inscritos</button>
+  </nav>
+</div>
+
+<div class="modal" id="modal" onclick="if(event.target===this)fecharModal()"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+/* ================== PWA (manifesto e ícones embutidos) ================== */
+function makeIcon(size){
+  const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d');const s=size/512;
+  x.fillStyle='#4338ca';x.fillRect(0,0,size,size);
+  x.fillStyle='#fff';rr(x,96*s,140*s,320*s,232*s,28*s);x.fill();
+  x.fillStyle='#4338ca';x.beginPath();x.arc(96*s,256*s,30*s,0,7);x.arc(416*s,256*s,30*s,0,7);x.fill();
+  const q=(px,py)=>{x.fillStyle='#4338ca';x.fillRect(px*s,py*s,56*s,56*s);x.fillStyle='#fff';x.fillRect((px+12)*s,(py+12)*s,32*s,32*s);x.fillStyle='#4338ca';x.fillRect((px+20)*s,(py+20)*s,16*s,16*s);};
+  q(150,170);q(306,170);q(150,286);
+  x.fillStyle='#4338ca';[[306,286],[334,300],[320,318],[348,326],[306,328]].forEach(([a,b])=>x.fillRect(a*s,b*s,14*s,14*s));
+  return c.toDataURL('image/png');
+}
+function rr(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+(function(){
+  const base=location.href.split(/[?#]/)[0];
+  const i192=makeIcon(192),i512=makeIcon(512);
+  const m={name:'Controle de Inscrições',short_name:'Inscrições',start_url:base,scope:base.replace(/[^/]*$/,''),display:'standalone',background_color:'#4338ca',theme_color:'#4338ca',
+    icons:[{src:i192,sizes:'192x192',type:'image/png'},{src:i512,sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
+  document.getElementById('manifestLink').href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));
+  document.getElementById('appleIcon').href=i192;document.getElementById('favIcon').href=i192;
+})();
+
+/* ================== Utilidades ================== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2600);}
+function abrirModal(html){$('sheet').innerHTML=html;$('modal').classList.add('show');}
+function fecharModal(){$('modal').classList.remove('show');}
+function fmtData(e){if(!e||!e.data)return '';const[a,m,d]=e.data.split('-');return `${d}/${m}/${a}`+(e.hora?` às ${e.hora}`:'');}
+function fmtTs(ts){if(!ts||!ts.toDate)return '';const d=ts.toDate();return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+function fmtCPF(c){c=String(c||'');return c.length===11?c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):c;}
+function linkInscricao(id){return new URL('inscricao.html?e='+id,location.href.split(/[?#]/)[0]).href;}
+function linkVoucher(id){return new URL('inscricao.html?v='+id,location.href.split(/[?#]/)[0]).href;}
+function beep(ok){try{navigator.vibrate&&navigator.vibrate(ok?120:[250,100,250]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.15:.45));}catch(e){}}
+
+/* ================== Firebase ================== */
+const configurado=!String(firebaseConfig.apiKey).startsWith('COLE');
+let auth,db;
+if(!configurado){$('telaConfig').classList.remove('hidden');}
+else{
+  firebase.initializeApp(firebaseConfig);
+  auth=firebase.auth();db=firebase.firestore();
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  auth.onAuthStateChanged(u=>{
+    if(u){$('telaLogin').classList.add('hidden');$('telaApp').classList.remove('hidden');iniciar();}
+    else{$('telaApp').classList.add('hidden');$('telaLogin').classList.remove('hidden');pararTudo();}
+  });
+}
+const TS=()=>firebase.firestore.FieldValue.serverTimestamp();
+
+async function entrar(){
+  $('lgErro').textContent='';
+  try{await auth.signInWithEmailAndPassword($('lgEmail').value.trim(),$('lgSenha').value);}
+  catch(e){$('lgErro').textContent=({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'Senha incorreta.','auth/user-not-found':'Usuário não encontrado.','auth/too-many-requests':'Muitas tentativas. Aguarde um pouco.','auth/unauthorized-domain':'Domínio não autorizado no Firebase (Authentication > Configurações > Domínios autorizados).'})[e.code]||e.message;}
+}
+async function esqueci(){const em=$('lgEmail').value.trim();if(!em)return toast('Digite seu e-mail primeiro');try{await auth.sendPasswordResetEmail(em);toast('E-mail de redefinição enviado');}catch(e){toast(e.message);}}
+function sair(){pararScan();auth.signOut();}
+
+/* ================== Estado ================== */
+let eventos=[],selId=localStorage.getItem('insc_sel')||'',inscritos=[],unsubE=null,unsubI=null,subId=null,filtro='todos';
+
+function iniciar(){
+  $('autoCheck').checked=!!localStorage.getItem('insc_auto');
+  if(unsubE)return;
+  unsubE=db.collection('eventos').orderBy('criadoEm','desc').onSnapshot(s=>{
+    eventos=s.docs.map(d=>({id:d.id,...d.data()}));
+    if(!eventos.find(e=>e.id===selId))selId=eventos[0]?eventos[0].id:'';
+    renderSelect();renderEventos();assinarInscritos();
+  },err=>{
+    if(err.code==='permission-denied'){alert('Esta conta não tem permissão de administrador. Confira o e-mail nas regras do Firestore.');auth.signOut();}
+    else toast('Erro: '+err.message);
+  });
+}
+function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}subId=null;eventos=[];inscritos=[];}
+function eventoSel(){return eventos.find(e=>e.id===selId);}
+
+function renderSelect(){
+  const s=$('selEvento');
+  s.innerHTML=eventos.length?eventos.map(e=>`<option value="${e.id}" ${e.id===selId?'selected':''}>${esc(e.titulo)}${e.data?' — '+esc(fmtData({data:e.data})):''}</option>`).join(''):'<option value="">Nenhum evento cadastrado</option>';
+  const ev=eventoSel();$('leitorEvento').textContent=ev?ev.titulo:'—';
+}
+function selecionarEvento(id){selId=id;localStorage.setItem('insc_sel',id);renderSelect();renderEventos();assinarInscritos();$('resultado').innerHTML='';}
+
+function assinarInscritos(){
+  if(subId===selId)return;
+  if(unsubI){unsubI();unsubI=null;}
+  subId=selId;inscritos=[];renderInscritos();
+  if(!selId)return;
+  unsubI=db.collection('inscricoes').where('eventoId','==',selId).onSnapshot(s=>{
+    inscritos=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+    renderInscritos();renderEventos();
+  },err=>toast('Erro ao carregar inscritos: '+err.message));
+}
+
+/* ================== Abas ================== */
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  ['Eventos','Leitor','Inscritos'].forEach(t=>$('tab'+t).classList.toggle('hidden',t!==b.dataset.tab));
+  if(b.dataset.tab!=='Leitor')pararScan();
+  window.scrollTo(0,0);
+});
+document.querySelectorAll('#filtro button').forEach(b=>b.onclick=()=>{filtro=b.dataset.f;document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x===b));renderInscritos();});
+
+/* ================== Eventos ================== */
+function renderEventos(){
+  const el=$('listaEventos');
+  if(!eventos.length){el.innerHTML='<div class="empty">Nenhum evento ainda.<br>Toque em <b>+ Novo evento</b> para começar.</div>';return;}
+  el.innerHTML=eventos.map(e=>{
+    const sel=e.id===selId;
+    const cont=sel?`<div class="muted" style="margin-top:6px">${inscritos.length} inscrito(s) · ${inscritos.filter(i=>i.checkin).length} presente(s)</div>`:'';
+    return `<div class="card ev" style="${sel?'border-color:var(--pri);border-width:2px':''}">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <div style="flex:1"><h3>${esc(e.titulo)}</h3>
+          <div class="muted">${esc(fmtData(e))}${e.local?' · '+esc(e.local):''}</div></div>
+        <span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>
+      </div>${cont}
+      <div class="row" style="margin-top:10px">
+        ${sel?'':`<button class="btn sm" onclick="selecionarEvento('${e.id}')">Selecionar</button>`}
+        <button class="btn sm" onclick="mostrarLink('${e.id}')">🔗 Link / QR</button>
+        <button class="btn sm" onclick="abrirEvento('${e.id}')">Editar</button>
+      </div></div>`;}).join('');
+}
+
+function abrirEvento(id){
+  const e=id?eventos.find(x=>x.id===id):{titulo:'',data:'',hora:'',local:'',descricao:'',aberto:true,campos:{cpf:true,telefone:true,email:false,extra:false},extraLabel:''};
+  const c=e.campos||{};
+  abrirModal(`<h2>${id?'Editar evento':'Novo evento'}</h2>
+    <label>Nome do evento *</label><input id="evTitulo" value="${esc(e.titulo)}" maxlength="100">
+    <div class="row"><div style="flex:1"><label>Data</label><input id="evData" type="date" value="${esc(e.data)}"></div>
+    <div style="flex:1"><label>Horário</label><input id="evHora" type="time" value="${esc(e.hora)}"></div></div>
+    <label>Local</label><input id="evLocal" value="${esc(e.local)}" maxlength="120">
+    <label>Descrição / informações</label><textarea id="evDesc" maxlength="1000">${esc(e.descricao)}</textarea>
+    <label>Dados pedidos na inscrição (o nome é sempre pedido)</label>
+    <label class="chk"><input type="checkbox" id="cCpf" ${c.cpf?'checked':''}> CPF <span class="muted">(impede inscrição duplicada)</span></label>
+    <label class="chk"><input type="checkbox" id="cTel" ${c.telefone?'checked':''}> Telefone / WhatsApp</label>
+    <label class="chk"><input type="checkbox" id="cEmail" ${c.email?'checked':''}> E-mail</label>
+    <label class="chk"><input type="checkbox" id="cExtra" ${c.extra?'checked':''} onchange="$('evExtraBox').classList.toggle('hidden',!this.checked)"> Campo extra</label>
+    <div id="evExtraBox" class="${c.extra?'':'hidden'}"><input id="evExtra" placeholder="Nome do campo (ex.: Setor, Empresa, Tamanho da camiseta)" value="${esc(e.extraLabel)}" maxlength="40"></div>
+    <label class="chk" style="margin-top:8px"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" onclick="salvarEvento('${id||''}')">Salvar</button></div>
+    ${id?`<div style="height:18px"></div><button class="btn bad full" onclick="excluirEvento('${id}')">Excluir evento e inscrições</button>`:''}`);
+}
+async function salvarEvento(id){
+  const titulo=$('evTitulo').value.trim();if(!titulo)return toast('Informe o nome do evento');
+  const extra=$('cExtra').checked&&$('evExtra').value.trim()!=='';
+  const d={titulo,data:$('evData').value,hora:$('evHora').value,local:$('evLocal').value.trim(),descricao:$('evDesc').value.trim(),
+    aberto:$('evAberto').checked,campos:{cpf:$('cCpf').checked,telefone:$('cTel').checked,email:$('cEmail').checked,extra},
+    extraLabel:extra?$('evExtra').value.trim():'',atualizadoEm:TS()};
+  try{
+    if(id)await db.collection('eventos').doc(id).update(d);
+    else{d.criadoEm=TS();const r=await db.collection('eventos').add(d);selecionarEvento(r.id);}
+    fecharModal();toast('Evento salvo');
+  }catch(e){toast('Erro: '+e.message);}
+}
+async function excluirEvento(id){
+  const e=eventos.find(x=>x.id===id);
+  if(!confirm(`Excluir "${e.titulo}" e TODAS as inscrições dele? Isso não pode ser desfeito.`))return;
+  try{
+    const docs=[];
+    (await db.collection('inscricoes').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
+    (await db.collection('bloqueios').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
+    docs.push(db.collection('eventos').doc(id));
+    for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(r=>b.delete(r));await b.commit();}
+    fecharModal();toast('Evento excluído');
+  }catch(err){toast('Erro: '+err.message);}
+}
+
+function mostrarLink(id){
+  const e=eventos.find(x=>x.id===id),link=linkInscricao(id);
+  abrirModal(`<h2>${esc(e.titulo)}</h2><div class="muted">Link de inscrição — divulgue por mensagem ou imprima o QR em um cartaz.</div>
+    <div class="qrbox"><div id="qrLink"></div></div>
+    <div class="linkbox">${esc(link)}</div><div style="height:10px"></div>
+    <div class="row"><button class="btn" onclick="copiar('${link}')">Copiar link</button>
+    <button class="btn" onclick="compartilharWhats('${id}')">WhatsApp</button></div>
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn" onclick="baixarQRLink('${id}')">⬇ Baixar QR (imagem)</button><button class="btn" onclick="window.open('${link}','_blank')">Abrir</button></div>
+    <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+  new QRCode($('qrLink'),{text:link,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+}
+function copiar(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Link copiado')).catch(()=>prompt('Copie o link:',t));}
+function baixarQRLink(id){
+  const e=eventos.find(x=>x.id===id),link=linkInscricao(id);
+  const tmp=document.createElement('div');new QRCode(tmp,{text:link,width:600,height:600,correctLevel:QRCode.CorrectLevel.M});
+  const q=tmp.querySelector('canvas');const W=800,H=1000,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#4338ca';x.fillRect(0,0,W,190);
+  x.fillStyle='#fff';x.textAlign='center';x.font='bold 26px system-ui,sans-serif';x.fillText('INSCRIÇÕES ABERTAS',W/2,52);
+  x.font='bold 38px system-ui,sans-serif';quebra(x,e.titulo,W/2,108,W-60,46,2);
+  x.drawImage(q,100,220,600,600);
+  x.fillStyle='#1c1d29';x.font='28px system-ui,sans-serif';x.fillText('Aponte a câmera do celular para se inscrever',W/2,885);
+  x.fillStyle='#6b6f85';x.font='24px system-ui,sans-serif';x.fillText([fmtData(e),e.local].filter(Boolean).join(' · '),W/2,935);
+  const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='qr-inscricao-'+e.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.png';a.click();
+}
+function quebra(x,t,cx,y,maxW,lh,maxL){const ps=String(t).split(' ');let l='',n=1;for(const p of ps){const tt=l?l+' '+p:p;if(x.measureText(tt).width>maxW&&l){if(n>=maxL){x.fillText(l+'…',cx,y);return y;}x.fillText(l,cx,y);y+=lh;n++;l=p;}else l=tt;}x.fillText(l,cx,y);return y;}
+function compartilharWhats(id){const e=eventos.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent('Inscrição: '+e.titulo+'\n'+linkInscricao(id)),'_blank');}
+
+/* ================== Leitor ================== */
+let scanner=null,escaneando=false,ocupado=false;
+async function toggleScan(){escaneando?pararScan():iniciarScan();}
+async function iniciarScan(){
+  if(!selId)return toast('Cadastre/selecione um evento primeiro');
+  $('resultado').innerHTML='';
+  try{
+    scanner=scanner||new Html5Qrcode('reader');
+    await scanner.start({facingMode:'environment'},{fps:10,qrbox:(w,h)=>{const m=Math.floor(Math.min(w,h)*.7);return{width:m,height:m};}},lido,()=>{});
+    escaneando=true;$('btnScan').textContent='⏹ Fechar câmera';
+  }catch(e){toast('Não foi possível abrir a câmera. Verifique a permissão.');}
+}
+async function pararScan(){if(scanner&&escaneando){try{await scanner.stop();}catch(e){}}escaneando=false;ocupado=false;if($('btnScan'))$('btnScan').textContent='📷 Abrir câmera';}
+function extrairId(txt){
+  txt=String(txt||'').trim();
+  try{const u=new URL(txt);if(u.searchParams.get('v'))return{id:u.searchParams.get('v')};if(u.searchParams.get('e'))return{link:true};return{invalido:true};}
+  catch(e){return{id:txt};}
+}
+async function lido(txt){
+  if(ocupado)return;ocupado=true;
+  try{scanner.pause(true);}catch(e){}
+  const r=extrairId(txt);
+  if(r.link){mostrarResultado({tipo:'warn',titulo:'Isto é o QR de inscrição',msg:'Este QR leva à página de inscrição do evento, não é um voucher.'});return;}
+  if(r.invalido||!r.id||r.id.includes('/')||r.id.length>40){mostrarResultado({tipo:'bad',titulo:'QR inválido',msg:'Este QR code não é um voucher deste sistema.'});return;}
+  await consultar(r.id);
+}
+function retomar(){$('resultado').innerHTML='';ocupado=false;if(escaneando){try{scanner.resume();}catch(e){}}}
+async function buscarManual(){
+  const cod=$('codManual').value.trim().toUpperCase();if(!cod)return;
+  const local=inscritos.find(i=>(i.codigo||'')===cod);
+  if(local)return consultar(local.id);
+  try{
+    const s=await db.collection('inscricoes').where('codigo','==',cod).limit(1).get();
+    if(!s.empty)return consultar(s.docs[0].id);
+  }catch(e){}
+  mostrarResultado({tipo:'bad',titulo:'Código não encontrado',msg:'Nenhuma inscrição com o código '+esc(cod)+'.'});
+}
+async function consultar(id){
+  try{
+    const d=await db.collection('inscricoes').doc(id).get();
+    if(!d.exists){mostrarResultado({tipo:'bad',titulo:'Voucher não encontrado',msg:'Esta inscrição não existe ou foi excluída.'});return;}
+    const i={id:d.id,...d.data()};
+    if(i.eventoId!==selId){
+      const ev=eventos.find(e=>e.id===i.eventoId);
+      mostrarResultado({tipo:'warn',titulo:'Voucher de outro evento',msg:'Este voucher é do evento <b>'+esc(ev?ev.titulo:'(excluído)')+'</b>.',insc:i});return;
+    }
+    if(i.checkin){mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Entrada registrada em '+esc(fmtTs(i.checkinEm))+'.',insc:i});return;}
+    if($('autoCheck').checked){await fazerCheckin(i.id,true);return;}
+    mostrarResultado({tipo:'ok',titulo:'Inscrição válida',insc:i,botaoCheck:true});
+  }catch(e){mostrarResultado({tipo:'bad',titulo:'Erro na consulta',msg:esc(e.message)});}
+}
+function dadosHTML(i){
+  const ev=eventos.find(e=>e.id===i.eventoId)||{};
+  return `<div class="big">${esc(i.nome)}</div>
+    ${i.cpf?`<div class="kv"><span>CPF:</span> ${esc(fmtCPF(i.cpf))}</div>`:''}
+    ${i.telefone?`<div class="kv"><span>Telefone:</span> ${esc(i.telefone)}</div>`:''}
+    ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
+    ${i.extra?`<div class="kv"><span>${esc(ev.extraLabel||'Extra')}:</span> ${esc(i.extra)}</div>`:''}
+    <div class="kv"><span>Código:</span> ${esc(i.codigo)} · <span>Inscrito em:</span> ${esc(fmtTs(i.criadoEm))}</div>`;
+}
+function mostrarResultado(o){
+  beep(o.tipo==='ok');
+  $('resultado').innerHTML=`<div class="result ${o.tipo}"><h2>${o.tipo==='ok'?'✅':o.tipo==='bad'?'⛔':'⚠️'} ${o.titulo}</h2>
+    ${o.msg?`<div>${o.msg}</div>`:''}${o.insc?dadosHTML(o.insc):''}
+    <div style="height:12px"></div>
+    ${o.botaoCheck?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}')">Confirmar entrada</button><div style="height:8px"></div>`:''}
+    <button class="btn full" onclick="retomar()">${escaneando?'Ler próximo':'Fechar'}</button></div>`;
+  $('resultado').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function fazerCheckin(id,auto){
+  try{
+    await db.runTransaction(async t=>{
+      const r=db.collection('inscricoes').doc(id),s=await t.get(r);
+      if(!s.exists)throw new Error('NAOEXISTE');
+      if(s.data().checkin)throw new Error('JA');
+      t.update(r,{checkin:true,checkinEm:TS()});
+    });
+    const i=(await db.collection('inscricoes').doc(id).get()).data();
+    mostrarResultado({tipo:'ok',titulo:'Entrada confirmada',insc:{id,...i}});
+    if(auto&&escaneando)setTimeout(()=>{if(ocupado)retomar();},2500);
+  }catch(e){
+    if(e.message==='JA')mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Outra pessoa já registrou esta entrada.'});
+    else toast('Erro: '+(e.code==='unavailable'?'sem internet':e.message));
+  }
+}
+
+/* ================== Inscritos ================== */
+function renderInscritos(){
+  const tot=inscritos.length,pres=inscritos.filter(i=>i.checkin).length;
+  $('stTotal').textContent=tot;$('stPres').textContent=pres;$('stAus').textContent=tot-pres;
+  const q=$('busca').value.trim().toLowerCase(),qd=q.replace(/\D/g,'');
+  let l=inscritos.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:!i.checkin));
+  if(q)l=l.filter(i=>(i.nome||'').toLowerCase().includes(q)||(i.codigo||'').toLowerCase()===q||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
+  $('listaInscritos').innerHTML=!selId?'<div class="empty">Selecione um evento.</div>':!l.length?'<div class="empty">Nenhuma inscrição'+(q||filtro!=='todos'?' encontrada':' ainda')+'.</div>':
+    l.map(i=>`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}</span></div>
+      <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div>`).join('');
+}
+function detalhe(id){
+  const i=inscritos.find(x=>x.id===id);if(!i)return;
+  abrirModal(`<h2>Inscrição</h2>${dadosHTML(i)}
+    <div class="kv" style="margin-top:6px"><span>Situação:</span> ${i.checkin?'<b style="color:var(--ok)">Presente</b> — '+esc(fmtTs(i.checkinEm)):'Aguardando entrada'}</div>
+    <div style="height:14px"></div>
+    ${i.checkin?`<button class="btn full" onclick="desfazerCheckin('${id}')">Desfazer entrada</button>`:`<button class="btn ok full" onclick="fecharModal();fazerCheckinLista('${id}')">Confirmar entrada</button>`}
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn" onclick="window.open('${linkVoucher(id)}','_blank')">Ver voucher</button>
+    <button class="btn" onclick="copiar('${linkVoucher(id)}')">Copiar link do voucher</button></div>
+    <div style="height:8px"></div>
+    <button class="btn bad full" onclick="excluirInscricao('${id}')">Excluir inscrição</button>
+    <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+}
+async function fazerCheckinLista(id){try{await db.collection('inscricoes').doc(id).update({checkin:true,checkinEm:TS()});toast('Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
+async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await db.collection('inscricoes').doc(id).update({checkin:false,checkinEm:null});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
+async function excluirInscricao(id){
+  const i=inscritos.find(x=>x.id===id);if(!confirm(`Excluir a inscrição de ${i.nome}?`))return;
+  try{const b=db.batch();b.delete(db.collection('inscricoes').doc(id));if(i.cpf)b.delete(db.collection('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();fecharModal();toast('Inscrição excluída');}
+  catch(e){toast('Erro: '+e.message);}
+}
+function exportarCSV(){
+  const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
+  const c=ev.campos||{};
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');if(c.extra)cab.push(ev.extraLabel||'Extra');cab.push('Inscrito em','Presente','Entrada em');
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);if(c.extra)r.push(i.extra);r.push(fmtTs(i.criadoEm),i.checkin?'Sim':'Não',fmtTs(i.checkinEm));return r.map(q).join(';');});
+  const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inscritos-'+ev.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.csv';a.click();
+}
+function abrirLinkPublico(){if(!selId)return toast('Selecione um evento');window.open(linkInscricao(selId),'_blank');}
+</script>
+</body>
+</html>
