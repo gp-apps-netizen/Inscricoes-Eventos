@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // >>> TROQUE pelo(s) e-mail(s) da(s) conta(s) de administrador (dono) <<<
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email in ['SEU_EMAIL_AQUI@gmail.com'];
+    }
+
+    // Usuários de check-in cadastrados na aba "Equipe"
+    function membroDoc() {
+      return get(/databases/$(database)/documents/equipe/$(request.auth.token.email)).data;
+    }
+    function isMembro() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/equipe/$(request.auth.token.email))
+        && membroDoc().ativo == true;
+    }
+    function membroPodePagar() {
+      return isMembro() && membroDoc().podePagar == true;
+    }
+    function alterou() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function evento(id) {
+      return get(/databases/$(database)/documents/eventos/$(id)).data;
+    }
+
+    function texto(v, max) {
+      return v is string && v.size() <= max;
+    }
+
+    // Eventos: qualquer pessoa lê (para ver o formulário); só o dono altera
+    match /eventos/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Equipe: só o dono gerencia; cada membro lê o próprio cadastro
+    match /equipe/{email} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.token.email == email);
+      allow write: if isAdmin();
+    }
+
+    // Inscrições
+    match /inscricoes/{id} {
+      // Abrir um voucher pelo link (precisa do ID exato); listar só dono e equipe
+      allow get: if true;
+      allow list: if isAdmin() || isMembro();
+      allow delete: if isAdmin();
+
+      allow update: if isAdmin()
+        // equipe: só registra/desfaz entrada
+        || (isMembro() && alterou().hasOnly(['checkin','checkinEm','checkinPor']))
+        // equipe com permissão de pagamento: também confirma o Pix
+        || (membroPodePagar() && alterou().hasOnly(['checkin','checkinEm','checkinPor','pago','pagoEm','pagoPor','valorPago']));
+
+      allow create: if isAdmin() || (
+        request.resource.data.keys().hasOnly(['eventoId','codigo','nome','cpf','telefone','email','extra','respostas','checkin','checkinEm','pago','pagoEm','criadoEm'])
+        && request.resource.data.eventoId is string
+        && evento(request.resource.data.eventoId).aberto == true
+        && texto(request.resource.data.codigo, 8)
+        && texto(request.resource.data.nome, 120) && request.resource.data.nome.size() >= 3
+        && texto(request.resource.data.cpf, 11)
+        && texto(request.resource.data.telefone, 20)
+        && texto(request.resource.data.email, 120)
+        && texto(request.resource.data.extra, 120)
+        // Respostas dos campos personalizados (no máximo 20 campos)
+        && request.resource.data.get('respostas', {}) is map
+        && request.resource.data.get('respostas', {}).size() <= 20
+        && request.resource.data.checkin == false
+        && request.resource.data.checkinEm == null
+        && request.resource.data.get('pago', false) == false
+        && request.resource.data.get('pagoEm', null) == null
+        && request.resource.data.criadoEm == request.time
+        // Se o evento pede CPF, precisa criar junto o bloqueio (impede CPF duplicado)
+        && (evento(request.resource.data.eventoId).campos.cpf != true
+            || existsAfter(/databases/$(database)/documents/bloqueios/$(request.resource.data.eventoId + '_' + request.resource.data.cpf)))
+      );
+    }
+
+    // Bloqueios de CPF por evento: só podem ser criados (nunca sobrescritos) junto com uma inscrição
+    match /bloqueios/{id} {
+      allow read, delete: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['eventoId','inscricaoId'])
+        && id == request.resource.data.eventoId + '_' + getAfter(/databases/$(database)/documents/inscricoes/$(request.resource.data.inscricaoId)).data.cpf
+        && getAfter(/databases/$(database)/documents/inscricoes/$(request.resource.data.inscricaoId)).data.eventoId == request.resource.data.eventoId;
+    }
+  }
+}

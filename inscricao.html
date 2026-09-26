@@ -21,8 +21,9 @@ main{max-width:560px;margin:-40px auto 0;padding:0 16px 40px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 4px 18px rgba(20,20,60,.06)}
 .desc{white-space:pre-wrap;font-size:15px;color:var(--muted);margin:0 0 6px}
 label{display:block;font-size:14px;color:var(--muted);margin:12px 0 5px}
-input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card);color:var(--text);font-family:inherit}
-input.err{border-color:var(--bad)}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card);color:var(--text);font-family:inherit}
+textarea{min-height:80px;resize:vertical}
+input.err,select.err,textarea.err{border-color:var(--bad)}
 .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:13px;font-size:16px;cursor:pointer;margin-top:10px}
 .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:600}
 @media (prefers-color-scheme:dark){.btn.pri{color:#12131a}}
@@ -43,6 +44,18 @@ input.err{border-color:var(--bad)}
 .spin{width:32px;height:32px;border:3px solid var(--pri2);border-top-color:var(--pri);border-radius:50%;animation:s 1s linear infinite;margin:30px auto}
 @keyframes s{to{transform:rotate(360deg)}}
 .priv{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.4}
+.banner{display:block;width:calc(100% + 36px);margin:-18px -18px 16px;max-height:260px;object-fit:cover;border-radius:15px 15px 0 0}
+.preco{display:flex;justify-content:space-between;align-items:center;background:var(--pri2);color:var(--pri);border-radius:10px;padding:10px 12px;margin:10px 0 4px;font-size:15px}
+.preco b{font-size:18px}
+.pix h3{margin:0 0 4px;font-size:18px}
+.pix .valor{font-size:28px;font-weight:800;margin:4px 0}
+.copia{width:100%;min-height:74px;font-family:ui-monospace,monospace;font-size:12px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);resize:none;word-break:break-all}
+.st{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700}
+.st.pend{background:#fef3c7;color:#92400e}
+.st.ok{background:var(--okbg);color:var(--ok)}
+.kvp{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line);text-align:left}
+.kvp span{color:var(--muted)}
+.kvp b{word-break:break-all;text-align:right}
 </style>
 </head>
 <body>
@@ -88,6 +101,45 @@ function meus(){try{return JSON.parse(localStorage.getItem('meusVouchers')||'[]'
 function guardar(v){const l=meus().filter(x=>x.id!==v.id);l.unshift(v);localStorage.setItem('meusVouchers',JSON.stringify(l.slice(0,50)));}
 function topo(sm,t,m){$('topSmall').textContent=sm;$('topTitulo').textContent=t;$('topMeta').textContent=m||'';document.title=t;}
 function tela(html){$('conteudo').innerHTML=html;}
+function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo&&ev.pix.valor>0);}
+function banner(ev){return ev&&ev.imagem?`<img class="banner" src="${ev.imagem}" alt="">`:'';}
+function camposDoEvento(e){
+  if(!e)return[];
+  if(Array.isArray(e.camposExtras))return e.camposExtras;
+  if(e.campos&&e.campos.extra&&e.extraLabel)return[{id:'extra',label:e.extraLabel,tipo:'texto',obrigatorio:true,opcoes:[]}];
+  return[];
+}
+function campoHTML(f,k){
+  const id='fx'+k,lb=`<label for="${id}">${esc(f.label)}${f.obrigatorio?' *':''}</label>`;
+  switch(f.tipo){
+    case 'textolongo':return lb+`<textarea id="${id}" maxlength="500"></textarea>`;
+    case 'numero':return lb+`<input id="${id}" type="number" inputmode="decimal">`;
+    case 'data':return lb+`<input id="${id}" type="date">`;
+    case 'opcoes':return lb+`<select id="${id}"><option value="">Selecione…</option>${(f.opcoes||[]).map(o=>`<option>${esc(o)}</option>`).join('')}</select>`;
+    case 'simnao':return lb+`<select id="${id}"><option value="">Selecione…</option><option>Sim</option><option>Não</option></select>`;
+    default:return lb+`<input id="${id}" maxlength="150">`;
+  }
+}
+
+/* ================== Pix (BR Code "copia e cola") ================== */
+function tlv(id,v){v=String(v);return id+String(v.length).padStart(2,'0')+v;}
+function semAcento(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9 ]/g,'').replace(/\s+/g,' ').trim().toUpperCase();}
+function chavePix(p){
+  const k=String(p.chave||'').trim();
+  if(p.tipo==='cpf')return k.replace(/\D/g,'');
+  if(p.tipo==='tel'){let d=k.replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;return '+'+d;}
+  if(p.tipo==='email')return k.toLowerCase();
+  return k;
+}
+function crc16(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=(c&0x8000)?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF;}return c.toString(16).toUpperCase().padStart(4,'0');}
+function brcode(p,txid){
+  const s=tlv('00','01')+tlv('26',tlv('00','br.gov.bcb.pix')+tlv('01',chavePix(p)))+tlv('52','0000')+tlv('53','986')
+    +(p.valor>0?tlv('54',Number(p.valor).toFixed(2)):'')+tlv('58','BR')
+    +tlv('59',semAcento(p.nome).slice(0,25)||'RECEBEDOR')+tlv('60',semAcento(p.cidade).slice(0,15)||'BRASIL')
+    +tlv('62',tlv('05',String(txid||'').replace(/[^A-Za-z0-9]/g,'').slice(0,25)||'***'))+'6304';
+  return s+crc16(s);
+}
 
 (function(){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');x.fillStyle='#4338ca';x.fillRect(0,0,64,64);x.fillStyle='#fff';x.fillRect(12,18,40,28);$('favIcon').href=c.toDataURL();})();
 
@@ -121,16 +173,18 @@ async function abrirFormulario(eid){
   topo('Inscrição',evento.titulo,metaEv(evento));
   const ja=meus().find(v=>v.eventoId===eid);
   const aviso=ja?`<div class="msg ok">Você já se inscreveu neste evento neste aparelho. <a href="?v=${esc(ja.id)}"><b>Ver meu voucher</b></a></div>`:'';
-  if(!evento.aberto){tela(`<div class="card">${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}<div class="msg bad">As inscrições para este evento estão encerradas.</div>${aviso}</div>`);return;}
+  if(!evento.aberto){tela(`<div class="card">${banner(evento)}${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}<div class="msg bad">As inscrições para este evento estão encerradas.</div>${aviso}</div>`);return;}
   const c=evento.campos||{};
   tela(`<div class="card">
+    ${banner(evento)}
     ${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
+    ${cobra(evento)?`<div class="preco"><span>Valor da inscrição</span><b>${esc(moeda(evento.pix.valor))}</b></div><div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
     <form id="form" novalidate>
       <label>Nome completo *</label><input id="fNome" autocomplete="name" maxlength="120">
       ${c.cpf?`<label>CPF *</label><input id="fCpf" inputmode="numeric" placeholder="000.000.000-00" oninput="mascaraCPF(this)">`:''}
       ${c.telefone?`<label>Telefone / WhatsApp *</label><input id="fTel" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" oninput="mascaraTel(this)">`:''}
       ${c.email?`<label>E-mail *</label><input id="fEmail" type="email" autocomplete="email" maxlength="120">`:''}
-      ${c.extra?`<label>${esc(evento.extraLabel)} *</label><input id="fExtra" maxlength="120">`:''}
+      ${camposDoEvento(evento).map((f,k)=>campoHTML(f,k)).join('')}
       <div id="erro"></div>
       <button class="btn pri" id="btnEnviar" type="submit">Confirmar inscrição</button>
       <p class="priv">Seus dados serão usados somente para a organização e o controle de entrada deste evento.</p>
@@ -140,7 +194,7 @@ async function abrirFormulario(eid){
 
 async function enviar(){
   const c=evento.campos||{};const erros=[];
-  document.querySelectorAll('input.err').forEach(i=>i.classList.remove('err'));
+  document.querySelectorAll('.err').forEach(i=>i.classList.remove('err'));
   const marca=(id,msg)=>{$(id).classList.add('err');erros.push(msg);};
   const nome=$('fNome').value.trim().replace(/\s+/g,' ');
   if(nome.length<3)marca('fNome','Informe seu nome completo.');
@@ -150,13 +204,17 @@ async function enviar(){
   if(c.telefone&&tel.replace(/\D/g,'').length<10)marca('fTel','Telefone incompleto.');
   const email=c.email?$('fEmail').value.trim():'';
   if(c.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))marca('fEmail','E-mail inválido.');
-  const extra=c.extra?$('fExtra').value.trim():'';
-  if(c.extra&&!extra)marca('fExtra','Preencha o campo '+evento.extraLabel+'.');
+  const extra='',respostas={};
+  camposDoEvento(evento).forEach((f,k)=>{
+    const v=$('fx'+k).value.trim();
+    if(f.obrigatorio&&!v)marca('fx'+k,'Preencha o campo "'+f.label+'".');
+    if(v)respostas[f.id]=v.slice(0,500);
+  });
   if(erros.length){$('erro').innerHTML=`<div class="msg bad">${erros.map(esc).join('<br>')}</div>`;return;}
   $('erro').innerHTML='';$('btnEnviar').disabled=true;$('btnEnviar').textContent='Enviando…';
 
   const ref=db.collection('inscricoes').doc();
-  const dados={eventoId:evento.id,codigo:gerarCodigo(),nome,cpf,telefone:tel,email,extra,checkin:false,checkinEm:null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};
+  const dados={eventoId:evento.id,codigo:gerarCodigo(),nome,cpf,telefone:tel,email,extra,respostas,checkin:false,checkinEm:null,pago:false,pagoEm:null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};
   const b=db.batch();b.set(ref,dados);
   if(c.cpf)b.set(db.collection('bloqueios').doc(evento.id+'_'+cpf),{eventoId:evento.id,inscricaoId:ref.id});
   try{
@@ -187,11 +245,15 @@ async function abrirVoucher(vid){
 }
 let atual=null;
 function mostrarVoucher(i,ev,novo){
-  atual={i,ev};
+  atual={i,ev,img:null};
+  if(ev.imagem){const im=new Image();im.src=ev.imagem;atual.img=im;}
   topo('Voucher de inscrição',ev.titulo,metaEv(ev));
+  const px=cobra(ev);
   tela(`<div class="card voucher">
-    ${novo?'<div class="msg ok" style="margin-top:0">✅ Inscrição confirmada!</div>':''}
+    ${banner(ev)}
+    ${novo?`<div class="msg ok" style="margin-top:0">✅ Inscrição realizada!${px&&!i.pago?' Falta só o pagamento via Pix (abaixo).':''}</div>`:''}
     ${i.checkin?'<div class="msg bad" style="margin-top:0">Este voucher já foi utilizado na entrada.</div>':''}
+    ${px?`<div style="margin-top:12px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span></div>`:''}
     <div class="muted" style="margin-top:12px">Participante</div>
     <div class="nome">${esc(i.nome)}</div>
     <div class="qrbox"><div id="qr"></div></div>
@@ -200,8 +262,35 @@ function mostrarVoucher(i,ev,novo){
     <button class="btn pri" onclick="compartilhar()">📤 Salvar / compartilhar voucher</button>
     <div class="row"><button class="btn" onclick="baixar()">⬇ Baixar imagem</button><button class="btn" onclick="copiarLink()">🔗 Copiar link</button></div>
   </div>
+  ${px&&!i.pago?cartaoPix(i,ev):''}
   ${ev.descricao?`<div class="card"><p class="desc" style="margin:0">${esc(ev.descricao)}</p></div>`:''}`);
   new QRCode($('qr'),{text:linkVoucher(i.id),width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+  if(px&&!i.pago)new QRCode($('qrPix'),{text:atual.pix,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+}
+function cartaoPix(i,ev){
+  const p=ev.pix;atual.pix=brcode(p,'INSC'+i.codigo);
+  return `<div class="card pix center">
+    <h3>Pagamento via Pix</h3>
+    <div class="valor">${esc(moeda(p.valor))}</div>
+    <div class="muted">Abra o app do seu banco, escolha <b>Pix → Ler QR code</b> ou <b>Pix copia e cola</b>.</div>
+    <div class="qrbox"><div id="qrPix"></div></div>
+    <textarea class="copia" id="pixCopia" readonly onclick="this.select()">${esc(atual.pix)}</textarea>
+    <button class="btn pri" onclick="copiarTexto(atual.pix,'Código Pix copiado! Cole no app do banco.')">📋 Copiar Pix copia e cola</button>
+    <div style="margin-top:14px">
+      <div class="kvp"><span>Recebedor</span><b>${esc(p.nome)}</b></div>
+      <div class="kvp"><span>Chave Pix</span><b>${esc(p.chave)}</b></div>
+    </div>
+    <button class="btn" onclick="copiarTexto(${esc(JSON.stringify(p.chave))},'Chave Pix copiada!')">Copiar só a chave</button>
+    ${p.whats?`<button class="btn" onclick="enviarComprovante()">💬 Enviar comprovante pelo WhatsApp</button>`:''}
+    <p class="muted" style="margin-bottom:0">Depois que a organização confirmar o pagamento, esta página mostra <b>Pagamento confirmado</b>.</p>
+    <button class="btn" onclick="location.reload()">🔄 Atualizar situação</button>
+  </div>`;
+}
+function copiarTexto(t,ok){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert(ok)).catch(()=>prompt('Copie:',t));}
+function enviarComprovante(){
+  const {i,ev}=atual;let d=String(ev.pix.whats||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
+  const msg=`Olá! Segue o comprovante do Pix da minha inscrição.\nEvento: ${ev.titulo}\nNome: ${i.nome}\nCódigo: ${i.codigo}\nValor: ${moeda(ev.pix.valor)}`;
+  window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
 }
 function quebra(x,t,cx,y,maxW,lh,maxL){const ps=String(t).split(' ');let l='',n=1;for(const p of ps){const tt=l?l+' '+p:p;if(x.measureText(tt).width>maxW&&l){if(n>=maxL){x.fillText(l+'…',cx,y);return y;}x.fillText(l,cx,y);y+=lh;n++;l=p;}else l=tt;}x.fillText(l,cx,y);return y;}
 function imagemVoucher(){
@@ -211,6 +300,12 @@ function imagemVoucher(){
   const W=800,H=1180,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
   x.fillStyle='#f4f5fb';x.fillRect(0,0,W,H);
   x.fillStyle='#4338ca';x.fillRect(0,0,W,250);
+  const im=atual.img;
+  if(im&&im.complete&&im.naturalWidth){
+    const s=Math.max(W/im.naturalWidth,250/im.naturalHeight),dw=im.naturalWidth*s,dh=im.naturalHeight*s;
+    x.drawImage(im,(W-dw)/2,(250-dh)/2,dw,dh);
+    x.fillStyle='rgba(20,22,60,.62)';x.fillRect(0,0,W,250);
+  }
   x.fillStyle='#fff';x.textAlign='center';
   x.font='600 24px system-ui,sans-serif';x.fillText('VOUCHER DE INSCRIÇÃO',W/2,56);
   x.font='bold 40px system-ui,sans-serif';const y=quebra(x,ev.titulo,W/2,114,W-70,48,2);

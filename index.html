@@ -45,7 +45,7 @@ nav.tabs svg{width:24px;height:24px}
 .tag.bad{background:var(--badbg);color:var(--bad)}
 .tag.neu{background:var(--pri2);color:var(--pri)}
 .ev h3{margin:0 0 4px;font-size:17px}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;margin-bottom:12px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
 .stat b{display:block;font-size:22px}
 .stat span{font-size:12px;color:var(--muted)}
@@ -79,6 +79,15 @@ nav.tabs svg{width:24px;height:24px}
 .login h1{text-align:center;font-size:22px}
 .empty{text-align:center;padding:30px 10px;color:var(--muted)}
 .hidden{display:none!important}
+.evimg{display:block;width:calc(100% + 28px);margin:-14px -14px 12px;height:130px;object-fit:cover;border-radius:13px 13px 0 0}
+.imgprev{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin:6px 0;border:1px solid var(--line)}
+.secao{margin:18px 0 4px;padding-top:12px;border-top:1px solid var(--line);font-weight:700;font-size:15px}
+.tag.warn{background:var(--warnbg);color:var(--warn)}
+.tags{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.btn.file{position:relative;overflow:hidden}
+.btn.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+body.isEquipe .donoOnly{display:none!important}
+.papel{display:inline-block;font-size:12px;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 9px;margin-left:6px;vertical-align:middle;font-weight:500}
 </style>
 </head>
 <body>
@@ -120,7 +129,7 @@ const firebaseConfig = {
 <div id="telaApp" class="hidden">
   <header>
     <div class="hrow">
-      <h1>Controle de Inscrições</h1>
+      <h1>Controle de Inscrições<span class="papel hidden" id="papelTag">Equipe</span></h1>
       <button class="iconbtn" onclick="sair()">Sair</button>
     </div>
     <select id="selEvento" onchange="selecionarEvento(this.value)"></select>
@@ -129,7 +138,7 @@ const firebaseConfig = {
   <main>
     <!-- EVENTOS -->
     <section id="tabEventos">
-      <button class="btn pri full" onclick="abrirEvento()">+ Novo evento</button>
+      <button class="btn pri full donoOnly" onclick="abrirEvento()">+ Novo evento</button>
       <div style="height:12px"></div>
       <div id="listaEventos"></div>
     </section>
@@ -158,12 +167,17 @@ const firebaseConfig = {
     <section id="tabInscritos" class="hidden">
       <div class="stats">
         <div class="stat"><b id="stTotal">0</b><span>Inscritos</span></div>
+        <div class="stat pixOnly"><b id="stPagos">0</b><span>Pagos</span></div>
         <div class="stat"><b id="stPres">0</b><span>Presentes</span></div>
         <div class="stat"><b id="stAus">0</b><span>Faltam</span></div>
+      </div>
+      <div class="card pixOnly" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px">
+        <span class="muted">Arrecadado (Pix confirmados)</span><b id="stValor">R$ 0,00</b>
       </div>
       <input id="busca" placeholder="Buscar por nome, CPF, telefone ou código" oninput="renderInscritos()">
       <div class="seg" id="filtro">
         <button class="on" data-f="todos">Todos</button>
+        <button data-f="pend" class="pixOnly">A pagar</button>
         <button data-f="pres">Presentes</button>
         <button data-f="aus">Faltam</button>
       </div>
@@ -173,12 +187,23 @@ const firebaseConfig = {
         <button class="btn" onclick="abrirLinkPublico()">+ Inscrever pessoa</button>
       </div>
     </section>
+
+    <!-- EQUIPE (só o dono) -->
+    <section id="tabEquipe" class="hidden">
+      <div class="card">
+        <b>Usuários de check-in</b>
+        <div class="muted" style="margin-top:4px">Pessoas que podem ler vouchers, ver a lista de inscritos e confirmar entradas. Elas não criam nem editam eventos e não excluem inscrições.</div>
+      </div>
+      <button class="btn pri full" onclick="formMembro()">+ Cadastrar usuário</button>
+      <div class="card" style="padding:4px 14px;margin-top:12px"><div id="listaEquipe"><div class="empty">Carregando…</div></div></div>
+    </section>
   </main>
 
   <nav class="tabs">
     <button data-tab="Eventos" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Eventos</button>
     <button data-tab="Leitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/><path d="M13 7h4v4M7 13h4v4"/></svg>Leitor</button>
     <button data-tab="Inscritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2"/></svg>Inscritos</button>
+    <button data-tab="Equipe" class="donoOnly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Equipe</button>
   </nav>
 </div>
 
@@ -225,6 +250,28 @@ function fmtCPF(c){c=String(c||'');return c.length===11?c.replace(/(\d{3})(\d{3}
 function linkInscricao(id){return new URL('inscricao.html?e='+id,location.href.split(/[?#]/)[0]).href;}
 function linkVoucher(id){return new URL('inscricao.html?v='+id,location.href.split(/[?#]/)[0]).href;}
 function beep(ok){try{navigator.vibrate&&navigator.vibrate(ok?120:[250,100,250]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.15:.45));}catch(e){}}
+function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo);}
+function lerValor(s){s=String(s||'').replace(/[^\d,.]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:Math.round(n*100)/100;}
+function comprimirImagem(file){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>{
+      let q=.82,w=1200,url='';
+      for(let t=0;t<10;t++){
+        const s=Math.min(1,w/img.width),c=document.createElement('canvas');
+        c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+        const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);
+        url=c.toDataURL('image/jpeg',q);
+        if(url.length<550000)break;
+        if(q>.6)q-=.08;else w=Math.round(w*.8);
+      }
+      URL.revokeObjectURL(img.src);res(url);
+    };
+    img.onerror=()=>rej(new Error('Não foi possível ler a imagem'));
+    img.src=URL.createObjectURL(file);
+  });
+}
 
 /* ================== Firebase ================== */
 const configurado=!String(firebaseConfig.apiKey).startsWith('COLE');
@@ -250,21 +297,44 @@ async function esqueci(){const em=$('lgEmail').value.trim();if(!em)return toast(
 function sair(){pararScan();auth.signOut();}
 
 /* ================== Estado ================== */
-let eventos=[],selId=localStorage.getItem('insc_sel')||'',inscritos=[],unsubE=null,unsubI=null,subId=null,filtro='todos';
+let eventos=[],selId=localStorage.getItem('insc_sel')||'',inscritos=[],unsubE=null,unsubI=null,unsubQ=null,subId=null,filtro='todos';
+let papel=null,perm={},equipe=[];
+const usuario=()=>(auth.currentUser&&auth.currentUser.email||'').toLowerCase();
+const ehDono=()=>papel==='dono';
+const podePagar=()=>papel==='dono'||!!perm.podePagar;
 
-function iniciar(){
+async function detectarPapel(){
+  try{
+    const d=await db.collection('equipe').doc(usuario()).get({source:'server'});
+    if(d.exists){
+      if(!d.data().ativo){alert('Seu acesso ao controle de inscrições foi desativado.');auth.signOut();return false;}
+      papel='equipe';perm=d.data();
+    }else{papel='dono';perm={};}
+  }catch(e){
+    if(e.code==='permission-denied'){papel='dono';perm={};}
+    else{const d=await db.collection('equipe').doc(usuario()).get().catch(()=>null);if(d&&d.exists){papel='equipe';perm=d.data();}else papel='dono';}
+  }
+  document.body.classList.toggle('isEquipe',papel==='equipe');
+  $('papelTag').classList.toggle('hidden',papel!=='equipe');
+  return true;
+}
+
+async function iniciar(){
   $('autoCheck').checked=!!localStorage.getItem('insc_auto');
-  if(unsubE)return;
+  if(unsubE||papel==='carregando')return;
+  papel='carregando';
+  if(!(await detectarPapel()))return;
+  if(ehDono())assinarEquipe();
   unsubE=db.collection('eventos').orderBy('criadoEm','desc').onSnapshot(s=>{
     eventos=s.docs.map(d=>({id:d.id,...d.data()}));
     if(!eventos.find(e=>e.id===selId))selId=eventos[0]?eventos[0].id:'';
-    renderSelect();renderEventos();assinarInscritos();
+    renderSelect();renderEventos();assinarInscritos();renderInscritos();
   },err=>{
     if(err.code==='permission-denied'){alert('Esta conta não tem permissão de administrador. Confira o e-mail nas regras do Firestore.');auth.signOut();}
     else toast('Erro: '+err.message);
   });
 }
-function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}subId=null;eventos=[];inscritos=[];}
+function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}subId=null;eventos=[];inscritos=[];equipe=[];papel=null;perm={};document.body.classList.remove('isEquipe');}
 function eventoSel(){return eventos.find(e=>e.id===selId);}
 
 function renderSelect(){
@@ -282,13 +352,16 @@ function assinarInscritos(){
   unsubI=db.collection('inscricoes').where('eventoId','==',selId).onSnapshot(s=>{
     inscritos=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
     renderInscritos();renderEventos();
-  },err=>toast('Erro ao carregar inscritos: '+err.message));
+  },err=>{
+    if(err.code==='permission-denied'){alert('Esta conta não tem permissão para acessar o controle. Peça ao organizador para cadastrar seu e-mail na Equipe.');auth.signOut();}
+    else toast('Erro ao carregar inscritos: '+err.message);
+  });
 }
 
 /* ================== Abas ================== */
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
-  ['Eventos','Leitor','Inscritos'].forEach(t=>$('tab'+t).classList.toggle('hidden',t!==b.dataset.tab));
+  ['Eventos','Leitor','Inscritos','Equipe'].forEach(t=>$('tab'+t).classList.toggle('hidden',t!==b.dataset.tab));
   if(b.dataset.tab!=='Leitor')pararScan();
   window.scrollTo(0,0);
 });
@@ -300,51 +373,147 @@ function renderEventos(){
   if(!eventos.length){el.innerHTML='<div class="empty">Nenhum evento ainda.<br>Toque em <b>+ Novo evento</b> para começar.</div>';return;}
   el.innerHTML=eventos.map(e=>{
     const sel=e.id===selId;
-    const cont=sel?`<div class="muted" style="margin-top:6px">${inscritos.length} inscrito(s) · ${inscritos.filter(i=>i.checkin).length} presente(s)</div>`:'';
+    const pg=inscritos.filter(i=>i.pago).length;
+    const cont=sel?`<div class="muted" style="margin-top:6px">${inscritos.length} inscrito(s)${cobra(e)?` · ${pg} pago(s)`:''} · ${inscritos.filter(i=>i.checkin).length} presente(s)</div>`:'';
     return `<div class="card ev" style="${sel?'border-color:var(--pri);border-width:2px':''}">
+      ${e.imagem?`<img class="evimg" src="${e.imagem}" alt="">`:''}
       <div style="display:flex;gap:8px;align-items:flex-start">
         <div style="flex:1"><h3>${esc(e.titulo)}</h3>
           <div class="muted">${esc(fmtData(e))}${e.local?' · '+esc(e.local):''}</div></div>
-        <span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>
+        <div class="tags"><span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>
+        ${cobra(e)?`<span class="tag neu">Pix ${esc(moeda(e.pix.valor))}</span>`:''}</div>
       </div>${cont}
       <div class="row" style="margin-top:10px">
         ${sel?'':`<button class="btn sm" onclick="selecionarEvento('${e.id}')">Selecionar</button>`}
         <button class="btn sm" onclick="mostrarLink('${e.id}')">🔗 Link / QR</button>
-        <button class="btn sm" onclick="abrirEvento('${e.id}')">Editar</button>
+        <button class="btn sm donoOnly" onclick="abrirEvento('${e.id}')">Editar</button>
       </div></div>`;}).join('');
 }
 
+let imgTemp,camposTemp=[];
+const TIPOS={texto:'Texto curto',textolongo:'Texto longo',numero:'Número',data:'Data',opcoes:'Lista de opções',simnao:'Sim / Não'};
+// Campos personalizados do evento (converte o "campo extra" antigo, se houver)
+function camposDoEvento(e){
+  if(!e)return[];
+  if(Array.isArray(e.camposExtras))return e.camposExtras;
+  if(e.campos&&e.campos.extra&&e.extraLabel)return[{id:'extra',label:e.extraLabel,tipo:'texto',obrigatorio:true,opcoes:[]}];
+  return[];
+}
+function respostaDe(i,f){const r=(i.respostas||{})[f.id];if(r!==undefined&&r!=='')return r;return f.id==='extra'?(i.extra||''):'';}
+function fmtResposta(v,f){if(v===''||v==null)return '';if(f.tipo==='data'&&/^\d{4}-\d{2}-\d{2}$/.test(v)){const[a,m,d]=v.split('-');return `${d}/${m}/${a}`;}return String(v);}
+function renderCamposEditor(){
+  const el=$('camposEditor');if(!el)return;
+  el.innerHTML=!camposTemp.length?'<div class="muted" style="padding:6px 0">Nenhum campo personalizado.</div>':camposTemp.map((f,k)=>`
+    <div class="card" style="padding:10px;margin:8px 0;background:var(--bg)">
+      <div class="row" style="align-items:center">
+        <input style="flex:3;min-width:140px" placeholder="Nome do campo (ex.: Setor, Tamanho da camiseta)" maxlength="60" value="${esc(f.label)}" oninput="camposTemp[${k}].label=this.value">
+        <select class="f" style="flex:2;min-width:120px" onchange="camposTemp[${k}].tipo=this.value;renderCamposEditor()">
+          ${Object.entries(TIPOS).map(([v,t])=>`<option value="${v}" ${f.tipo===v?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      ${f.tipo==='opcoes'?`<textarea style="margin-top:8px;min-height:60px" placeholder="Uma opção por linha (ex.: P, M, G)" oninput="camposTemp[${k}].opcoes=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)">${esc((f.opcoes||[]).join('\n'))}</textarea>`:''}
+      <div class="row" style="align-items:center;margin-top:4px">
+        <label class="chk" style="flex:1"><input type="checkbox" ${f.obrigatorio?'checked':''} onchange="camposTemp[${k}].obrigatorio=this.checked"> Obrigatório</label>
+        <button class="btn sm" style="flex:0" ${k===0?'disabled':''} onclick="moverCampo(${k},-1)">▲</button>
+        <button class="btn sm" style="flex:0" ${k===camposTemp.length-1?'disabled':''} onclick="moverCampo(${k},1)">▼</button>
+        <button class="btn sm bad" style="flex:0" onclick="removerCampo(${k})">Remover</button>
+      </div>
+    </div>`).join('');
+}
+function addCampo(){camposTemp.push({id:'c'+Math.random().toString(36).slice(2,8),label:'',tipo:'texto',obrigatorio:true,opcoes:[]});renderCamposEditor();const ins=$('camposEditor').querySelectorAll('input[placeholder^="Nome"]');ins[ins.length-1].focus();}
+function removerCampo(k){if(camposTemp[k].label&&!confirm(`Remover o campo "${camposTemp[k].label}"? As respostas já enviadas deixam de aparecer.`))return;camposTemp.splice(k,1);renderCamposEditor();}
+function moverCampo(k,d){const t=camposTemp[k];camposTemp[k]=camposTemp[k+d];camposTemp[k+d]=t;renderCamposEditor();}
 function abrirEvento(id){
   const e=id?eventos.find(x=>x.id===id):{titulo:'',data:'',hora:'',local:'',descricao:'',aberto:true,campos:{cpf:true,telefone:true,email:false,extra:false},extraLabel:''};
-  const c=e.campos||{};
+  const c=e.campos||{},p=e.pix||{ativo:false,valor:0,tipo:'cpf',chave:'',nome:'',cidade:'',whats:''};
+  imgTemp=undefined;
+  camposTemp=camposDoEvento(e).map(f=>({...f,opcoes:[...(f.opcoes||[])]}));
+  setTimeout(renderCamposEditor,0);
   abrirModal(`<h2>${id?'Editar evento':'Novo evento'}</h2>
     <label>Nome do evento *</label><input id="evTitulo" value="${esc(e.titulo)}" maxlength="100">
     <div class="row"><div style="flex:1"><label>Data</label><input id="evData" type="date" value="${esc(e.data)}"></div>
     <div style="flex:1"><label>Horário</label><input id="evHora" type="time" value="${esc(e.hora)}"></div></div>
     <label>Local</label><input id="evLocal" value="${esc(e.local)}" maxlength="120">
     <label>Descrição / informações</label><textarea id="evDesc" maxlength="1000">${esc(e.descricao)}</textarea>
-    <label>Dados pedidos na inscrição (o nome é sempre pedido)</label>
+
+    <div class="secao">Imagem do evento</div>
+    <div class="muted">Aparece no formulário, no voucher e aqui no controle. Ela é reduzida automaticamente.</div>
+    <img id="evImgPrev" class="imgprev ${e.imagem?'':'hidden'}" src="${e.imagem||''}" alt="">
+    <div class="row" style="margin-top:6px">
+      <label class="btn file" style="margin:0;color:var(--text)">🖼 ${e.imagem?'Trocar imagem':'Escolher imagem'}<input type="file" accept="image/*" onchange="escolherImagem(this)"></label>
+      <button class="btn bad ${e.imagem?'':'hidden'}" id="evImgRem" onclick="removerImagem()">Remover</button>
+    </div>
+
+    <div class="secao">Dados pedidos na inscrição</div>
+    <div class="muted">O nome é sempre pedido.</div>
     <label class="chk"><input type="checkbox" id="cCpf" ${c.cpf?'checked':''}> CPF <span class="muted">(impede inscrição duplicada)</span></label>
     <label class="chk"><input type="checkbox" id="cTel" ${c.telefone?'checked':''}> Telefone / WhatsApp</label>
     <label class="chk"><input type="checkbox" id="cEmail" ${c.email?'checked':''}> E-mail</label>
-    <label class="chk"><input type="checkbox" id="cExtra" ${c.extra?'checked':''} onchange="$('evExtraBox').classList.toggle('hidden',!this.checked)"> Campo extra</label>
-    <div id="evExtraBox" class="${c.extra?'':'hidden'}"><input id="evExtra" placeholder="Nome do campo (ex.: Setor, Empresa, Tamanho da camiseta)" value="${esc(e.extraLabel)}" maxlength="40"></div>
-    <label class="chk" style="margin-top:8px"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
+    <div class="muted" style="margin-top:8px">Campos personalizados</div>
+    <div id="camposEditor"></div>
+    <button class="btn full" style="margin-top:6px" onclick="addCampo()">+ Adicionar campo</button>
+
+    <div class="secao">Pagamento via Pix</div>
+    <label class="chk"><input type="checkbox" id="pxAtivo" ${p.ativo?'checked':''} onchange="$('pxBox').classList.toggle('hidden',!this.checked)"> Cobrar inscrição via Pix</label>
+    <div id="pxBox" class="${p.ativo?'':'hidden'}">
+      <label>Valor (R$) *</label><input id="pxValor" inputmode="decimal" placeholder="25,00" value="${p.valor?esc(Number(p.valor).toFixed(2).replace('.',',')):''}">
+      <label>Tipo da chave *</label>
+      <select class="f" id="pxTipo">
+        <option value="cpf" ${p.tipo==='cpf'?'selected':''}>CPF / CNPJ</option>
+        <option value="tel" ${p.tipo==='tel'?'selected':''}>Celular</option>
+        <option value="email" ${p.tipo==='email'?'selected':''}>E-mail</option>
+        <option value="aleatoria" ${p.tipo==='aleatoria'?'selected':''}>Chave aleatória</option>
+      </select>
+      <label>Chave Pix *</label><input id="pxChave" value="${esc(p.chave)}" maxlength="77">
+      <label>Nome de quem recebe *</label><input id="pxNome" value="${esc(p.nome)}" maxlength="25" placeholder="Como aparece no banco">
+      <label>Cidade de quem recebe</label><input id="pxCidade" value="${esc(p.cidade)}" maxlength="15" placeholder="Ex.: Sao Paulo">
+      <label>WhatsApp para receber comprovantes</label><input id="pxWhats" inputmode="tel" value="${esc(p.whats)}" placeholder="(00) 00000-0000">
+      <div class="muted" style="margin-top:6px">O participante vê o QR code e o Pix copia e cola com o valor já preenchido. Você confirma o pagamento na lista de inscritos ou na hora da leitura do voucher.</div>
+    </div>
+
+    <div class="secao">Situação</div>
+    <label class="chk"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
     <div style="height:12px"></div>
-    <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" onclick="salvarEvento('${id||''}')">Salvar</button></div>
+    <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnSalvarEv" onclick="salvarEvento('${id||''}')">Salvar</button></div>
     ${id?`<div style="height:18px"></div><button class="btn bad full" onclick="excluirEvento('${id}')">Excluir evento e inscrições</button>`:''}`);
 }
+async function escolherImagem(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  try{
+    toast('Preparando imagem…');
+    imgTemp=await comprimirImagem(f);
+    $('evImgPrev').src=imgTemp;$('evImgPrev').classList.remove('hidden');$('evImgRem').classList.remove('hidden');
+  }catch(e){toast(e.message);}
+  inp.value='';
+}
+function removerImagem(){imgTemp='';$('evImgPrev').classList.add('hidden');$('evImgPrev').src='';$('evImgRem').classList.add('hidden');}
 async function salvarEvento(id){
   const titulo=$('evTitulo').value.trim();if(!titulo)return toast('Informe o nome do evento');
-  const extra=$('cExtra').checked&&$('evExtra').value.trim()!=='';
+  const camposExtras=camposTemp.map(f=>({id:f.id,label:f.label.trim(),tipo:f.tipo,obrigatorio:!!f.obrigatorio,opcoes:f.tipo==='opcoes'?(f.opcoes||[]).slice(0,50):[]}));
+  if(camposExtras.some(f=>!f.label))return toast('Dê um nome para todos os campos personalizados');
+  if(camposExtras.some(f=>f.tipo==='opcoes'&&f.opcoes.length<2))return toast('Listas de opções precisam de pelo menos 2 opções');
+  if(camposExtras.length>20)return toast('Máximo de 20 campos personalizados');
+  const extra=false;
+  const pix={ativo:$('pxAtivo').checked,valor:lerValor($('pxValor').value),tipo:$('pxTipo').value,chave:$('pxChave').value.trim(),
+    nome:$('pxNome').value.trim(),cidade:$('pxCidade').value.trim(),whats:$('pxWhats').value.trim()};
+  if(pix.ativo){
+    if(!(pix.valor>0))return toast('Informe o valor da inscrição');
+    if(!pix.chave)return toast('Informe a chave Pix');
+    if(!pix.nome)return toast('Informe o nome de quem recebe');
+    if(pix.tipo==='email'&&!pix.chave.includes('@'))return toast('Chave de e-mail inválida');
+    if(pix.tipo==='cpf'&&![11,14].includes(pix.chave.replace(/\D/g,'').length))return toast('CPF/CNPJ da chave incompleto');
+    if(pix.tipo==='tel'&&pix.chave.replace(/\D/g,'').length<10)return toast('Celular da chave incompleto');
+  }
   const d={titulo,data:$('evData').value,hora:$('evHora').value,local:$('evLocal').value.trim(),descricao:$('evDesc').value.trim(),
     aberto:$('evAberto').checked,campos:{cpf:$('cCpf').checked,telefone:$('cTel').checked,email:$('cEmail').checked,extra},
-    extraLabel:extra?$('evExtra').value.trim():'',atualizadoEm:TS()};
+    extraLabel:'',camposExtras,pix,atualizadoEm:TS()};
+  if(imgTemp!==undefined)d.imagem=imgTemp;
+  $('btnSalvarEv').disabled=true;
   try{
     if(id)await db.collection('eventos').doc(id).update(d);
     else{d.criadoEm=TS();const r=await db.collection('eventos').add(d);selecionarEvento(r.id);}
     fecharModal();toast('Evento salvo');
-  }catch(e){toast('Erro: '+e.message);}
+  }catch(e){toast('Erro: '+e.message);$('btnSalvarEv').disabled=false;}
 }
 async function excluirEvento(id){
   const e=eventos.find(x=>x.id===id);
@@ -434,6 +603,8 @@ async function consultar(id){
       mostrarResultado({tipo:'warn',titulo:'Voucher de outro evento',msg:'Este voucher é do evento <b>'+esc(ev?ev.titulo:'(excluído)')+'</b>.',insc:i});return;
     }
     if(i.checkin){mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Entrada registrada em '+esc(fmtTs(i.checkinEm))+'.',insc:i});return;}
+    const ev=eventoSel();
+    if(cobra(ev)&&!i.pago){mostrarResultado({tipo:'warn',titulo:'Pagamento pendente',msg:'Inscrição válida, mas o Pix de <b>'+esc(moeda(ev.pix.valor))+'</b> ainda não foi confirmado.',insc:i,botaoPagar:true});return;}
     if($('autoCheck').checked){await fazerCheckin(i.id,true);return;}
     mostrarResultado({tipo:'ok',titulo:'Inscrição válida',insc:i,botaoCheck:true});
   }catch(e){mostrarResultado({tipo:'bad',titulo:'Erro na consulta',msg:esc(e.message)});}
@@ -444,7 +615,8 @@ function dadosHTML(i){
     ${i.cpf?`<div class="kv"><span>CPF:</span> ${esc(fmtCPF(i.cpf))}</div>`:''}
     ${i.telefone?`<div class="kv"><span>Telefone:</span> ${esc(i.telefone)}</div>`:''}
     ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
-    ${i.extra?`<div class="kv"><span>${esc(ev.extraLabel||'Extra')}:</span> ${esc(i.extra)}</div>`:''}
+    ${camposDoEvento(ev).map(f=>{const v=fmtResposta(respostaDe(i,f),f);return v?`<div class="kv"><span>${esc(f.label)}:</span> ${esc(v)}</div>`:'';}).join('')}
+    ${cobra(ev)?`<div class="kv"><span>Pagamento:</span> ${i.pago?'<b style="color:var(--ok)">Pago</b>'+(i.pagoEm?' em '+esc(fmtTs(i.pagoEm)):''):'<b style="color:var(--warn)">Pendente</b> ('+esc(moeda(ev.pix.valor))+')'}</div>`:''}
     <div class="kv"><span>Código:</span> ${esc(i.codigo)} · <span>Inscrito em:</span> ${esc(fmtTs(i.criadoEm))}</div>`;
 }
 function mostrarResultado(o){
@@ -453,16 +625,21 @@ function mostrarResultado(o){
     ${o.msg?`<div>${o.msg}</div>`:''}${o.insc?dadosHTML(o.insc):''}
     <div style="height:12px"></div>
     ${o.botaoCheck?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}')">Confirmar entrada</button><div style="height:8px"></div>`:''}
+    ${o.botaoPagar?(podePagar()?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento — confirmar entrada</button><div style="height:8px"></div>`:'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
+      <button class="btn full" onclick="fazerCheckin('${o.insc.id}')">Liberar entrada sem pagamento</button><div style="height:8px"></div>`:''}
     <button class="btn full" onclick="retomar()">${escaneando?'Ler próximo':'Fechar'}</button></div>`;
   $('resultado').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-async function fazerCheckin(id,auto){
+async function fazerCheckin(id,auto,pagar){
   try{
+    const ev=eventoSel();
     await db.runTransaction(async t=>{
       const r=db.collection('inscricoes').doc(id),s=await t.get(r);
       if(!s.exists)throw new Error('NAOEXISTE');
       if(s.data().checkin)throw new Error('JA');
-      t.update(r,{checkin:true,checkinEm:TS()});
+      const up={checkin:true,checkinEm:TS(),checkinPor:usuario()};
+      if(pagar&&!s.data().pago)Object.assign(up,{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:cobra(ev)?ev.pix.valor:0});
+      t.update(r,up);
     });
     const i=(await db.collection('inscricoes').doc(id).get()).data();
     mostrarResultado({tipo:'ok',titulo:'Entrada confirmada',insc:{id,...i}});
@@ -475,30 +652,53 @@ async function fazerCheckin(id,auto){
 
 /* ================== Inscritos ================== */
 function renderInscritos(){
-  const tot=inscritos.length,pres=inscritos.filter(i=>i.checkin).length;
+  const ev=eventoSel(),px=cobra(ev);
+  document.querySelectorAll('.pixOnly').forEach(el=>el.classList.toggle('hidden',!px));
+  if(!px&&filtro==='pend'){filtro='todos';document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x.dataset.f==='todos'));}
+  const tot=inscritos.length,pres=inscritos.filter(i=>i.checkin).length,pagos=inscritos.filter(i=>i.pago);
   $('stTotal').textContent=tot;$('stPres').textContent=pres;$('stAus').textContent=tot-pres;
+  $('stPagos').textContent=pagos.length;
+  $('stValor').textContent=moeda(pagos.reduce((s,i)=>s+Number(i.valorPago!=null?i.valorPago:(px?ev.pix.valor:0)),0));
   const q=$('busca').value.trim().toLowerCase(),qd=q.replace(/\D/g,'');
-  let l=inscritos.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:!i.checkin));
+  let l=inscritos.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:filtro==='pend'?!i.pago:!i.checkin));
   if(q)l=l.filter(i=>(i.nome||'').toLowerCase().includes(q)||(i.codigo||'').toLowerCase()===q||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
   $('listaInscritos').innerHTML=!selId?'<div class="empty">Selecione um evento.</div>':!l.length?'<div class="empty">Nenhuma inscrição'+(q||filtro!=='todos'?' encontrada':' ainda')+'.</div>':
     l.map(i=>`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}</span></div>
-      <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div>`).join('');
+      <div class="tags">${px?`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`:''}
+      <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div></div>`).join('');
 }
 function detalhe(id){
   const i=inscritos.find(x=>x.id===id);if(!i)return;
+  const px=cobra(eventoSel());
   abrirModal(`<h2>Inscrição</h2>${dadosHTML(i)}
-    <div class="kv" style="margin-top:6px"><span>Situação:</span> ${i.checkin?'<b style="color:var(--ok)">Presente</b> — '+esc(fmtTs(i.checkinEm)):'Aguardando entrada'}</div>
+    <div class="kv" style="margin-top:6px"><span>Situação:</span> ${i.checkin?'<b style="color:var(--ok)">Presente</b> — '+esc(fmtTs(i.checkinEm))+(i.checkinPor?' <span>por '+esc(i.checkinPor)+'</span>':''):'Aguardando entrada'}</div>
+    ${i.pago&&i.pagoPor?`<div class="kv"><span>Pagamento confirmado por ${esc(i.pagoPor)}</span></div>`:''}
     <div style="height:14px"></div>
-    ${i.checkin?`<button class="btn full" onclick="desfazerCheckin('${id}')">Desfazer entrada</button>`:`<button class="btn ok full" onclick="fecharModal();fazerCheckinLista('${id}')">Confirmar entrada</button>`}
+    ${px?(i.pago?`<button class="btn full donoOnly" onclick="marcarPago('${id}',false)">Desfazer pagamento</button><div class="donoOnly" style="height:8px"></div>`:(podePagar()?`<button class="btn ok full" onclick="marcarPago('${id}',true)">💲 Confirmar pagamento</button><div style="height:8px"></div>`:'')):''}
+    ${i.checkin?`<button class="btn full" onclick="desfazerCheckin('${id}')">Desfazer entrada</button>`:`<button class="btn ${px?'':'ok'} full" onclick="fecharModal();fazerCheckinLista('${id}')">Confirmar entrada</button>`}
     <div style="height:8px"></div>
     <div class="row"><button class="btn" onclick="window.open('${linkVoucher(id)}','_blank')">Ver voucher</button>
     <button class="btn" onclick="copiar('${linkVoucher(id)}')">Copiar link do voucher</button></div>
+    ${i.telefone?`<div style="height:8px"></div><button class="btn full" onclick="whatsInscrito('${id}')">💬 Mandar mensagem no WhatsApp</button>`:''}
     <div style="height:8px"></div>
-    <button class="btn bad full" onclick="excluirInscricao('${id}')">Excluir inscrição</button>
+    <button class="btn bad full donoOnly" onclick="excluirInscricao('${id}')">Excluir inscrição</button>
     <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
 }
-async function fazerCheckinLista(id){try{await db.collection('inscricoes').doc(id).update({checkin:true,checkinEm:TS()});toast('Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
-async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await db.collection('inscricoes').doc(id).update({checkin:false,checkinEm:null});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
+async function marcarPago(id,sim){
+  if(!sim&&!confirm('Desfazer a confirmação de pagamento?'))return;
+  const ev=eventoSel();
+  try{
+    await db.collection('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),valorPago:cobra(ev)?ev.pix.valor:0}:{pago:false,pagoEm:null,pagoPor:null,valorPago:null});
+    fecharModal();toast(sim?'Pagamento confirmado':'Pagamento desfeito');
+  }catch(e){toast('Erro: '+e.message);}
+}
+function whatsInscrito(id){
+  const i=inscritos.find(x=>x.id===id),ev=eventoSel();let d=(i.telefone||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
+  const msg=`Olá, ${i.nome.split(' ')[0]}! Sobre sua inscrição em "${ev.titulo}" (código ${i.codigo}).\nSeu voucher: ${linkVoucher(id)}`;
+  window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
+}
+async function fazerCheckinLista(id){try{await db.collection('inscricoes').doc(id).update({checkin:true,checkinEm:TS(),checkinPor:usuario()});toast('Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
+async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await db.collection('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinPor:null});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
 async function excluirInscricao(id){
   const i=inscritos.find(x=>x.id===id);if(!confirm(`Excluir a inscrição de ${i.nome}?`))return;
   try{const b=db.batch();b.delete(db.collection('inscricoes').doc(id));if(i.cpf)b.delete(db.collection('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();fecharModal();toast('Inscrição excluída');}
@@ -506,14 +706,91 @@ async function excluirInscricao(id){
 }
 function exportarCSV(){
   const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
-  const c=ev.campos||{};
-  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');if(c.extra)cab.push(ev.extraLabel||'Extra');cab.push('Inscrito em','Presente','Entrada em');
+  const c=ev.campos||{},px=cobra(ev),cx=camposDoEvento(ev);
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Inscrito em');if(px)cab.push('Pago','Pago em','Valor pago');cab.push('Presente','Entrada em');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
-  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);if(c.extra)r.push(i.extra);r.push(fmtTs(i.criadoEm),i.checkin?'Sim':'Não',fmtTs(i.checkinEm));return r.map(q).join(';');});
+  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));r.push(fmtTs(i.criadoEm));
+    if(px)r.push(i.pago?'Sim':'Não',fmtTs(i.pagoEm),i.pago?Number(i.valorPago!=null?i.valorPago:ev.pix.valor).toFixed(2).replace('.',','):'');
+    r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinEm));return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inscritos-'+ev.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.csv';a.click();
 }
 function abrirLinkPublico(){if(!selId)return toast('Selecione um evento');window.open(linkInscricao(selId),'_blank');}
+
+/* ================== Equipe (usuários de check-in) ================== */
+function assinarEquipe(){
+  if(unsubQ)return;
+  unsubQ=db.collection('equipe').onSnapshot(s=>{
+    equipe=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+    renderEquipe();
+  },err=>{
+    if(err.code==='permission-denied'){alert('Esta conta não tem permissão de administrador nem está cadastrada na Equipe.');auth.signOut();}
+    else toast('Erro ao carregar equipe: '+err.message);
+  });
+}
+function renderEquipe(){
+  $('listaEquipe').innerHTML=!equipe.length?'<div class="empty">Nenhum usuário cadastrado.<br>Toque em <b>+ Cadastrar usuário</b>.</div>':
+    equipe.map(m=>`<div class="item" onclick="detalheMembro('${esc(m.id)}')"><div class="nm"><b>${esc(m.nome||m.email)}</b><span class="muted">${esc(m.email)}</span></div>
+      <div class="tags"><span class="tag ${m.ativo?'ok':'bad'}">${m.ativo?'Ativo':'Desativado'}</span>${m.podePagar?'<span class="tag neu">Confirma Pix</span>':''}</div></div>`).join('');
+}
+function formMembro(){
+  abrirModal(`<h2>Cadastrar usuário de check-in</h2>
+    <label>Nome *</label><input id="mbNome" maxlength="60">
+    <label>E-mail *</label><input id="mbEmail" type="email" autocomplete="off" maxlength="120">
+    <label>Senha inicial * <span class="muted">(mínimo 6 caracteres)</span></label><input id="mbSenha" type="text" autocomplete="off" maxlength="40">
+    <label class="chk" style="margin-top:8px"><input type="checkbox" id="mbPagar"> Pode confirmar pagamentos (Pix)</label>
+    <div class="muted" style="margin-top:6px">A pessoa entra neste mesmo app com esse e-mail e senha. Ela vê só as abas Eventos, Leitor e Inscritos, sem poder criar ou editar eventos nem excluir inscrições.</div>
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnMb" onclick="salvarMembro()">Cadastrar</button></div>`);
+}
+async function salvarMembro(){
+  const nome=$('mbNome').value.trim(),email=$('mbEmail').value.trim().toLowerCase(),senha=$('mbSenha').value,podePagar=$('mbPagar').checked;
+  if(!nome)return toast('Informe o nome');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return toast('E-mail inválido');
+  if(email===usuario())return toast('Esse é o seu próprio e-mail de administrador');
+  if(senha.length<6)return toast('A senha precisa ter pelo menos 6 caracteres');
+  $('btnMb').disabled=true;$('btnMb').textContent='Cadastrando…';
+  let jaExistia=false;
+  try{
+    // Usa uma segunda conexão para criar a conta sem desconectar você
+    const app2=firebase.apps.find(a=>a.name==='cadastro')||firebase.initializeApp(firebaseConfig,'cadastro');
+    const a2=app2.auth();
+    await a2.setPersistence(firebase.auth.Auth.Persistence.NONE);
+    try{await a2.createUserWithEmailAndPassword(email,senha);}
+    catch(e){if(e.code==='auth/email-already-in-use')jaExistia=true;else throw e;}
+    await a2.signOut().catch(()=>{});
+    await db.collection('equipe').doc(email).set({nome,email,podePagar,ativo:true,criadoEm:TS()});
+    fecharModal();
+    if(jaExistia)alert('Usuário adicionado à equipe.\n\nEste e-mail já tinha uma conta, então a senha informada NÃO foi aplicada. A pessoa entra com a senha que já usa, ou toca em "Esqueci a senha" na tela de login.');
+    else alert(`Usuário cadastrado!\n\nEnvie para ${nome}:\n• Link: ${location.href.split(/[?#]/)[0]}\n• E-mail: ${email}\n• Senha: ${senha}`);
+  }catch(e){
+    toast('Erro: '+({'auth/weak-password':'senha fraca','auth/invalid-email':'e-mail inválido','auth/operation-not-allowed':'ative o login por E-mail/senha no Firebase'}[e.code]||e.message));
+    $('btnMb').disabled=false;$('btnMb').textContent='Cadastrar';
+  }
+}
+function detalheMembro(id){
+  const m=equipe.find(x=>x.id===id);if(!m)return;
+  abrirModal(`<h2>${esc(m.nome||m.email)}</h2>
+    <div class="kv"><span>E-mail:</span> ${esc(m.email)}</div>
+    <div class="kv"><span>Cadastrado em:</span> ${esc(fmtTs(m.criadoEm))}</div>
+    <label class="chk" style="margin-top:10px"><input type="checkbox" ${m.ativo?'checked':''} onchange="atualizarMembro('${esc(id)}',{ativo:this.checked})"> Acesso ativo</label>
+    <label class="chk"><input type="checkbox" ${m.podePagar?'checked':''} onchange="atualizarMembro('${esc(id)}',{podePagar:this.checked})"> Pode confirmar pagamentos (Pix)</label>
+    <div style="height:12px"></div>
+    <button class="btn full" onclick="resetSenha('${esc(m.email)}')">📧 Enviar e-mail para redefinir a senha</button>
+    <div style="height:8px"></div>
+    <button class="btn full" onclick="enviarAcesso('${esc(id)}')">💬 Enviar link do app pelo WhatsApp</button>
+    <div style="height:8px"></div>
+    <button class="btn bad full" onclick="removerMembro('${esc(id)}')">Remover da equipe</button>
+    <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+}
+async function atualizarMembro(id,dados){try{await db.collection('equipe').doc(id).update(dados);toast('Atualizado');}catch(e){toast('Erro: '+e.message);}}
+async function resetSenha(email){try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado');}catch(e){toast('Erro: '+e.message);}}
+function enviarAcesso(id){const m=equipe.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(`Olá, ${m.nome}! Acesse o controle de check-in:\n${location.href.split(/[?#]/)[0]}\nEntre com o e-mail ${m.email}.`),'_blank');}
+async function removerMembro(id){
+  const m=equipe.find(x=>x.id===id);
+  if(!confirm(`Remover ${m.nome||m.email} da equipe? A pessoa perde o acesso na hora.`))return;
+  try{await db.collection('equipe').doc(id).delete();fecharModal();toast('Removido da equipe');}catch(e){toast('Erro: '+e.message);}
+}
 </script>
 </body>
 </html>
