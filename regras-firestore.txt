@@ -17,6 +17,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/equipe/$(request.auth.token.email))
         && membroDoc().ativo == true;
     }
+    // Evento liberado para o membro (sem a opção = todos os eventos, compatível com cadastros antigos)
+    function membroNoEvento(eventoId) {
+      return isMembro()
+        && (membroDoc().get('todosEventos', true) == true
+            || eventoId in membroDoc().get('eventos', []));
+    }
     function membroPodePagar() {
       return isMembro() && membroDoc().podePagar == true;
     }
@@ -48,14 +54,14 @@ service cloud.firestore {
     match /inscricoes/{id} {
       // Abrir um voucher pelo link (precisa do ID exato); listar só dono e equipe
       allow get: if true;
-      allow list: if isAdmin() || isMembro();
+      allow list: if isAdmin() || membroNoEvento(resource.data.eventoId);
       allow delete: if isAdmin();
 
       allow update: if isAdmin()
         // equipe: só registra/desfaz entrada
-        || (isMembro() && alterou().hasOnly(['checkin','checkinEm','checkinPor']))
+        || (membroNoEvento(resource.data.eventoId) && alterou().hasOnly(['checkin','checkinEm','checkinPor']))
         // equipe com permissão de pagamento: também confirma o Pix
-        || (membroPodePagar() && alterou().hasOnly(['checkin','checkinEm','checkinPor','pago','pagoEm','pagoPor','valorPago']));
+        || (membroPodePagar() && membroNoEvento(resource.data.eventoId) && alterou().hasOnly(['checkin','checkinEm','checkinPor','pago','pagoEm','pagoPor','valorPago']));
 
       allow create: if isAdmin() || (
         request.resource.data.keys().hasOnly(['eventoId','codigo','nome','cpf','telefone','email','extra','respostas','grupo','grupoIds','crianca','nascimento','isento','meia','meiaMotivo','checkin','checkinEm','pago','pagoEm','criadoEm'])

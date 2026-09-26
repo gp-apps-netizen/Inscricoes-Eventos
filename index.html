@@ -298,10 +298,18 @@ function sair(){pararScan();auth.signOut();}
 
 /* ================== Estado ================== */
 let eventos=[],selId=localStorage.getItem('insc_sel')||'',inscritos=[],unsubE=null,unsubI=null,unsubQ=null,subId=null,filtro='todos';
-let papel=null,perm={},equipe=[];
+let papel=null,perm={},equipe=[],eventosTodos=[],unsubM=null;
 const usuario=()=>(auth.currentUser&&auth.currentUser.email||'').toLowerCase();
 const ehDono=()=>papel==='dono';
 const podePagar=()=>papel==='dono'||!!perm.podePagar;
+// Equipe: todosEventos === false => só os eventos da lista perm.eventos
+const restrito=()=>papel==='equipe'&&perm.todosEventos===false;
+function liberado(eid){return !restrito()||(perm.eventos||[]).includes(eid);}
+function aplicarEventos(){
+  eventos=eventosTodos.filter(e=>liberado(e.id));
+  if(!eventos.find(e=>e.id===selId))selId=eventos[0]?eventos[0].id:'';
+  renderSelect();renderEventos();assinarInscritos();renderInscritos();
+}
 
 async function detectarPapel(){
   try{
@@ -325,21 +333,27 @@ async function iniciar(){
   papel='carregando';
   if(!(await detectarPapel()))return;
   if(ehDono())assinarEquipe();
+  else{
+    // Acompanha o próprio cadastro: mudanças de eventos/permissões valem na hora
+    unsubM=db.collection('equipe').doc(usuario()).onSnapshot(d=>{
+      if(!d.exists||!d.data().ativo){alert('Seu acesso ao controle de inscrições foi removido ou desativado.');auth.signOut();return;}
+      perm=d.data();aplicarEventos();
+    },()=>{});
+  }
   unsubE=db.collection('eventos').orderBy('criadoEm','desc').onSnapshot(s=>{
-    eventos=s.docs.map(d=>({id:d.id,...d.data()}));
-    if(!eventos.find(e=>e.id===selId))selId=eventos[0]?eventos[0].id:'';
-    renderSelect();renderEventos();assinarInscritos();renderInscritos();
+    eventosTodos=s.docs.map(d=>({id:d.id,...d.data()}));
+    aplicarEventos();
   },err=>{
     if(err.code==='permission-denied'){alert('Esta conta não tem permissão de administrador. Confira o e-mail nas regras do Firestore.');auth.signOut();}
     else toast('Erro: '+err.message);
   });
 }
-function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}subId=null;eventos=[];inscritos=[];equipe=[];papel=null;perm={};document.body.classList.remove('isEquipe');}
+function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};document.body.classList.remove('isEquipe');}
 function eventoSel(){return eventos.find(e=>e.id===selId);}
 
 function renderSelect(){
   const s=$('selEvento');
-  s.innerHTML=eventos.length?eventos.map(e=>`<option value="${e.id}" ${e.id===selId?'selected':''}>${esc(e.titulo)}${e.data?' — '+esc(fmtData({data:e.data})):''}</option>`).join(''):'<option value="">Nenhum evento cadastrado</option>';
+  s.innerHTML=eventos.length?eventos.map(e=>`<option value="${e.id}" ${e.id===selId?'selected':''}>${esc(e.titulo)}${e.data?' — '+esc(fmtData({data:e.data})):''}</option>`).join(''):'<option value="">'+(restrito()?'Nenhum evento liberado para você':'Nenhum evento cadastrado')+'</option>';
   const ev=eventoSel();$('leitorEvento').textContent=ev?ev.titulo:'—';
 }
 function selecionarEvento(id){selId=id;localStorage.setItem('insc_sel',id);renderSelect();renderEventos();assinarInscritos();$('resultado').innerHTML='';}
@@ -648,6 +662,7 @@ async function consultar(id){
     const i={id:d.id,...d.data()};
     if(i.eventoId!==selId){
       const ev=eventos.find(e=>e.id===i.eventoId);
+      if(!ev&&restrito()){mostrarResultado({tipo:'warn',titulo:'Voucher de outro evento',msg:'Este voucher não é do evento selecionado nem de um evento liberado para você.'});return;}
       mostrarResultado({tipo:'warn',titulo:'Voucher de outro evento',msg:'Este voucher é do evento <b>'+esc(ev?ev.titulo:'(excluído)')+'</b>.',insc:i});return;
     }
     if(i.checkin){mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Entrada registrada em '+esc(fmtTs(i.checkinEm))+'.',insc:i});return;}
@@ -786,7 +801,7 @@ function assinarEquipe(){
 function renderEquipe(){
   $('listaEquipe').innerHTML=!equipe.length?'<div class="empty">Nenhum usuário cadastrado.<br>Toque em <b>+ Cadastrar usuário</b>.</div>':
     equipe.map(m=>`<div class="item" onclick="detalheMembro('${esc(m.id)}')"><div class="nm"><b>${esc(m.nome||m.email)}</b><span class="muted">${esc(m.email)}</span></div>
-      <div class="tags"><span class="tag ${m.ativo?'ok':'bad'}">${m.ativo?'Ativo':'Desativado'}</span>${m.podePagar?'<span class="tag neu">Confirma Pix</span>':''}</div></div>`).join('');
+      <div class="tags"><span class="tag ${m.ativo?'ok':'bad'}">${m.ativo?'Ativo':'Desativado'}</span>${m.podePagar?'<span class="tag neu">Confirma Pix</span>':''}<span class="tag neu">${m.todosEventos===false?((m.eventos||[]).length+' evento'+((m.eventos||[]).length===1?'':'s')):'Todos os eventos'}</span></div></div>`).join('');
 }
 function formMembro(){
   abrirModal(`<h2>Cadastrar usuário de check-in</h2>
@@ -794,12 +809,14 @@ function formMembro(){
     <label>E-mail *</label><input id="mbEmail" type="email" autocomplete="off" maxlength="120">
     <label>Senha inicial * <span class="muted">(mínimo 6 caracteres)</span></label><input id="mbSenha" type="text" autocomplete="off" maxlength="40">
     <label class="chk" style="margin-top:8px"><input type="checkbox" id="mbPagar"> Pode confirmar pagamentos (Pix)</label>
+    ${seletorEventos('mb',{todosEventos:false,eventos:selId?[selId]:[]})}
     <div class="muted" style="margin-top:6px">A pessoa entra neste mesmo app com esse e-mail e senha. Ela vê só as abas Eventos, Leitor e Inscritos, sem poder criar ou editar eventos nem excluir inscrições.</div>
     <div style="height:12px"></div>
     <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnMb" onclick="salvarMembro()">Cadastrar</button></div>`);
 }
 async function salvarMembro(){
-  const nome=$('mbNome').value.trim(),email=$('mbEmail').value.trim().toLowerCase(),senha=$('mbSenha').value,podePagar=$('mbPagar').checked;
+  const nome=$('mbNome').value.trim(),email=$('mbEmail').value.trim().toLowerCase(),senha=$('mbSenha').value,podePagar=$('mbPagar').checked,acesso=lerSeletor('mb');
+  if(!acesso.todosEventos&&!acesso.eventos.length)return toast('Escolha pelo menos um evento (ou marque Todos os eventos)');
   if(!nome)return toast('Informe o nome');
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return toast('E-mail inválido');
   if(email===usuario())return toast('Esse é o seu próprio e-mail de administrador');
@@ -814,7 +831,7 @@ async function salvarMembro(){
     try{await a2.createUserWithEmailAndPassword(email,senha);}
     catch(e){if(e.code==='auth/email-already-in-use')jaExistia=true;else throw e;}
     await a2.signOut().catch(()=>{});
-    await db.collection('equipe').doc(email).set({nome,email,podePagar,ativo:true,criadoEm:TS()});
+    await db.collection('equipe').doc(email).set({nome,email,podePagar,...acesso,ativo:true,criadoEm:TS()});
     fecharModal();
     if(jaExistia)alert('Usuário adicionado à equipe.\n\nEste e-mail já tinha uma conta, então a senha informada NÃO foi aplicada. A pessoa entra com a senha que já usa, ou toca em "Esqueci a senha" na tela de login.');
     else alert(`Usuário cadastrado!\n\nEnvie para ${nome}:\n• Link: ${location.href.split(/[?#]/)[0]}\n• E-mail: ${email}\n• Senha: ${senha}`);
@@ -830,6 +847,8 @@ function detalheMembro(id){
     <div class="kv"><span>Cadastrado em:</span> ${esc(fmtTs(m.criadoEm))}</div>
     <label class="chk" style="margin-top:10px"><input type="checkbox" ${m.ativo?'checked':''} onchange="atualizarMembro('${esc(id)}',{ativo:this.checked})"> Acesso ativo</label>
     <label class="chk"><input type="checkbox" ${m.podePagar?'checked':''} onchange="atualizarMembro('${esc(id)}',{podePagar:this.checked})"> Pode confirmar pagamentos (Pix)</label>
+    ${seletorEventos('dm',m)}
+    <button class="btn full" style="margin-top:6px" onclick="salvarAcesso('${esc(id)}')">Salvar eventos liberados</button>
     <div style="height:12px"></div>
     <button class="btn full" onclick="resetSenha('${esc(m.email)}')">📧 Enviar e-mail para redefinir a senha</button>
     <div style="height:8px"></div>
@@ -837,6 +856,23 @@ function detalheMembro(id){
     <div style="height:8px"></div>
     <button class="btn bad full" onclick="removerMembro('${esc(id)}')">Remover da equipe</button>
     <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+}
+function seletorEventos(px,m){
+  const todos=m.todosEventos!==false,sel=m.eventos||[];
+  return `<div class="secao" style="margin-top:14px">Eventos que pode controlar</div>
+    <label class="chk"><input type="checkbox" id="${px}Todos" ${todos?'checked':''} onchange="$('${px}Lista').classList.toggle('hidden',this.checked)"> <b>Todos os eventos</b> <span class="muted">(inclusive os que forem criados depois)</span></label>
+    <div id="${px}Lista" class="${todos?'hidden':''}">
+      ${eventos.length?eventos.map(e=>`<label class="chk"><input type="checkbox" class="${px}Ev" value="${e.id}" ${sel.includes(e.id)?'checked':''}> ${esc(e.titulo)}${e.data?' <span class="muted">'+esc(fmtData({data:e.data}))+'</span>':''}</label>`).join(''):'<div class="muted">Nenhum evento cadastrado ainda.</div>'}
+    </div>`;
+}
+function lerSeletor(px){
+  const todosEventos=$(px+'Todos').checked;
+  return{todosEventos,eventos:todosEventos?[]:[...document.querySelectorAll('.'+px+'Ev:checked')].map(c=>c.value)};
+}
+async function salvarAcesso(id){
+  const a=lerSeletor('dm');
+  if(!a.todosEventos&&!a.eventos.length)return toast('Escolha pelo menos um evento (ou marque Todos os eventos)');
+  await atualizarMembro(id,a);
 }
 async function atualizarMembro(id,dados){try{await db.collection('equipe').doc(id).update(dados);toast('Atualizado');}catch(e){toast('Erro: '+e.message);}}
 async function resetSenha(email){try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado');}catch(e){toast('Erro: '+e.message);}}

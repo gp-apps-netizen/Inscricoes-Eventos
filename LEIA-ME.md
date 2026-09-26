@@ -71,3 +71,9 @@ Para encerrar as inscrições de um evento: Editar → desmarque **Inscrições 
   No formulário, cada pessoa pode marcar "Pagar meia-entrada" e informar o motivo. O Pix soma inteiras + meias.
   No controle aparece a marca "Meia" e, na leitura, o aviso "MEIA-ENTRADA — conferir comprovante".
 - Publique de novo o `regras-firestore.txt`.
+
+## Novidades da v2.6
+- **Equipe por evento:** ao cadastrar ou editar um usuário de check-in, escolha "Todos os eventos" ou marque
+  só os eventos que ele pode controlar. Ele vê apenas esses eventos, e as regras do Firestore bloqueiam os demais.
+  Usuários cadastrados antes continuam com acesso a todos até você mudar.
+- Publique de novo o `regras-firestore.txt`.
