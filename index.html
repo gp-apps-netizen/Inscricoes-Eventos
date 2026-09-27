@@ -403,7 +403,7 @@ function renderEventos(){
       <div style="display:flex;gap:8px;align-items:flex-start">
         <div style="flex:1"><h3>${esc(e.titulo)}</h3>
           <div class="muted">${esc(fmtData(e))}${e.local?' · '+esc(e.local):''}</div></div>
-        <div class="tags"><span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>
+        <div class="tags"><span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>${termoAtivo(e)?'<span class="tag neu">Termo</span>':''}
         ${cobra(e)&&verValores()?`<span class="tag neu">Pix ${esc(moeda(e.pix.valor))}${e.pix.meia?' · meia '+esc(moeda(e.pix.valorMeia)):''}</span>`:''}</div>
       </div>${cont}
       <div class="row" style="margin-top:10px">
@@ -424,6 +424,9 @@ function camposDoEvento(e){
 }
 function respostaDe(i,f){const r=(i.respostas||{})[f.id];if(r!==undefined&&r!=='')return r;return f.id==='extra'?(i.extra||''):'';}
 const devePagar=i=>!i.pago&&!i.isento;
+const termoAtivo=e=>!!(e&&e.termo&&e.termo.ativo);
+const MODELO_TERMO="Eu, participante inscrito(a) no evento \"{evento}\", declaro que:\n\n1. Estou em boas condições de saúde e apto(a) a participar das atividades do evento.\n2. Participo por livre e espontânea vontade e assumo a responsabilidade pela minha segurança e por danos que eu venha a causar.\n3. Seguirei as orientações da organização, da equipe de apoio e as regras do evento.\n4. Isento a organização de responsabilidade por perda, furto ou dano de objetos pessoais.\n5. Autorizo o uso gratuito da minha imagem em fotos e vídeos do evento para fins de divulgação.\n6. Quando a inscrição incluir menores de idade, eu, como responsável legal, assumo estas declarações em nome deles.\n7. Estou ciente de que meus dados serão usados apenas para a organização e o controle de entrada deste evento.";
+function usarModeloTermo(){if($('trTexto').value.trim()&&!confirm('Substituir o texto atual pelo modelo?'))return;$('trTexto').value=MODELO_TERMO;}
 function valorDe(i,ev){ev=ev||eventos.find(e=>e.id===i.eventoId);if(!cobra(ev)||i.isento)return 0;return i.meia&&ev.pix.meia?Number(ev.pix.valorMeia||0):Number(ev.pix.valor);}
 const somaValor=(l,ev)=>l.reduce((s,x)=>s+valorDe(x,ev),0);
 function idadeTxt(i){if(!i.nascimento)return '';const ev=eventos.find(e=>e.id===i.eventoId)||{};const ref=ev.data?new Date(ev.data+'T12:00:00'):new Date(),n=new Date(i.nascimento+'T12:00:00');let a=ref.getFullYear()-n.getFullYear();if(ref.getMonth()<n.getMonth()||(ref.getMonth()===n.getMonth()&&ref.getDate()<n.getDate()))a--;const[y,m,d]=i.nascimento.split('-');return `${d}/${m}/${y} (${a} ${a===1?'ano':'anos'})`;}
@@ -525,6 +528,16 @@ function abrirEvento(id){
       <div class="muted" style="margin-top:6px">O participante vê o QR code e o Pix copia e cola com o valor já preenchido. Você confirma o pagamento na lista de inscritos ou na hora da leitura do voucher.</div>
     </div>
 
+    <div class="secao">Termo de responsabilidade</div>
+    <label class="chk"><input type="checkbox" id="trAtivo" ${e.termo&&e.termo.ativo?'checked':''} onchange="$('trBox').classList.toggle('hidden',!this.checked);if(this.checked&&!$('trTexto').value.trim())$('trTexto').value=MODELO_TERMO"> Exigir aceite de termo na inscrição</label>
+    <div id="trBox" class="${e.termo&&e.termo.ativo?'':'hidden'}">
+      <label>Título</label><input id="trTitulo" maxlength="80" value="${esc((e.termo&&e.termo.titulo)||'Termo de Responsabilidade')}">
+      <label>Texto do termo *</label><textarea id="trTexto" maxlength="8000" style="min-height:240px">${esc((e.termo&&e.termo.texto)||'')}</textarea>
+      <div class="row" style="margin-top:6px;align-items:center"><button class="btn sm" style="flex:0 0 auto" onclick="usarModeloTermo()">Usar texto modelo</button>
+        <span class="muted" style="flex:1">Use <b>{evento}</b> para inserir o nome do evento.${e.termo&&e.termo.versao?' Versão atual: '+esc(e.termo.versao)+'.':''}</span></div>
+      <div class="muted" style="margin-top:6px">O modelo é só um ponto de partida: revise o texto com quem for responsável pelo evento. Ao alterar o texto, a versão aumenta e cada inscrição guarda a versão que aceitou.</div>
+    </div>
+
     <div class="secao">Situação</div>
     <label class="chk"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
     <div style="height:12px"></div>
@@ -565,6 +578,11 @@ async function salvarEvento(id){
   const d={titulo,data:$('evData').value,hora:$('evHora').value,local:$('evLocal').value.trim(),descricao:$('evDesc').value.trim(),
     aberto:$('evAberto').checked,campos:{cpf:$('cCpf').checked,telefone:$('cTel').checked,email:$('cEmail').checked,extra},
     extraLabel:'',camposExtras,pix,atualizadoEm:TS()};
+  const antigo=id?(eventos.find(x=>x.id===id)||{}).termo||{}:{};
+  const trTexto=$('trTexto').value.trim();
+  if($('trAtivo').checked&&trTexto.length<20)return toast('Escreva o texto do termo (ou use o modelo)');
+  d.termo={ativo:$('trAtivo').checked,titulo:$('trTitulo').value.trim()||'Termo de Responsabilidade',texto:trTexto,
+    versao:antigo.versao?(antigo.texto!==trTexto?antigo.versao+1:antigo.versao):1};
   if(imgTemp!==undefined)d.imagem=imgTemp;
   $('btnSalvarEv').disabled=true;
   try{
@@ -710,6 +728,7 @@ function dadosHTML(i){
     ${i.telefone?`<div class="kv"><span>Telefone:</span> ${esc(i.telefone)}</div>`:''}
     ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
     ${camposDoEvento(ev).map(f=>{const v=fmtResposta(respostaDe(i,f),f);return v?`<div class="kv"><span>${esc(f.label)}:</span> ${esc(v)}</div>`:'';}).join('')}
+    ${termoAtivo(ev)||i.termoAceito?`<div class="kv"><span>Termo:</span> ${i.termoAceito?'<b style="color:var(--ok)">aceito</b>'+(i.termoAceitoEm?' em '+esc(fmtTs(i.termoAceitoEm)):'')+(i.termoVersao?' · versão '+esc(i.termoVersao):'')+(i.termoAceitoPor&&i.termoAceitoPor!==i.nome?' · por '+esc(i.termoAceitoPor):''):'<b style="color:var(--warn)">não aceito</b> <span>(inscrição feita antes do termo)</span>'}</div>`:''}
     ${i.meia?`<div class="kv" style="background:var(--warnbg);color:var(--warn);padding:6px 8px;border-radius:8px;margin:6px 0"><b>🎟 MEIA-ENTRADA</b> — conferir comprovante: ${esc(i.meiaMotivo||'—')}</div>`:''}
     ${i.crianca?`<div class="kv"><span>Criança:</span> <b>${i.isento?'isenta':'sim'}</b>${i.nascimento?' · nasc. '+esc(idadeTxt(i)):''}</div>`:''}
     ${cobra(ev)&&!i.isento?`<div class="kv"><span>Pagamento:</span> ${i.pago?'<b style="color:var(--ok)">Pago</b>'+(i.pagoEm?' em '+esc(fmtTs(i.pagoEm)):''):'<b style="color:var(--warn)">Pendente</b>'+(verValores()?' ('+esc(moeda(valorDe(i,ev)))+')':'')}</div>`:''}
@@ -816,11 +835,11 @@ async function excluirInscricao(id){
 function exportarCSV(){
   const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
   const c=ev.campos||{},px=cobra(ev),cx=camposDoEvento(ev);
-  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em','Check-in por');
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em','Check-in por');const tc=termoAtivo(ev)||inscritos.some(i=>i.termoAceito);if(tc)cab.push('Termo aceito','Termo aceito em','Versão do termo');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(i.meia?'Sim — '+(i.meiaMotivo||''):'Não',i.crianca?(i.isento?'Sim (isenta)':'Sim'):'Não',idadeTxt(i),rg?rg.nome:'',fmtTs(i.criadoEm));
     if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm));if(px&&verValores())r.push(i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
-    r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinEm),quemCheckin(i));return r.map(q).join(';');});
+    r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinEm),quemCheckin(i));if(tc)r.push(i.termoAceito?'Sim':'Não',fmtTs(i.termoAceitoEm),i.termoVersao||'');return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inscritos-'+ev.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.csv';a.click();
 }

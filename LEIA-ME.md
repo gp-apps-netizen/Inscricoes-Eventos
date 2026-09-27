@@ -89,3 +89,15 @@ Para encerrar as inscrições de um evento: Editar → desmarque **Inscrições 
   nos detalhes, no aviso de "voucher já utilizado", na planilha (coluna "Check-in por") e no filtro
   "Check-in feito por". Na aba Equipe, cada usuário mostra quantos check-ins fez no evento selecionado.
 - Publique de novo o `regras-firestore.txt`.
+
+## Novidades da v2.9
+- **Compartilhar imagem + link:** em "🔗 Link / QR", o botão "Compartilhar imagem + link (WhatsApp)" envia a imagem
+  do evento com o convite e o link de inscrição na legenda (o texto também fica copiado, caso precise colar).
+- O cartaz "Baixar QR" agora usa a imagem do evento no topo.
+
+## Novidades da v3.0
+- **Termo de responsabilidade (opcional):** em Editar evento → "Exigir aceite de termo na inscrição". Título e texto
+  editáveis (há um texto modelo; use {evento} para o nome do evento). O participante vê o termo e precisa marcar
+  "Li e aceito" para se inscrever (em grupo, o aceite vale para todos). Cada inscrição guarda data, versão do termo
+  e quem aceitou; aparece nos detalhes, no leitor e na planilha.
+- Publique de novo o `regras-firestore.txt`.

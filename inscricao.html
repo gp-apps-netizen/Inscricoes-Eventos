@@ -43,6 +43,9 @@ input.err,select.err,textarea.err{border-color:var(--bad)}
 .hidden{display:none!important}
 .spin{width:32px;height:32px;border:3px solid var(--pri2);border-top-color:var(--pri);border-radius:50%;animation:s 1s linear infinite;margin:30px auto}
 @keyframes s{to{transform:rotate(360deg)}}
+.termo{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.termoTxt{white-space:pre-wrap;font-size:14px;line-height:1.45;max-height:240px;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);margin-top:8px;color:var(--text)}
+.chkp.err{outline:2px solid var(--bad)}
 .chkp{display:flex;align-items:center;gap:10px;margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--pri2);color:var(--pri);font-size:15px;cursor:pointer}
 .chkp input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--pri)}
 .priv{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.4}
@@ -107,6 +110,9 @@ function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',c
 function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo&&ev.pix.valor>0);}
 function temMeia(ev){return cobra(ev)&&!!ev.pix.meia&&ev.pix.valorMeia>0;}
 function valorDe(i,ev){if(!cobra(ev)||i.isento)return 0;return i.meia&&temMeia(ev)?Number(ev.pix.valorMeia):Number(ev.pix.valor);}
+const termoAtivo=e=>!!(e&&e.termo&&e.termo.ativo);
+const textoTermo=e=>String((e.termo&&e.termo.texto)||'').split('{evento}').join(e.titulo||'');
+const tituloTermo=e=>(e.termo&&e.termo.titulo)||'Termo de Responsabilidade';
 function criancasGratis(ev){return cobra(ev)&&!!ev.pix.criancasGratis;}
 function idadeNaData(nasc,ev){const ref=ev&&ev.data?new Date(ev.data+'T12:00:00'):new Date(),n=new Date(nasc+'T12:00:00');let a=ref.getFullYear()-n.getFullYear();if(ref.getMonth()<n.getMonth()||(ref.getMonth()===n.getMonth()&&ref.getDate()<n.getDate()))a--;return a;}
 function banner(ev){return ev&&ev.imagem?`<img class="banner" src="${ev.imagem}" alt="">`:'';}
@@ -194,6 +200,9 @@ async function abrirFormulario(eid){
     <div class="card">
       <button class="btn" type="button" id="btnAddP" onclick="addPessoa()">👥 + Inscrever mais uma pessoa</button>
       <div class="muted center" style="margin-top:8px">Você pode inscrever até ${MAX_GRUPO} pessoas de uma vez. Cada uma recebe o seu próprio voucher.</div>
+      ${termoAtivo(evento)?`<div class="termo"><b>${esc(tituloTermo(evento))}</b>
+        <div class="termoTxt">${esc(textoTermo(evento))}</div>
+        <label class="chkp" id="aceiteLbl"><input type="checkbox" id="aceiteTermo"> <span>Li e aceito o ${esc(tituloTermo(evento).toLowerCase())}<span id="termoGrupo"></span>.</span></label></div>`:''}
       <div id="total"></div>
       <div id="erro"></div>
       <button class="btn pri" id="btnEnviar" type="submit">Confirmar inscrição</button>
@@ -240,6 +249,7 @@ function atualizarPessoas(){
   const b=blocos();
   b.forEach((el,k)=>el.querySelector('.ptit').textContent=b.length>1?'Pessoa '+(k+1):'Seus dados');
   $('btnAddP').classList.toggle('hidden',b.length>=MAX_GRUPO);
+  if($('termoGrupo'))$('termoGrupo').textContent=b.length>1?' em nome de todas as pessoas desta inscrição':'';
   $('btnEnviar').textContent=b.length>1?`Confirmar ${b.length} inscrições`:'Confirmar inscrição';
   const cri=b.filter(ehCrianca).length,meia=b.filter(ehMeia).length,int=b.length-cri-meia;
   const partes=[];if(int)partes.push(int+' inteira'+(int>1?'s':''));if(meia)partes.push(meia+' meia'+(meia>1?'s':''));if(cri)partes.push(cri+' criança'+(cri>1?'s':'')+' grátis');
@@ -284,6 +294,7 @@ async function enviar(){
     });
     pessoas.push({nome,cpf,telefone:tel,email,respostas,el,crianca,nasc,meia,meiaMotivo});
   });
+  if(termoAtivo(evento)){$('aceiteLbl').classList.remove('err');if(!$('aceiteTermo').checked){$('aceiteLbl').classList.add('err');erros.push('É preciso ler e aceitar o '+tituloTermo(evento).toLowerCase()+'.');}}
   if(c.cpf){const vistos={};pessoas.forEach((p,k)=>{if(p.cpf&&vistos[p.cpf]!==undefined){$('p'+p.el.dataset.p+'_cpf').classList.add('err');erros.push(`Pessoa ${k+1}: CPF repetido no grupo.`);}vistos[p.cpf]=k;});}
   if(erros.length){$('erro').innerHTML=`<div class="msg bad">${erros.map(esc).join('<br>')}</div>`;$('erro').scrollIntoView({behavior:'smooth',block:'center'});return;}
   $('erro').innerHTML='';$('btnEnviar').disabled=true;$('btnEnviar').textContent='Enviando…';
@@ -293,7 +304,7 @@ async function enviar(){
   const ok=[],falhas=[];let encerrado=false;
   for(let k=0;k<pessoas.length;k++){
     const p=pessoas[k],ref=refs[k];
-    const dados={eventoId:evento.id,codigo:gerarCodigo(),nome:p.nome,cpf:p.cpf,telefone:p.telefone,email:p.email,extra:'',respostas:p.respostas,...grupo,...(criancasGratis(evento)?{crianca:p.crianca,nascimento:p.nasc,isento:p.crianca}:{}),...(p.meia?{meia:true,meiaMotivo:p.meiaMotivo.slice(0,80)}:{}),
+    const dados={eventoId:evento.id,codigo:gerarCodigo(),nome:p.nome,cpf:p.cpf,telefone:p.telefone,email:p.email,extra:'',respostas:p.respostas,...grupo,...(criancasGratis(evento)?{crianca:p.crianca,nascimento:p.nasc,isento:p.crianca}:{}),...(p.meia?{meia:true,meiaMotivo:p.meiaMotivo.slice(0,80)}:{}),...(termoAtivo(evento)?{termoAceito:true,termoAceitoEm:firebase.firestore.FieldValue.serverTimestamp(),termoVersao:evento.termo.versao||1,termoAceitoPor:pessoas[0].nome}:{}),
       checkin:false,checkinEm:null,pago:false,pagoEm:null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};
     const bt=db.batch();bt.set(ref,dados);
     if(c.cpf&&p.cpf)bt.set(db.collection('bloqueios').doc(evento.id+'_'+p.cpf),{eventoId:evento.id,inscricaoId:ref.id});
@@ -357,6 +368,7 @@ function mostrarVouchers(lista,ev,o){
       <a class="btn" style="text-decoration:none" href="?vs=${esc(o.grupoTodo.map(i=>i.id).join(','))}">👥 Ver todos os vouchers do grupo</a></div>`:''}
     ${px&&pend.length?cartaoPix(ev,pend):''}
     ${lista.map((i,k)=>cartaoVoucher(i,ev,k,varios)).join('')}
+    ${termoAtivo(ev)&&lista.some(i=>i.termoAceito)?`<div class="card"><details><summary><b>✔ ${esc(tituloTermo(ev))} aceito</b></summary><div class="termoTxt">${esc(textoTermo(ev))}</div></details></div>`:''}
     ${ev.descricao?`<div class="card"><p class="desc" style="margin:0">${esc(ev.descricao)}</p></div>`:''}`);
   lista.forEach((i,k)=>new QRCode($('qr'+k),{text:linkVoucher(i.id),width:varios?180:220,height:varios?180:220,correctLevel:QRCode.CorrectLevel.M}));
   if(px&&pend.length)new QRCode($('qrPix'),{text:atual.pix,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});

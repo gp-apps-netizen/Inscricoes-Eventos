@@ -64,7 +64,7 @@ service cloud.firestore {
         || (membroPodePagar() && membroNoEvento(resource.data.eventoId) && alterou().hasOnly(['checkin','checkinEm','checkinPor','checkinPorNome','pago','pagoEm','pagoPor','pagoPorNome','valorPago']));
 
       allow create: if isAdmin() || (
-        request.resource.data.keys().hasOnly(['eventoId','codigo','nome','cpf','telefone','email','extra','respostas','grupo','grupoIds','crianca','nascimento','isento','meia','meiaMotivo','checkin','checkinEm','pago','pagoEm','criadoEm'])
+        request.resource.data.keys().hasOnly(['eventoId','codigo','nome','cpf','telefone','email','extra','respostas','grupo','grupoIds','crianca','nascimento','isento','meia','meiaMotivo','termoAceito','termoAceitoEm','termoVersao','termoAceitoPor','checkin','checkinEm','pago','pagoEm','criadoEm'])
         && request.resource.data.eventoId is string
         && evento(request.resource.data.eventoId).aberto == true
         && texto(request.resource.data.codigo, 8)
@@ -80,6 +80,11 @@ service cloud.firestore {
         && texto(request.resource.data.get('grupo', ''), 20)
         && request.resource.data.get('grupoIds', []) is list
         && request.resource.data.get('grupoIds', []).size() <= 10
+        // Termo de responsabilidade: obrigatório quando o evento exige
+        && texto(request.resource.data.get('termoAceitoPor', ''), 120)
+        && (evento(request.resource.data.eventoId).get('termo', {}).get('ativo', false) != true
+            || (request.resource.data.get('termoAceito', false) == true
+                && request.resource.data.get('termoAceitoEm', null) == request.time))
         // Meia-entrada: só se o evento aceita meia
         && texto(request.resource.data.get('meiaMotivo', ''), 80)
         && (request.resource.data.get('meia', false) == false
