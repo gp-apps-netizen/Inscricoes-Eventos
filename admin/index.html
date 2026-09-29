@@ -1,1 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Administrador · Inscrições</title>
+<meta name="theme-color" content="#1e1b4b">
+<link rel="manifest" id="manifestLink">
+<link rel="icon" id="favIcon">
+<link rel="apple-touch-icon" id="appleIcon">
+<style>
+:root{--bg:#f4f5fb;--card:#fff;--text:#1c1d29;--muted:#6b6f85;--line:#e3e5ee;--pri:#4338ca;--pri2:#eef0ff;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;--warn:#92400e;--warnbg:#fef3c7}
+@media (prefers-color-scheme:dark){:root{--bg:#12131a;--card:#1c1d27;--text:#eceef6;--muted:#9a9db3;--line:#2d2f3d;--pri:#818cf8;--pri2:#262a4a;--ok:#4ade80;--okbg:#14301f;--bad:#f87171;--badbg:#3a1a1a;--warn:#fbbf24;--warnbg:#3a2e10}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:16px}
+header{position:sticky;top:0;z-index:5;background:#1e1b4b;color:#fff;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top))}
+.hrow{display:flex;align-items:center;gap:10px;max-width:760px;margin:0 auto}
+.hrow h1{font-size:18px;margin:0;flex:1}
+.hrow small{display:block;font-weight:400;opacity:.75;font-size:12px}
+.iconbtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:10px;padding:8px 12px;font-size:14px;text-decoration:none}
+main{padding:16px;padding-bottom:60px;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.muted{color:var(--muted);font-size:14px}
+.small{font-size:13px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:10px 14px;font-size:15px;cursor:pointer;text-decoration:none}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+@media (prefers-color-scheme:dark){.btn.pri{color:#12131a}}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.bad{color:var(--bad)}
+.btn.full{width:100%}
+.btn:disabled{opacity:.6}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+input,textarea,select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card);color:var(--text);font-family:inherit}
+h3{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.kpi b{display:block;font-size:20px}
+.kpi span{font-size:12px;color:var(--muted)}
+.seg{display:flex;background:var(--pri2);border-radius:10px;padding:3px;margin:10px 0}
+.seg button{flex:1;border:0;background:none;padding:8px 4px;border-radius:8px;color:var(--pri);font-size:14px}
+.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.org{cursor:pointer}
+.org .top{display:flex;gap:10px;align-items:flex-start}
+.org h2{font-size:17px;margin:0}
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.tag.ok{background:var(--okbg);color:var(--ok)}
+.tag.bad{background:var(--badbg);color:var(--bad)}
+.tag.warn{background:var(--warnbg);color:var(--warn)}
+.tag.neu{background:var(--pri2);color:var(--pri)}
+.kv{font-size:15px;margin:4px 0}
+.kv span{color:var(--muted)}
+.linkbox{word-break:break-all;font-size:13px;background:var(--pri2);color:var(--pri);padding:9px;border-radius:10px;margin-top:4px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.modal.show{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.sheet h2{margin:0 0 8px;font-size:19px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1c1d29;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:90%}
+#toast.show{opacity:1}
+.login{max-width:380px;margin:12vh auto 0;padding:16px}
+.login h1{text-align:center;font-size:22px}
+.empty{text-align:center;padding:30px 10px;color:var(--muted)}
+.hidden{display:none!important}
+.log{font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:200px;overflow:auto;white-space:pre-wrap}
+</style>
+</head>
+<body>
 
+<script>
+// Mesmo projeto Firebase do app de Inscrições
+const firebaseConfig = {
+  apiKey: "AIzaSyD7YTTaQSmXe0JRIkHq-u6L1F1CTWw0JaY",
+  authDomain: "inscricoes-eventos.firebaseapp.com",
+  projectId: "inscricoes-eventos",
+  storageBucket: "inscricoes-eventos.firebasestorage.app",
+  messagingSenderId: "882008815212",
+  appId: "1:882008815212:web:1395f3a4999fa3a5664a49",
+  measurementId: "G-NGK7BES79S"
+};
+const SUPER = 'godoygpx@gmail.com';   // único login com acesso a este painel
+</script>
+
+<div id="telaLogin" class="login hidden">
+  <h1>Administrador · Inscrições</h1>
+  <div class="card">
+    <label>E-mail</label><input id="lgEmail" type="email" autocomplete="username">
+    <label>Senha</label><input id="lgSenha" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()">
+    <div style="height:14px"></div>
+    <button class="btn pri full" id="lgBtn" onclick="entrar()">Entrar</button>
+    <p id="lgErro" class="muted" style="color:var(--bad);text-align:center"></p>
+  </div>
+</div>
+
+<div id="telaApp" class="hidden">
+  <header><div class="hrow">
+    <h1>Administrador · Inscrições<small>Organizadores de eventos</small></h1>
+    <a class="iconbtn" href="../">Controle</a>
+    <button class="iconbtn" onclick="auth.signOut()">Sair</button>
+  </div></header>
+  <main>
+    <div class="kpis">
+      <div class="kpi"><b id="kAtivos">0</b><span>Ativos</span></div>
+      <div class="kpi"><b id="kVencidos">0</b><span>Vencidos</span></div>
+      <div class="kpi"><b id="kSuspensos">0</b><span>Suspensos</span></div>
+      <div class="kpi"><b id="kReceita">R$ 0</b><span>Mensalidades</span></div>
+    </div>
+    <button class="btn pri full" onclick="novoOrg()">+ Novo organizador</button>
+    <div class="row" style="margin-top:8px">
+      <button class="btn hidden" id="btnMeu" onclick="meuOrg()">⭐ Meu organizador (sem cobrança)</button>
+      <button class="btn hidden" id="btnMigrar" onclick="migrar()">⇪ Migrar dados da versão antiga</button>
+    </div>
+    <input id="busca" placeholder="Buscar por nome, identificador ou e-mail" style="margin-top:12px" oninput="render()">
+    <div class="seg" id="filtro">
+      <button data-f="todos" class="on">Todos</button><button data-f="ativos">Ativos</button><button data-f="vencidos">Vencidos</button><button data-f="suspensos">Suspensos</button>
+    </div>
+    <div id="lista"><div class="empty">Carregando…</div></div>
+  </main>
+</div>
+
+<div class="modal" id="modal" onclick="if(event.target===this)fechar()"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ================== Utilidades ================== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2800);}
+function abrir(html){$('sheet').innerHTML=html;$('modal').classList.add('show');}
+function fechar(){$('modal').classList.remove('show');}
+const brl=c=>(Number(c||0)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const cents=s=>{s=String(s||'').replace(/[^\d,.]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:Math.round(n*100);};
+const reais=c=>c?(c/100).toFixed(2).replace('.',','):'';
+const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+function maisMeses(iso,n){const[a,m,d]=iso.split('-').map(Number);const x=new Date(a,m-1+n,1);const ult=new Date(x.getFullYear(),x.getMonth()+1,0).getDate();x.setDate(Math.min(d,ult));return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+const diasAte=iso=>Math.round((new Date(iso+'T12:00:00')-new Date(hoje()+'T12:00:00'))/864e5);
+const fmtDia=iso=>{if(!iso)return '—';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;};
+const slug=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30);
+const emailOk=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+async function copiar(t){try{await navigator.clipboard.writeText(t);toast('Copiado');}catch(e){prompt('Copie:',t);}}
+const erroMsg=e=>({'auth/invalid-credential':'E-mail ou senha incorretos','auth/wrong-password':'E-mail ou senha incorretos','auth/user-not-found':'E-mail ou senha incorretos',
+  'auth/too-many-requests':'Muitas tentativas. Aguarde um pouco','auth/invalid-email':'E-mail inválido','auth/weak-password':'Senha fraca (mínimo 6 caracteres)',
+  'permission-denied':'Sem permissão (publique as regras novas do Firestore)'}[e.code]||('Erro: '+(e.code||e.message)));
+const PLANOS={mensal:'Mensal',evento:'Por evento',proprio:'Próprio (sem cobrança)'};
+
+/* ---- PWA ---- */
+(function(){
+  const c=document.createElement('canvas');c.width=c.height=192;const x=c.getContext('2d');
+  x.fillStyle='#1e1b4b';x.fillRect(0,0,192,192);x.fillStyle='#fff';if(x.roundRect){x.beginPath();x.roundRect(36,52,120,88,12);x.fill();}else x.fillRect(36,52,120,88);
+  x.fillStyle='#1e1b4b';x.font='bold 64px system-ui';x.textAlign='center';x.textBaseline='middle';x.fillText('⚙',96,98);
+  const ic=c.toDataURL();$('favIcon').href=ic;$('appleIcon').href=ic;
+  const base=location.href.split(/[?#]/)[0];
+  const m={name:'Administrador · Inscrições',short_name:'Admin Inscrições',start_url:base,scope:base,display:'standalone',background_color:'#1e1b4b',theme_color:'#1e1b4b',icons:[{src:ic,sizes:'192x192',type:'image/png'}]};
+  $('manifestLink').href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));
+})();
+
+/* ================== Firebase ================== */
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(),db=firebase.firestore();
+const TS=()=>firebase.firestore.FieldValue.serverTimestamp();
+const APP=new URL('../',location.href.split(/[?#]/)[0]).href;       // app de controle
+const links=id=>({controle:APP,suporte:APP+'?org='+encodeURIComponent(id)});
+
+async function entrar(){
+  $('lgErro').textContent='';const b=$('lgBtn');b.disabled=true;
+  try{await auth.signInWithEmailAndPassword($('lgEmail').value.trim().toLowerCase(),$('lgSenha').value);$('lgSenha').value='';}
+  catch(e){$('lgErro').textContent=erroMsg(e);}
+  b.disabled=false;
+}
+let unsub=null;
+auth.onAuthStateChanged(u=>{
+  if(unsub){unsub();unsub=null;}
+  if(!u){$('telaApp').classList.add('hidden');$('telaLogin').classList.remove('hidden');return;}
+  if((u.email||'').toLowerCase()!==SUPER){alert('Este painel é só do administrador geral.');auth.signOut();return;}
+  $('telaLogin').classList.add('hidden');$('telaApp').classList.remove('hidden');
+  unsub=db.collection('organizadores').onSnapshot(s=>{S.orgs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));render();},
+    e=>{$('lista').innerHTML=`<div class="card" style="color:var(--bad)">${esc(erroMsg(e))}</div>`;});
+  verificarLegado();
+});
+
+/* ================== Lista ================== */
+const S={orgs:[],filtro:'todos'};
+document.querySelectorAll('#filtro button').forEach(b=>b.onclick=()=>{S.filtro=b.dataset.f;document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x===b));render();});
+const vencido=o=>o.status==='ativo'&&o.plano==='mensal'&&o.vencimento&&diasAte(o.vencimento)<0;
+function situacao(o){
+  if(o.status!=='ativo')return '<span class="tag bad">Suspenso</span>';
+  if(o.plano==='proprio')return '<span class="tag neu">Próprio</span>';
+  if(o.plano==='mensal'&&o.vencimento){const d=diasAte(o.vencimento);
+    if(d<0)return `<span class="tag bad">Vencido há ${-d} dia${d===-1?'':'s'}</span>`;
+    if(d<=5)return `<span class="tag warn">Vence em ${d} dia${d===1?'':'s'}</span>`;}
+  return '<span class="tag ok">Ativo</span>';
+}
+function render(){
+  const ativos=S.orgs.filter(o=>o.status==='ativo');
+  $('kAtivos').textContent=ativos.length;$('kVencidos').textContent=S.orgs.filter(vencido).length;
+  $('kSuspensos').textContent=S.orgs.length-ativos.length;
+  $('kReceita').textContent=brl(ativos.filter(o=>o.plano==='mensal').reduce((s,o)=>s+(o.valor||0),0)).replace(',00','');
+  $('btnMeu').classList.toggle('hidden',S.orgs.some(o=>o.donoEmail===SUPER));
+  const q=$('busca').value.trim().toLowerCase();
+  const l=S.orgs.filter(o=>(S.filtro==='todos'||(S.filtro==='ativos'&&o.status==='ativo')||(S.filtro==='vencidos'&&vencido(o))||(S.filtro==='suspensos'&&o.status!=='ativo'))
+    &&(!q||[o.nome,o.id,o.donoEmail,o.donoNome].join(' ').toLowerCase().includes(q)));
+  $('lista').innerHTML=!l.length?`<div class="empty">${S.orgs.length?'Nenhum organizador neste filtro.':'Nenhum organizador ainda.<br>Toque em <b>+ Novo organizador</b>.'}</div>`:
+    l.map(o=>`<div class="card org" onclick="detalhe('${esc(o.id)}')"><div class="top"><div style="flex:1;min-width:0"><h2>${esc(o.nome)}</h2>
+      <div class="muted small">${esc(o.id)} · ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
+      ${o.plano==='proprio'?'':`<div class="small" style="margin-top:4px">${esc(PLANOS[o.plano]||'')} · ${brl(o.valor)}${o.plano==='mensal'?'/mês · vence '+fmtDia(o.vencimento):''}</div>`}</div>
+      ${situacao(o)}</div></div>`).join('');
+}
+
+/* ================== Criar login sem sair do painel ================== */
+async function criarLogin(email,senha){
+  const app2=firebase.apps.find(a=>a.name==='cadastro')||firebase.initializeApp(firebaseConfig,'cadastro');
+  const a2=app2.auth();await a2.setPersistence(firebase.auth.Auth.Persistence.NONE);
+  try{await a2.createUserWithEmailAndPassword(email,senha);await a2.signOut();return true;}
+  catch(e){if(e.code==='auth/email-already-in-use')return false;throw e;}
+}
+
+/* ================== Novo organizador ================== */
+function camposCobranca(o){
+  o=o||{plano:'mensal',valor:0,vencimento:maisMeses(hoje(),1)};
+  return `<h3>Cobrança</h3>
+    <label>Plano</label><select id="fPlano" onchange="$('fCobr').classList.toggle('hidden',this.value==='proprio');$('fVencBox').classList.toggle('hidden',this.value!=='mensal')">
+      ${Object.entries(PLANOS).map(([k,v])=>`<option value="${k}" ${o.plano===k?'selected':''}>${v}</option>`).join('')}</select>
+    <div id="fCobr" class="row ${o.plano==='proprio'?'hidden':''}">
+      <div><label>Valor (R$)</label><input id="fValor" inputmode="decimal" placeholder="99,90" value="${reais(o.valor)}"></div>
+      <div id="fVencBox" class="${o.plano==='mensal'?'':'hidden'}"><label>Vencimento</label><input id="fVenc" type="date" value="${esc(o.vencimento||'')}"></div>
+    </div>
+    <label>Observações</label><textarea id="fObs" rows="2" placeholder="Telefone, cidade, combinado…">${esc(o.obs||'')}</textarea>`;
+}
+function lerCobranca(){
+  const plano=$('fPlano').value;
+  return{plano,valor:plano==='proprio'?0:cents($('fValor').value),vencimento:plano==='mensal'?($('fVenc').value||null):null,obs:$('fObs').value.trim()};
+}
+function novoOrg(){
+  abrir(`<h2>Novo organizador</h2>
+    <label>Nome do organizador *</label><input id="fNome" placeholder="Ex.: Paróquia São José, Clube MTB">
+    <label>Identificador * <span class="muted">(vai nos links)</span></label><input id="fId" autocapitalize="off" placeholder="ex.: paroquia-sao-jose">
+    <h3>Responsável</h3>
+    <label>Nome *</label><input id="fDono">
+    <label>E-mail (será o login) *</label><input id="fEmail" type="email" inputmode="email" autocapitalize="off">
+    <label>Senha inicial * (mín. 6)</label><input id="fSenha" autocomplete="off" value="${Math.random().toString(36).slice(2,8)}">
+    ${camposCobranca()}
+    <div style="height:14px"></div>
+    <div class="row"><button class="btn" onclick="fechar()">Cancelar</button><button class="btn pri" id="fOk" onclick="criarOrg()">Criar organizador e login</button></div>`);
+  let mexeu=false;$('fId').oninput=()=>mexeu=true;$('fNome').oninput=()=>{if(!mexeu)$('fId').value=slug($('fNome').value);};
+}
+async function criarOrg(){
+  const nome=$('fNome').value.trim(),id=$('fId').value.trim(),donoNome=$('fDono').value.trim(),email=$('fEmail').value.trim().toLowerCase(),senha=$('fSenha').value.trim();
+  if(!nome||!donoNome)return toast('Preencha o nome do organizador e do responsável');
+  if(!/^[a-z0-9][a-z0-9-]{2,29}$/.test(id))return toast('Identificador: 3 a 30 caracteres, só a-z, 0-9 e hífen');
+  if(!emailOk(email))return toast('E-mail inválido');
+  if(email===SUPER)return toast('Use o e-mail do responsável, não o seu (para você, use "Meu organizador")');
+  if(senha.length<6)return toast('Senha com pelo menos 6 caracteres');
+  const bt=$('fOk');bt.disabled=true;bt.textContent='Criando…';
+  const volta=m=>{bt.disabled=false;bt.textContent='Criar organizador e login';toast(m);};
+  try{
+    if((await db.collection('organizadores').doc(id).get()).exists)return volta('Já existe um organizador com esse identificador');
+    const u=await db.collection('usuarios').doc(email).get();
+    if(u.exists)return volta(`Este e-mail já está no organizador “${u.data().orgId}”`);
+    const nova=await criarLogin(email,senha);
+    const b=db.batch();
+    b.set(db.collection('organizadores').doc(id),{nome,donoNome,donoEmail:email,status:'ativo',...lerCobranca(),criadoEm:TS()});
+    b.set(db.collection('usuarios').doc(email),{orgId:id,papel:'dono'});
+    await b.commit();
+    fechar();toast('Organizador criado!');
+    boasVindas({id,nome,donoNome,donoEmail:email},nova?senha:null);
+  }catch(e){console.error(e);volta(erroMsg(e));}
+}
+function textoAcesso(o,senha){
+  return `Olá, ${o.donoNome}! Seu acesso ao sistema de inscrições de eventos (${o.nome}) está pronto.\n\n`+
+    `📲 Área do organizador: ${links(o.id).controle}\n👤 Login: ${o.donoEmail}\n`+(senha?`🔑 Senha: ${senha}\n`:`🔑 Senha: a mesma que você já usa (ou toque em "Esqueci a senha")\n`)+
+    `\nAbra o link no Chrome do celular e use "Adicionar à tela inicial". Lá você cria os eventos, envia o link de inscrição e faz o check-in pelo QR code.`;
+}
+function boasVindas(o,senha){
+  const t=textoAcesso(o,senha);
+  abrir(`<h2>✅ ${esc(o.nome)}</h2>
+    ${senha?'':'<div class="card" style="background:var(--warnbg);color:var(--warn)">Este e-mail já tinha uma conta: a senha digitada não foi aplicada.</div>'}
+    <div class="muted">Mensagem de boas-vindas para o responsável:</div>
+    <div class="log" style="margin-top:6px">${esc(t)}</div>
+    <div style="height:10px"></div>
+    <div class="row"><button class="btn" onclick="copiar(${esc(JSON.stringify(t))})">Copiar</button>
+      <button class="btn pri" onclick="window.open('https://wa.me/?text='+encodeURIComponent(${esc(JSON.stringify(t))}),'_blank')">WhatsApp</button></div>
+    <div style="height:8px"></div><button class="btn full" onclick="fechar()">Fechar</button>`);
+}
+
+/* ================== Meu organizador (sem cobrança) ================== */
+function meuOrg(){
+  abrir(`<h2>Meu organizador</h2>
+    <p class="muted">Fica no plano Próprio (sem cobrança). Você entra no app de controle com o seu login (${esc(SUPER)}).</p>
+    <label>Nome</label><input id="mNome" value="Meus eventos">
+    <label>Identificador (vai nos links)</label><input id="mId" autocapitalize="off" value="gpx">
+    <div style="height:14px"></div>
+    <div class="row"><button class="btn" onclick="fechar()">Cancelar</button><button class="btn pri" id="mOk" onclick="criarMeu()">Criar</button></div>`);
+}
+async function criarMeu(){
+  const nome=$('mNome').value.trim()||'Meus eventos',id=$('mId').value.trim();
+  if(!/^[a-z0-9][a-z0-9-]{2,29}$/.test(id))return toast('Identificador: 3 a 30 caracteres, só a-z, 0-9 e hífen');
+  const bt=$('mOk');bt.disabled=true;
+  try{
+    if((await db.collection('organizadores').doc(id).get()).exists){bt.disabled=false;return toast('Já existe um organizador com esse identificador');}
+    const u=await db.collection('usuarios').doc(SUPER).get();
+    if(u.exists){bt.disabled=false;return toast(`Seu login já está no organizador “${u.data().orgId}”`);}
+    const b=db.batch();
+    b.set(db.collection('organizadores').doc(id),{nome,donoNome:'Administrador',donoEmail:SUPER,status:'ativo',plano:'proprio',valor:0,vencimento:null,obs:'Organizador do administrador',criadoEm:TS()});
+    b.set(db.collection('usuarios').doc(SUPER),{orgId:id,papel:'dono'});
+    await b.commit();fechar();toast('Organizador criado!');
+  }catch(e){bt.disabled=false;toast(erroMsg(e));}
+}
+
+/* ================== Detalhes ================== */
+async function detalhe(id){
+  const o=S.orgs.find(x=>x.id===id);if(!o)return;
+  const L=links(id),proprio=o.plano==='proprio';
+  abrir(`<h2>${esc(o.nome)}</h2>
+    <div>${situacao(o)} <span class="tag neu">${esc(PLANOS[o.plano]||o.plano||'')}</span></div>
+    <div class="kv" style="margin-top:10px"><span>Identificador:</span> ${esc(o.id)}</div>
+    <div class="kv"><span>Responsável:</span> ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
+    ${proprio?'':`<div class="kv"><span>Valor:</span> ${brl(o.valor)}${o.plano==='mensal'?' /mês · <span>vence</span> '+fmtDia(o.vencimento):''}</div>`}
+    ${o.ultimoPagamento?`<div class="kv"><span>Último pagamento:</span> ${fmtDia(o.ultimoPagamento)}</div>`:''}
+    ${o.obs?`<div class="kv"><span>Obs.:</span> ${esc(o.obs)}</div>`:''}
+    <div class="kv" id="dUso"><span>Uso:</span> carregando…</div>
+    <h3>Links</h3>
+    <div class="muted small" style="margin-top:6px">Área do organizador (o responsável entra com o login dele)</div><div class="linkbox">${esc(L.controle)}</div>
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="window.open('${L.suporte}','_blank')">🛠 Entrar como suporte</button>
+      <button class="btn" onclick="enviarAcesso('${esc(id)}')">💬 Enviar acesso</button></div>
+    <h3>Ações</h3>
+    <div style="height:8px"></div>
+    ${proprio?'':`<button class="btn ok full" onclick="pagar('${esc(id)}')">✓ Registrar pagamento${o.plano==='mensal'?' (+1 mês)':''}</button><div style="height:8px"></div>`}
+    <div class="row"><button class="btn" onclick="editar('${esc(id)}')">Editar</button>
+      <button class="btn" onclick="resetSenha('${esc(o.donoEmail||'')}')">📧 Redefinir senha</button></div>
+    <div style="height:8px"></div>
+    <button class="btn full ${o.status==='ativo'?'bad':''}" onclick="alternar('${esc(id)}')">${o.status==='ativo'?'⏸ Suspender acesso':'▶ Reativar acesso'}</button>
+    <div style="height:8px"></div>
+    <button class="btn bad full" onclick="excluir('${esc(id)}')">Excluir organizador e todos os dados</button>
+    <div style="height:8px"></div><button class="btn full" onclick="fechar()">Fechar</button>`);
+  try{
+    const r=db.collection('organizadores').doc(id);
+    const [ev,ins,eq]=await Promise.all([r.collection('eventos').get(),r.collection('inscricoes').get(),r.collection('equipe').get()]);
+    if($('dUso'))$('dUso').innerHTML=`<span>Uso:</span> ${ev.size} evento(s) · ${ins.size} inscrição(ões) · ${eq.size} na equipe`;
+  }catch(e){if($('dUso'))$('dUso').innerHTML='<span>Uso:</span> não foi possível contar';}
+}
+function enviarAcesso(id){const o=S.orgs.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(textoAcesso(o,null)),'_blank');}
+async function resetSenha(email){if(!email)return;try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado para '+email);}catch(e){toast(erroMsg(e));}}
+async function pagar(id){
+  const o=S.orgs.find(x=>x.id===id);
+  const up={ultimoPagamento:hoje()};
+  if(o.plano==='mensal'){
+    const base=o.vencimento&&diasAte(o.vencimento)>-60?o.vencimento:hoje();   // atraso longo: recomeça de hoje
+    up.vencimento=maisMeses(base,1);
+    if(!confirm(`Registrar pagamento de ${brl(o.valor)}?\nPróximo vencimento: ${fmtDia(up.vencimento)}`))return;
+  }else if(!confirm(`Registrar pagamento de ${brl(o.valor)} (por evento)?`))return;
+  if(o.status!=='ativo')up.status='ativo';
+  try{await db.collection('organizadores').doc(id).update(up);toast('Pagamento registrado');detalhe(id);}catch(e){toast(erroMsg(e));}
+}
+async function alternar(id){
+  const o=S.orgs.find(x=>x.id===id),suspender=o.status==='ativo';
+  if(suspender&&!confirm(`Suspender ${o.nome}?\n\nO responsável e a equipe perdem o acesso e o link de inscrição deixa de funcionar. Os dados ficam guardados.`))return;
+  try{await db.collection('organizadores').doc(id).update({status:suspender?'suspenso':'ativo'});toast(suspender?'Acesso suspenso':'Acesso reativado');detalhe(id);}catch(e){toast(erroMsg(e));}
+}
+function editar(id){
+  const o=S.orgs.find(x=>x.id===id);
+  abrir(`<h2>Editar ${esc(o.nome)}</h2>
+    <label>Nome do organizador</label><input id="fNome" value="${esc(o.nome)}">
+    <label>Nome do responsável</label><input id="fDono" value="${esc(o.donoNome||'')}">
+    <div class="muted small" style="margin-top:6px">Login do responsável: ${esc(o.donoEmail)} (para trocar, crie um novo organizador ou fale comigo no suporte).</div>
+    ${camposCobranca(o)}
+    <div style="height:14px"></div>
+    <div class="row"><button class="btn" onclick="detalhe('${esc(id)}')">Voltar</button><button class="btn pri" onclick="salvarEdicao('${esc(id)}')">Salvar</button></div>`);
+}
+async function salvarEdicao(id){
+  const nome=$('fNome').value.trim(),donoNome=$('fDono').value.trim();
+  if(!nome)return toast('Informe o nome');
+  try{await db.collection('organizadores').doc(id).update({nome,donoNome,...lerCobranca()});toast('Salvo');detalhe(id);}catch(e){toast(erroMsg(e));}
+}
+async function apagarColecao(ref,log){
+  let total=0;
+  for(;;){
+    const s=await ref.limit(400).get();if(s.empty)break;
+    const b=db.batch();s.docs.forEach(d=>b.delete(d.ref));await b.commit();total+=s.size;if(log)log(total);
+  }
+  return total;
+}
+async function excluir(id){
+  const o=S.orgs.find(x=>x.id===id);
+  const conf=prompt(`Isto apaga ${o.nome} com TODOS os eventos, inscrições e equipe. Não tem volta.\n\nDigite o identificador (${id}) para confirmar:`);
+  if(conf!==id)return conf===null?null:toast('Identificador não confere');
+  abrir(`<h2>Excluindo ${esc(o.nome)}…</h2><div class="log" id="xLog">Iniciando…</div>`);
+  const log=t=>{$('xLog').textContent+='\n'+t;};
+  try{
+    const r=db.collection('organizadores').doc(id);
+    const eq=await r.collection('equipe').get();
+    const b=db.batch();eq.docs.forEach(d=>b.delete(db.collection('usuarios').doc(d.id)));
+    if(o.donoEmail)b.delete(db.collection('usuarios').doc(o.donoEmail));
+    await b.commit();log('Logins desvinculados: '+(eq.size+1));
+    for(const n of ['inscricoes','bloqueios','eventos','equipe']){const t=await apagarColecao(r.collection(n));log(n+': '+t+' apagado(s)');}
+    await r.delete();log('Organizador excluído.');
+    log('\nObs.: as contas de login continuam existindo no Firebase (Authentication), mas sem acesso a nada.');
+    $('sheet').insertAdjacentHTML('beforeend','<div style="height:10px"></div><button class="btn full" onclick="fechar()">Fechar</button>');
+  }catch(e){log('ERRO: '+erroMsg(e));$('sheet').insertAdjacentHTML('beforeend','<div style="height:10px"></div><button class="btn full" onclick="fechar()">Fechar</button>');}
+}
+
+/* ================== Migração da versão antiga ================== */
+async function verificarLegado(){
+  try{const s=await db.collection('eventos').limit(1).get();$('btnMigrar').classList.toggle('hidden',s.empty);}catch(e){$('btnMigrar').classList.add('hidden');}
+}
+async function migrar(){
+  if(!S.orgs.length)return toast('Crie primeiro o organizador de destino (ex.: Meu organizador)');
+  const meu=S.orgs.find(o=>o.donoEmail===SUPER);
+  abrir(`<h2>Migrar dados da versão antiga</h2>
+    <p class="muted">Copia eventos, inscrições, bloqueios de CPF e equipe da versão de um só organizador para o organizador escolhido. Os IDs são mantidos, então <b>links e vouchers já enviados continuam funcionando</b>.</p>
+    <label>Organizador de destino</label>
+    <select id="gDest">${S.orgs.map(o=>`<option value="${esc(o.id)}" ${meu&&meu.id===o.id?'selected':''}>${esc(o.nome)} (${esc(o.id)})</option>`).join('')}</select>
+    <div class="log" id="gLog" style="margin-top:10px">Contando dados antigos…</div>
+    <div style="height:10px"></div>
+    <button class="btn pri full" id="gOk" onclick="executarMigracao()" disabled>Copiar para o organizador</button>
+    <div style="height:8px"></div>
+    <button class="btn bad full hidden" id="gApagar" onclick="apagarLegado()">Apagar dados antigos (depois de conferir)</button>
+    <div style="height:8px"></div><button class="btn full" onclick="fechar()">Fechar</button>`);
+  try{
+    const c={};for(const n of ['eventos','inscricoes','bloqueios','equipe'])c[n]=(await db.collection(n).get()).size;
+    $('gLog').textContent=`Encontrado na versão antiga:\n• ${c.eventos} evento(s)\n• ${c.inscricoes} inscrição(ões)\n• ${c.bloqueios} bloqueio(s) de CPF\n• ${c.equipe} pessoa(s) na equipe`;
+    $('gOk').disabled=false;
+  }catch(e){$('gLog').textContent='Erro: '+erroMsg(e);}
+}
+async function executarMigracao(){
+  const dest=$('gDest').value,r=db.collection('organizadores').doc(dest);
+  if(!confirm(`Copiar os dados antigos para "${dest}"?`))return;
+  $('gOk').disabled=true;const log=t=>{$('gLog').textContent+='\n'+t;$('gLog').scrollTop=1e9;};
+  $('gLog').textContent='Migrando…';
+  try{
+    const copia=async(n,filtro)=>{
+      const s=await db.collection(n).get();let docs=s.docs;if(filtro)docs=docs.filter(filtro);
+      for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(d=>b.set(r.collection(n).doc(d.id),d.data()));await b.commit();}
+      log(`${n}: ${docs.length} copiado(s)`);return docs;
+    };
+    await copia('eventos');
+    const ins=await copia('inscricoes');const ids=new Set(ins.map(d=>d.id));
+    await copia('bloqueios',d=>ids.has(d.data().inscricaoId));
+    const eq=await copia('equipe',d=>d.id!==SUPER);
+    // Vincula os logins da equipe a este organizador
+    let vinc=0,pul=0;
+    for(const d of eq){
+      const u=await db.collection('usuarios').doc(d.id).get();
+      if(u.exists&&u.data().orgId!==dest){pul++;log(`• ${d.id} já está em outro organizador (${u.data().orgId}) — não vinculado`);continue;}
+      await db.collection('usuarios').doc(d.id).set({orgId:dest,papel:'equipe'});vinc++;
+    }
+    log(`Logins da equipe vinculados: ${vinc}${pul?' ('+pul+' pulado(s))':''}`);
+    // Links antigos (sem ?o=) passam a abrir neste organizador
+    await db.collection('config').doc('legado').set({orgId:dest,migradoEm:TS()});
+    log('Links antigos agora apontam para "'+dest+'".');
+    log('\n✅ Migração concluída. Abra o app de controle e confira os eventos e inscritos antes de apagar os dados antigos.');
+    $('gApagar').classList.remove('hidden');
+  }catch(e){log('ERRO: '+erroMsg(e)+'\nNada foi apagado. Você pode tentar de novo (a cópia sobrescreve com os mesmos dados).');$('gOk').disabled=false;}
+}
+async function apagarLegado(){
+  if(!confirm('Apagar os dados da versão antiga?\n\nConfira antes no app de controle se os eventos e inscritos aparecem no organizador novo.'))return;
+  const log=t=>{$('gLog').textContent+='\n'+t;$('gLog').scrollTop=1e9;};
+  $('gApagar').disabled=true;
+  try{for(const n of ['inscricoes','bloqueios','eventos','equipe']){const t=await apagarColecao(db.collection(n));log(`Antigo ${n}: ${t} apagado(s)`);}
+    log('Dados antigos apagados.');verificarLegado();}
+  catch(e){log('ERRO: '+erroMsg(e));$('gApagar').disabled=false;}
+}
+</script>
+</body>
+</html>
