@@ -145,7 +145,37 @@ async function copiar(t){try{await navigator.clipboard.writeText(t);toast('Copia
 const erroMsg=e=>({'auth/invalid-credential':'E-mail ou senha incorretos','auth/wrong-password':'E-mail ou senha incorretos','auth/user-not-found':'E-mail ou senha incorretos',
   'auth/too-many-requests':'Muitas tentativas. Aguarde um pouco','auth/invalid-email':'E-mail inválido','auth/weak-password':'Senha fraca (mínimo 6 caracteres)',
   'permission-denied':'Sem permissão (publique as regras novas do Firestore)'}[e.code]||('Erro: '+(e.code||e.message)));
-const PLANOS={mensal:'Mensal',evento:'Por evento',proprio:'Próprio (sem cobrança)'};
+const PLANOS={inscrito:'Por inscrito pago',taxa:'Taxa paga pelo atleta',evento:'Valor fixo por evento',mensal:'Mensal',proprio:'Próprio (sem cobrança)'};
+const ROT_VALOR={inscrito:'Valor por inscrito pago (R$)',taxa:'Taxa por inscrição (R$)',evento:'Valor por evento (R$)',mensal:'Mensalidade (R$)'};
+const CONDICOES={'50-50':'50% na contratação + 50% até 5 dias após o evento',avista:'À vista na contratação',apos:'Tudo até 5 dias após o evento'};
+const ADIC_PADRAO={checkin:{ativo:false,pessoas:3,turnos:1,valor:15000},conferencia:{ativo:false,valor:35000},outro:{ativo:false,desc:'',valor:0}};
+function adic(o){const a=(o&&o.adicionais)||{};return{checkin:{...ADIC_PADRAO.checkin,...(a.checkin||{})},conferencia:{...ADIC_PADRAO.conferencia,...(a.conferencia||{})},outro:{...ADIC_PADRAO.outro,...(a.outro||{})}};}
+function listaAdicionais(o){
+  const a=adic(o),l=[];
+  if(a.checkin.ativo)l.push({nome:`Check-in presencial: ${a.checkin.pessoas} pessoa(s) × ${a.checkin.turnos} turno(s) × ${brl(a.checkin.valor)}`,valor:a.checkin.pessoas*a.checkin.turnos*a.checkin.valor});
+  if(a.conferencia.ativo)l.push({nome:'Conferência de pagamentos',valor:a.conferencia.valor});
+  if(a.outro.ativo&&a.outro.valor)l.push({nome:a.outro.desc||'Outro',valor:a.outro.valor});
+  return l;
+}
+const totalAdicionais=o=>listaAdicionais(o).reduce((s,x)=>s+x.valor,0);
+// Valor base de UM evento com N inscritos pagos (centavos)
+function baseEvento(o,pagos){
+  if(o.plano==='inscrito')return Math.max(pagos*(o.valor||0),o.minimo||0);
+  if(o.plano==='taxa')return pagos*(o.valor||0);
+  if(o.plano==='evento')return o.valor||0;
+  return 0;
+}
+const porInscrito=o=>o.plano==='inscrito'||o.plano==='taxa';
+function resumoPlano(o){
+  switch(o.plano){
+    case 'inscrito':return `${brl(o.valor)} por inscrito pago`+(o.minimo?` · mínimo ${brl(o.minimo)}`:'');
+    case 'taxa':return `${brl(o.valor)} por inscrição, somado ao valor pago pelo atleta`;
+    case 'evento':return `${brl(o.valor)} por evento`;
+    case 'mensal':return `${brl(o.valor)}/mês · vence ${fmtDia(o.vencimento)}`;
+    default:return 'Sem cobrança';
+  }
+}
+const recebido=o=>(o.pagamentos||[]).reduce((s,p)=>s+(p.valor||0),0);
 
 /* ---- PWA ---- */
 (function(){
@@ -206,7 +236,7 @@ function render(){
   $('lista').innerHTML=!l.length?`<div class="empty">${S.orgs.length?'Nenhum organizador neste filtro.':'Nenhum organizador ainda.<br>Toque em <b>+ Novo organizador</b>.'}</div>`:
     l.map(o=>`<div class="card org" onclick="detalhe('${esc(o.id)}')"><div class="top"><div style="flex:1;min-width:0"><h2>${esc(o.nome)}</h2>
       <div class="muted small">${esc(o.id)} · ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
-      ${o.plano==='proprio'?'':`<div class="small" style="margin-top:4px">${esc(PLANOS[o.plano]||'')} · ${brl(o.valor)}${o.plano==='mensal'?'/mês · vence '+fmtDia(o.vencimento):''}</div>`}</div>
+      ${o.plano==='proprio'?'':`<div class="small" style="margin-top:4px">${esc(PLANOS[o.plano]||'')} · ${esc(resumoPlano(o))}${o.calculo&&o.plano!=='mensal'?` · <b>total ${brl(o.calculo.total)}</b>`:''}</div>`}</div>
       ${situacao(o)}</div></div>`).join('');
 }
 
@@ -220,19 +250,67 @@ async function criarLogin(email,senha){
 
 /* ================== Novo organizador ================== */
 function camposCobranca(o){
-  o=o||{plano:'mensal',valor:0,vencimento:maisMeses(hoje(),1)};
-  return `<h3>Cobrança</h3>
-    <label>Plano</label><select id="fPlano" onchange="$('fCobr').classList.toggle('hidden',this.value==='proprio');$('fVencBox').classList.toggle('hidden',this.value!=='mensal')">
+  o=o||{plano:'inscrito',valor:200,minimo:100000,condicao:'50-50',vencimento:maisMeses(hoje(),1)};
+  const A=adic(o);
+  return `<h3>Cobrança combinada</h3>
+    <label>Modelo</label><select id="fPlano" onchange="planoUI()">
       ${Object.entries(PLANOS).map(([k,v])=>`<option value="${k}" ${o.plano===k?'selected':''}>${v}</option>`).join('')}</select>
-    <div id="fCobr" class="row ${o.plano==='proprio'?'hidden':''}">
-      <div><label>Valor (R$)</label><input id="fValor" inputmode="decimal" placeholder="99,90" value="${reais(o.valor)}"></div>
-      <div id="fVencBox" class="${o.plano==='mensal'?'':'hidden'}"><label>Vencimento</label><input id="fVenc" type="date" value="${esc(o.vencimento||'')}"></div>
+    <div id="fCobr">
+      <div class="row">
+        <div><label id="fValorLbl">Valor (R$)</label><input id="fValor" inputmode="decimal" placeholder="2,00" value="${reais(o.valor)}" oninput="estimar()"></div>
+        <div id="fMinBox"><label>Valor mínimo (R$)</label><input id="fMin" inputmode="decimal" placeholder="1.000,00" value="${reais(o.minimo)}" oninput="estimar()"></div>
+        <div id="fVencBox"><label>Vencimento</label><input id="fVenc" type="date" value="${esc(o.vencimento||'')}"></div>
+      </div>
+      <div id="fEvBox">
+        <label>Referente a <span class="muted">(evento combinado)</span></label><input id="fRef" placeholder="Ex.: MTB GPX 2027 — largada 25/04" value="${esc(o.referente||'')}">
+        <label>Inscritos previstos <span class="muted">(para a estimativa)</span></label><input id="fPrev" inputmode="numeric" placeholder="800" value="${o.previstos||''}" oninput="estimar()">
+        <label>Forma de pagamento</label><select id="fCond" onchange="estimar()">${Object.entries(CONDICOES).map(([k,v])=>`<option value="${k}" ${(o.condicao||'50-50')===k?'selected':''}>${v}</option>`).join('')}</select>
+        <h3 style="font-size:14px">Adicionais</h3>
+        <label class="chk" style="display:flex;gap:8px;align-items:center;color:var(--text);margin-top:8px"><input type="checkbox" id="aCk" style="width:20px;height:20px" ${A.checkin.ativo?'checked':''} onchange="estimar()"> Check-in presencial</label>
+        <div class="row"><div><label>Pessoas</label><input id="aCkP" inputmode="numeric" value="${A.checkin.pessoas}" oninput="estimar()"></div>
+          <div><label>Turnos</label><input id="aCkT" inputmode="numeric" value="${A.checkin.turnos}" oninput="estimar()"></div>
+          <div><label>R$ por pessoa/turno</label><input id="aCkV" inputmode="decimal" value="${reais(A.checkin.valor)}" oninput="estimar()"></div></div>
+        <label class="chk" style="display:flex;gap:8px;align-items:center;color:var(--text);margin-top:10px"><input type="checkbox" id="aCf" style="width:20px;height:20px" ${A.conferencia.ativo?'checked':''} onchange="estimar()"> Conferência de pagamentos</label>
+        <div class="row"><div><label>Valor (R$)</label><input id="aCfV" inputmode="decimal" value="${reais(A.conferencia.valor)}" oninput="estimar()"></div></div>
+        <label class="chk" style="display:flex;gap:8px;align-items:center;color:var(--text);margin-top:10px"><input type="checkbox" id="aOu" style="width:20px;height:20px" ${A.outro.ativo?'checked':''} onchange="estimar()"> Outro</label>
+        <div class="row"><div style="flex:2"><label>Descrição</label><input id="aOuD" placeholder="Ex.: cartaz impresso" value="${esc(A.outro.desc)}"></div>
+          <div><label>Valor (R$)</label><input id="aOuV" inputmode="decimal" value="${reais(A.outro.valor)}" oninput="estimar()"></div></div>
+        <div class="card" id="fEst" style="margin-top:12px;background:var(--pri2);border-color:transparent"></div>
+      </div>
     </div>
     <label>Observações</label><textarea id="fObs" rows="2" placeholder="Telefone, cidade, combinado…">${esc(o.obs||'')}</textarea>`;
 }
+function planoUI(){
+  const p=$('fPlano').value;
+  $('fCobr').classList.toggle('hidden',p==='proprio');
+  $('fValorLbl').textContent=ROT_VALOR[p]||'Valor (R$)';
+  $('fMinBox').classList.toggle('hidden',p!=='inscrito');
+  $('fVencBox').classList.toggle('hidden',p!=='mensal');
+  $('fEvBox').classList.toggle('hidden',p==='mensal'||p==='proprio');
+  estimar();
+}
 function lerCobranca(){
-  const plano=$('fPlano').value;
-  return{plano,valor:plano==='proprio'?0:cents($('fValor').value),vencimento:plano==='mensal'?($('fVenc').value||null):null,obs:$('fObs').value.trim()};
+  const plano=$('fPlano').value,n=id=>Math.max(0,parseInt($(id).value,10)||0);
+  const d={plano,valor:plano==='proprio'?0:cents($('fValor').value),obs:$('fObs').value.trim(),
+    minimo:plano==='inscrito'?cents($('fMin').value):0,vencimento:plano==='mensal'?($('fVenc').value||null):null};
+  if(plano!=='mensal'&&plano!=='proprio'){
+    Object.assign(d,{referente:$('fRef').value.trim(),previstos:n('fPrev'),condicao:$('fCond').value,
+      adicionais:{checkin:{ativo:$('aCk').checked,pessoas:n('aCkP'),turnos:n('aCkT'),valor:cents($('aCkV').value)},
+        conferencia:{ativo:$('aCf').checked,valor:cents($('aCfV').value)},
+        outro:{ativo:$('aOu').checked,desc:$('aOuD').value.trim(),valor:cents($('aOuV').value)}}});
+  }else Object.assign(d,{adicionais:null,condicao:null});
+  return d;
+}
+function estimar(){
+  const el=$('fEst');if(!el)return;
+  const o=lerCobranca();
+  if(o.plano==='mensal'||o.plano==='proprio'){el.innerHTML='';return;}
+  const prev=o.previstos||0,base=baseEvento(o,prev),ad=listaAdicionais(o),tot=base+ad.reduce((s,x)=>s+x.valor,0);
+  el.innerHTML=`<b>Estimativa${porInscrito(o)?` para ${prev} inscrito(s) pago(s)`:''}</b>
+    <div class="small" style="margin-top:6px">${esc(PLANOS[o.plano])}: ${brl(base)}${o.plano==='inscrito'&&o.minimo&&prev*o.valor<o.minimo?' (valor mínimo)':''}</div>
+    ${ad.map(x=>`<div class="small">${esc(x.nome)}: ${brl(x.valor)}</div>`).join('')}
+    <div style="margin-top:6px;font-size:18px"><b>Total: ${brl(tot)}</b></div>
+    ${o.condicao==='50-50'?`<div class="small">Entrada (50%): ${brl(Math.round(tot/2))}</div>`:''}`;
 }
 function novoOrg(){
   abrir(`<h2>Novo organizador</h2>
@@ -245,6 +323,7 @@ function novoOrg(){
     ${camposCobranca()}
     <div style="height:14px"></div>
     <div class="row"><button class="btn" onclick="fechar()">Cancelar</button><button class="btn pri" id="fOk" onclick="criarOrg()">Criar organizador e login</button></div>`);
+  planoUI();
   let mexeu=false;$('fId').oninput=()=>mexeu=true;$('fNome').oninput=()=>{if(!mexeu)$('fId').value=slug($('fNome').value);};
 }
 async function criarOrg(){
@@ -318,18 +397,16 @@ async function detalhe(id){
     <div>${situacao(o)} <span class="tag neu">${esc(PLANOS[o.plano]||o.plano||'')}</span></div>
     <div class="kv" style="margin-top:10px"><span>Identificador:</span> ${esc(o.id)}</div>
     <div class="kv"><span>Responsável:</span> ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
-    ${proprio?'':`<div class="kv"><span>Valor:</span> ${brl(o.valor)}${o.plano==='mensal'?' /mês · <span>vence</span> '+fmtDia(o.vencimento):''}</div>`}
-    ${o.ultimoPagamento?`<div class="kv"><span>Último pagamento:</span> ${fmtDia(o.ultimoPagamento)}</div>`:''}
     ${o.obs?`<div class="kv"><span>Obs.:</span> ${esc(o.obs)}</div>`:''}
     <div class="kv" id="dUso"><span>Uso:</span> carregando…</div>
+    ${proprio?'':secaoCobranca(o)}
     <h3>Links</h3>
     <div class="muted small" style="margin-top:6px">Área do organizador (o responsável entra com o login dele)</div><div class="linkbox">${esc(L.controle)}</div>
     <div class="row" style="margin-top:8px"><button class="btn" onclick="window.open('${L.suporte}','_blank')">🛠 Entrar como suporte</button>
       <button class="btn" onclick="enviarAcesso('${esc(id)}')">💬 Enviar acesso</button></div>
     <h3>Ações</h3>
     <div style="height:8px"></div>
-    ${proprio?'':`<button class="btn ok full" onclick="pagar('${esc(id)}')">✓ Registrar pagamento${o.plano==='mensal'?' (+1 mês)':''}</button><div style="height:8px"></div>`}
-    <div class="row"><button class="btn" onclick="editar('${esc(id)}')">Editar</button>
+    <div class="row"><button class="btn" onclick="editar('${esc(id)}')">Editar${proprio?'':' / cobrança'}</button>
       <button class="btn" onclick="resetSenha('${esc(o.donoEmail||'')}')">📧 Redefinir senha</button></div>
     <div style="height:8px"></div>
     <button class="btn full ${o.status==='ativo'?'bad':''}" onclick="alternar('${esc(id)}')">${o.status==='ativo'?'⏸ Suspender acesso':'▶ Reativar acesso'}</button>
@@ -338,23 +415,91 @@ async function detalhe(id){
     <div style="height:8px"></div><button class="btn full" onclick="fechar()">Fechar</button>`);
   try{
     const r=db.collection('organizadores').doc(id);
-    const [ev,ins,eq]=await Promise.all([r.collection('eventos').get(),r.collection('inscricoes').get(),r.collection('equipe').get()]);
-    if($('dUso'))$('dUso').innerHTML=`<span>Uso:</span> ${ev.size} evento(s) · ${ins.size} inscrição(ões) · ${eq.size} na equipe`;
+    // (as inscrições só são lidas no botão "Calcular", para economizar leituras)
+    const [ev,eq]=await Promise.all([r.collection('eventos').get(),r.collection('equipe').get()]);
+    if($('dUso'))$('dUso').innerHTML=`<span>Uso:</span> ${ev.size} evento(s) · ${eq.size} na equipe`;
   }catch(e){if($('dUso'))$('dUso').innerHTML='<span>Uso:</span> não foi possível contar';}
 }
 function enviarAcesso(id){const o=S.orgs.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(textoAcesso(o,null)),'_blank');}
 async function resetSenha(email){if(!email)return;try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado para '+email);}catch(e){toast(erroMsg(e));}}
-async function pagar(id){
-  const o=S.orgs.find(x=>x.id===id);
-  const up={ultimoPagamento:hoje()};
-  if(o.plano==='mensal'){
-    const base=o.vencimento&&diasAte(o.vencimento)>-60?o.vencimento:hoje();   // atraso longo: recomeça de hoje
-    up.vencimento=maisMeses(base,1);
-    if(!confirm(`Registrar pagamento de ${brl(o.valor)}?\nPróximo vencimento: ${fmtDia(up.vencimento)}`))return;
-  }else if(!confirm(`Registrar pagamento de ${brl(o.valor)} (por evento)?`))return;
-  if(o.status!=='ativo')up.status='ativo';
-  try{await db.collection('organizadores').doc(id).update(up);toast('Pagamento registrado');detalhe(id);}catch(e){toast(erroMsg(e));}
+function secaoCobranca(o){
+  const id=esc(o.id),ad=listaAdicionais(o),rec=recebido(o),c=o.calculo;
+  const pags=(o.pagamentos||[]).slice().reverse();
+  return `<h3>Cobrança combinada</h3>
+    <div class="kv" style="margin-top:8px"><span>Modelo:</span> <b>${esc(PLANOS[o.plano]||o.plano)}</b> — ${esc(resumoPlano(o))}</div>
+    ${o.referente?`<div class="kv"><span>Referente a:</span> ${esc(o.referente)}</div>`:''}
+    ${ad.length?`<div class="kv"><span>Adicionais:</span></div>${ad.map(x=>`<div class="small" style="margin-left:10px">• ${esc(x.nome)}: <b>${brl(x.valor)}</b></div>`).join('')}`:''}
+    ${o.condicao?`<div class="kv"><span>Pagamento:</span> ${esc(CONDICOES[o.condicao]||'')}</div>`:''}
+    ${o.plano!=='mensal'&&o.previstos?`<div class="kv"><span>Estimativa (${o.previstos} previstos):</span> ${brl(baseEvento(o,o.previstos)+totalAdicionais(o))}</div>`:''}
+    ${c?`<div class="card" style="margin:10px 0 0;background:var(--pri2);border-color:transparent">
+      <div class="small muted">Último cálculo em ${fmtDia(c.data)}</div>
+      ${(c.eventos||[]).map(e=>`<div class="small">• ${esc(e.titulo)}: ${porInscrito(o)?e.pagos+' pago(s) → ':''}<b>${brl(e.valor)}</b></div>`).join('')}
+      ${c.adicionais?`<div class="small">• Adicionais: <b>${brl(c.adicionais)}</b></div>`:''}
+      <div style="font-size:18px;margin-top:6px"><b>Total: ${brl(c.total)}</b></div></div>`:''}
+    <div class="kv" style="margin-top:8px"><span>Recebido:</span> <b style="color:var(--ok)">${brl(rec)}</b>${c&&o.plano!=='mensal'?` · <span>Saldo:</span> <b style="color:${c.total-rec>0?'var(--bad)':'var(--ok)'}">${brl(Math.max(0,c.total-rec))}</b>`:''}</div>
+    ${o.plano==='mensal'&&o.vencimento?`<div class="kv"><span>Vencimento:</span> ${fmtDia(o.vencimento)}</div>`:''}
+    ${pags.length?`<div class="small muted" style="margin-top:4px">${pags.slice(0,5).map(p=>`${fmtDia(p.data)}: ${brl(p.valor)}${p.obs?' — '+esc(p.obs):''}`).join('<br>')}</div>`:''}
+    <div style="height:8px"></div>
+    ${o.plano!=='mensal'?`<button class="btn full" onclick="calcular('${id}')">🧮 Calcular pelos inscritos pagos</button><div style="height:8px"></div>`:''}
+    <div class="row"><button class="btn ok" onclick="pagar('${id}')">✓ Registrar ${o.plano==='mensal'?'pagamento (+1 mês)':'recebimento'}</button>
+      <button class="btn" onclick="enviarResumo('${id}')">💬 Enviar resumo</button></div>`;
 }
+async function calcular(id){
+  const o=S.orgs.find(x=>x.id===id);
+  toast('Calculando…');
+  try{
+    const r=db.collection('organizadores').doc(id);
+    const [evs,pg]=await Promise.all([r.collection('eventos').get(),r.collection('inscricoes').where('pago','==',true).get()]);
+    const cont={};pg.docs.forEach(d=>{const x=d.data();if(x.isento)return;cont[x.eventoId]=(cont[x.eventoId]||0)+1;});
+    let eventos=evs.docs.map(d=>({id:d.id,titulo:d.data().titulo||'Evento',pagos:cont[d.id]||0}));
+    // Por inscrito: conta só eventos com inscritos pagos; valor fixo: todos os eventos
+    if(porInscrito(o))eventos=eventos.filter(e=>e.pagos>0);
+    eventos.forEach(e=>e.valor=baseEvento(o,e.pagos));
+    const adicionais=totalAdicionais(o),total=eventos.reduce((s,e)=>s+e.valor,0)+adicionais;
+    await r.update({calculo:{data:hoje(),eventos,adicionais,total}});
+    toast('Cálculo atualizado');detalhe(id);
+  }catch(e){toast(erroMsg(e));}
+}
+function pagar(id){
+  const o=S.orgs.find(x=>x.id===id),rec=recebido(o);
+  let sug=o.valor||0;
+  if(o.plano!=='mensal'){
+    const total=o.calculo?o.calculo.total:(baseEvento(o,o.previstos||0)+totalAdicionais(o));
+    sug=Math.max(0,total-rec);if(o.condicao==='50-50'&&!rec)sug=Math.round(total/2);
+  }
+  abrir(`<h2>Registrar ${o.plano==='mensal'?'pagamento':'recebimento'}</h2>
+    <div class="muted">${esc(o.nome)} — ${esc(resumoPlano(o))}</div>
+    <div class="row"><div><label>Valor recebido (R$)</label><input id="pValor" inputmode="decimal" value="${reais(sug)}"></div>
+      <div><label>Data</label><input id="pData" type="date" value="${hoje()}"></div></div>
+    <label>Observação</label><input id="pObs" placeholder="${o.condicao==='50-50'&&!rec?'Entrada 50%':'Ex.: saldo final'}">
+    ${o.plano==='mensal'?`<div class="muted small" style="margin-top:6px">O vencimento avança 1 mês.</div>`:''}
+    <div style="height:14px"></div>
+    <div class="row"><button class="btn" onclick="detalhe('${esc(id)}')">Voltar</button><button class="btn ok" onclick="salvarPagamento('${esc(id)}')">Registrar</button></div>`);
+}
+async function salvarPagamento(id){
+  const o=S.orgs.find(x=>x.id===id),valor=cents($('pValor').value),data=$('pData').value||hoje(),obs=$('pObs').value.trim();
+  if(!(valor>0))return toast('Informe o valor');
+  const up={ultimoPagamento:data,pagamentos:firebase.firestore.FieldValue.arrayUnion({data,valor,obs,em:Date.now()})};
+  if(o.plano==='mensal'){const base=o.vencimento&&diasAte(o.vencimento)>-60?o.vencimento:hoje();up.vencimento=maisMeses(base,1);}
+  if(o.status!=='ativo'&&!confirm('Reativar o acesso deste organizador também?'))delete up.status;else if(o.status!=='ativo')up.status='ativo';
+  try{await db.collection('organizadores').doc(id).update(up);toast('Recebimento registrado');detalhe(id);}catch(e){toast(erroMsg(e));}
+}
+function textoResumo(o){
+  const ad=listaAdicionais(o),c=o.calculo,rec=recebido(o);
+  let t=`Olá, ${o.donoNome}! Segue o resumo do acordo do sistema de inscrições (${o.nome}):\n\n`;
+  if(o.referente)t+=`📅 Referente a: ${o.referente}\n`;
+  t+=`💳 Cobrança: ${resumoPlano(o)}\n`;
+  if(o.plano==='taxa')t+=`   (a taxa entra no valor da inscrição; o repasse é feito pelo relatório de inscritos pagos)\n`;
+  if(ad.length)t+=`➕ Adicionais:\n`+ad.map(x=>`   • ${x.nome}: ${brl(x.valor)}`).join('\n')+'\n';
+  if(o.plano!=='mensal'&&o.previstos)t+=`📊 Estimativa para ${o.previstos} inscritos: ${brl(baseEvento(o,o.previstos)+totalAdicionais(o))}\n`;
+  if(c&&o.plano!=='mensal')t+=`🧮 Valor apurado (${fmtDia(c.data)}): ${brl(c.total)}\n`;
+  if(o.condicao)t+=`🗓 Pagamento: ${CONDICOES[o.condicao]}\n`;
+  if(rec)t+=`✅ Já recebido: ${brl(rec)}\n`;
+  if(c&&o.plano!=='mensal'&&c.total-rec>0)t+=`💰 Saldo: ${brl(c.total-rec)}\n`;
+  t+=`\nIncluso: configuração do evento, página de inscrição com Pix direto na sua conta, vouchers com QR Code, equipe de check-in e planilha de inscritos.`;
+  return t;
+}
+function enviarResumo(id){const o=S.orgs.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(textoResumo(o)),'_blank');}
 async function alternar(id){
   const o=S.orgs.find(x=>x.id===id),suspender=o.status==='ativo';
   if(suspender&&!confirm(`Suspender ${o.nome}?\n\nO responsável e a equipe perdem o acesso e o link de inscrição deixa de funcionar. Os dados ficam guardados.`))return;
@@ -369,6 +514,7 @@ function editar(id){
     ${camposCobranca(o)}
     <div style="height:14px"></div>
     <div class="row"><button class="btn" onclick="detalhe('${esc(id)}')">Voltar</button><button class="btn pri" onclick="salvarEdicao('${esc(id)}')">Salvar</button></div>`);
+  planoUI();
 }
 async function salvarEdicao(id){
   const nome=$('fNome').value.trim(),donoNome=$('fDono').value.trim();
