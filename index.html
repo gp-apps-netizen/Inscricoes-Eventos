@@ -126,10 +126,19 @@ const firebaseConfig = {
   </div>
 </div>
 
+<div id="telaAviso" class="login hidden">
+  <h1 id="avTitulo">Aviso</h1>
+  <div class="card"><div id="avTexto"></div>
+    <div style="height:14px"></div>
+    <button class="btn full" onclick="sair()">Sair</button>
+  </div>
+</div>
+
 <div id="telaApp" class="hidden">
   <header>
     <div class="hrow">
-      <h1>Controle de Inscrições<span class="papel hidden" id="papelTag">Equipe</span></h1>
+      <h1><span id="orgNome">Controle de Inscrições</span><span class="papel hidden" id="papelTag">Equipe</span><span class="papel hidden" id="suporteTag">Suporte</span></h1>
+      <a class="iconbtn hidden" id="btnPainel" href="admin/" style="text-decoration:none">Painel</a>
       <button class="iconbtn" onclick="sair()">Sair</button>
     </div>
     <select id="selEvento" onchange="selecionarEvento(this.value)"></select>
@@ -249,8 +258,8 @@ function fecharModal(){$('modal').classList.remove('show');}
 function fmtData(e){if(!e||!e.data)return '';const[a,m,d]=e.data.split('-');return `${d}/${m}/${a}`+(e.hora?` às ${e.hora}`:'');}
 function fmtTs(ts){if(!ts||!ts.toDate)return '';const d=ts.toDate();return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
 function fmtCPF(c){c=String(c||'');return c.length===11?c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):c;}
-function linkInscricao(id){return new URL('inscricao.html?e='+id,location.href.split(/[?#]/)[0]).href;}
-function linkVoucher(id){return new URL('inscricao.html?v='+id,location.href.split(/[?#]/)[0]).href;}
+function linkInscricao(id){return new URL('inscricao.html?o='+encodeURIComponent(ORG)+'&e='+id,location.href.split(/[?#]/)[0]).href;}
+function linkVoucher(id){return new URL('inscricao.html?o='+encodeURIComponent(ORG)+'&v='+id,location.href.split(/[?#]/)[0]).href;}
 function beep(ok){try{navigator.vibrate&&navigator.vibrate(ok?120:[250,100,250]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.15:.45));}catch(e){}}
 function moeda(v){if(typeof verValores==='function'&&!verValores())return 'R$ •••';return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo);}
@@ -284,8 +293,8 @@ else{
   auth=firebase.auth();db=firebase.firestore();
   db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
   auth.onAuthStateChanged(u=>{
-    if(u){$('telaLogin').classList.add('hidden');$('telaApp').classList.remove('hidden');iniciar();}
-    else{$('telaApp').classList.add('hidden');$('telaLogin').classList.remove('hidden');pararTudo();}
+    if(u){$('telaLogin').classList.add('hidden');iniciar();}
+    else{$('telaApp').classList.add('hidden');$('telaAviso').classList.add('hidden');$('telaLogin').classList.remove('hidden');pararTudo();}
   });
 }
 const TS=()=>firebase.firestore.FieldValue.serverTimestamp();
@@ -300,15 +309,20 @@ function sair(){pararScan();auth.signOut();}
 
 /* ================== Estado ================== */
 let eventos=[],selId=localStorage.getItem('insc_sel')||'',inscritos=[],unsubE=null,unsubI=null,unsubQ=null,subId=null,filtro='todos';
-let papel=null,perm={},equipe=[],eventosTodos=[],unsubM=null;
+let papel=null,perm={},equipe=[],eventosTodos=[],unsubM=null,unsubO=null;
+/* ---- Organizador (cliente) ---- */
+const SUPER='godoygpx@gmail.com';          // administrador geral (painel admin/)
+let ORG='',orgInfo={},suporte=false;
+const col=n=>db.collection('organizadores').doc(ORG).collection(n);
 const usuario=()=>(auth.currentUser&&auth.currentUser.email||'').toLowerCase();
+const ehSuper=()=>usuario()===SUPER;
 const ehDono=()=>papel==='dono';
 const podePagar=()=>papel==='dono'||!!perm.podePagar;
 // Ver valores: cadastros antigos continuam vendo; novos só se marcado
 const verValores=()=>papel==='dono'||perm.verValores!==false;
 // Nome de quem está usando o app (gravado junto do check-in/pagamento)
-const meuNome=()=>papel==='dono'?'Administrador':(perm.nome||usuario());
-function nomeDe(email,nome){if(nome)return nome;if(!email)return '';const m=equipe.find(x=>x.id===email);return m?m.nome:(email===usuario()&&papel==='dono'?'Administrador':email);}
+const meuNome=()=>suporte?'Suporte':papel==='dono'?(orgInfo.donoNome||'Organizador'):(perm.nome||usuario());
+function nomeDe(email,nome){if(nome)return nome;if(!email)return '';const m=equipe.find(x=>x.id===email);return m?m.nome:(email===orgInfo.donoEmail?(orgInfo.donoNome||'Organizador'):email===SUPER?'Administrador':email);}
 const quemCheckin=i=>i.checkin?nomeDe(i.checkinPor,i.checkinPorNome):'';
 let filtroQuem='';
 // Equipe: todosEventos === false => só os eventos da lista perm.eventos
@@ -319,20 +333,51 @@ function aplicarEventos(){
   if(!eventos.find(e=>e.id===selId))selId=eventos[0]?eventos[0].id:'';
   renderSelect();renderEventos();assinarInscritos();renderInscritos();
 }
+function aviso(titulo,html){
+  $('telaApp').classList.add('hidden');$('avTitulo').textContent=titulo;$('avTexto').innerHTML=html;$('telaAviso').classList.remove('hidden');
+}
 
+// Descobre o organizador e o papel de quem entrou
 async function detectarPapel(){
+  const q=new URLSearchParams(location.search);
+  suporte=false;ORG='';perm={};
   try{
-    const d=await db.collection('equipe').doc(usuario()).get({source:'server'});
-    if(d.exists){
-      if(!d.data().ativo){alert('Seu acesso ao controle de inscrições foi desativado.');auth.signOut();return false;}
-      papel='equipe';perm=d.data();
-    }else{papel='dono';perm={};}
+    if(ehSuper()&&q.get('org')){ORG=q.get('org');papel='dono';suporte=true;}
+    else{
+      const u=await db.collection('usuarios').doc(usuario()).get();
+      if(!u.exists){
+        aviso('Conta sem organizador',ehSuper()
+          ?'Você é o administrador geral. Abra o <a href="admin/">painel de administrador</a> para criar os organizadores (inclusive o seu, sem cobrança) ou use <b>?org=identificador</b> no link para entrar como suporte.'
+          :'Este login não está ligado a nenhum organizador. Fale com quem enviou o seu acesso.');
+        return false;
+      }
+      ORG=u.data().orgId;papel=u.data().papel==='equipe'?'equipe':'dono';
+    }
+    const o=await db.collection('organizadores').doc(ORG).get();
+    if(!o.exists){aviso('Organizador não encontrado','O organizador <b>'+esc(ORG)+'</b> não existe mais. Fale com o administrador do sistema.');return false;}
+    orgInfo=o.data();
+    if(orgInfo.status!=='ativo'&&!suporte){
+      aviso('Acesso suspenso','O acesso de <b>'+esc(orgInfo.nome||ORG)+'</b> está suspenso no momento. Os dados continuam guardados. Fale com o administrador do sistema para reativar.');return false;
+    }
+    if(papel==='dono'&&!suporte&&orgInfo.donoEmail!==usuario()){aviso('Sem acesso','Este login não é o responsável por este organizador.');return false;}
+    if(papel==='equipe'){
+      const m=await col('equipe').doc(usuario()).get();
+      if(!m.exists||!m.data().ativo){aviso('Acesso desativado','Seu acesso de equipe foi desativado ou removido. Fale com o organizador do evento.');return false;}
+      perm=m.data();
+    }
   }catch(e){
-    if(e.code==='permission-denied'){papel='dono';perm={};}
-    else{const d=await db.collection('equipe').doc(usuario()).get().catch(()=>null);if(d&&d.exists){papel='equipe';perm=d.data();}else papel='dono';}
+    if(e.code==='permission-denied')aviso('Sem acesso','Não foi possível abrir este organizador. O acesso pode estar suspenso ou ter sido removido.');
+    else aviso('Erro','Não foi possível carregar: '+esc(e.message));
+    return false;
   }
+  if(!suporte)localStorage.setItem('insc_org',ORG);
+  $('orgNome').textContent=orgInfo.nome||'Controle de Inscrições';
+  document.title=(orgInfo.nome||'Controle')+' · Inscrições';
   document.body.classList.toggle('isEquipe',papel==='equipe');
   $('papelTag').classList.toggle('hidden',papel!=='equipe');
+  $('suporteTag').classList.toggle('hidden',!suporte);
+  $('btnPainel').classList.toggle('hidden',!ehSuper());
+  $('telaAviso').classList.add('hidden');$('telaApp').classList.remove('hidden');
   return true;
 }
 
@@ -340,24 +385,30 @@ async function iniciar(){
   $('autoCheck').checked=!!localStorage.getItem('insc_auto');
   if(unsubE||papel==='carregando')return;
   papel='carregando';
-  if(!(await detectarPapel()))return;
+  if(!(await detectarPapel())){papel=null;return;}
+  if(localStorage.getItem('insc_selorg')!==ORG){selId='';localStorage.setItem('insc_selorg',ORG);}
   if(ehDono())assinarEquipe();
   else{
     // Acompanha o próprio cadastro: mudanças de eventos/permissões valem na hora
-    unsubM=db.collection('equipe').doc(usuario()).onSnapshot(d=>{
+    unsubM=col('equipe').doc(usuario()).onSnapshot(d=>{
       if(!d.exists||!d.data().ativo){alert('Seu acesso ao controle de inscrições foi removido ou desativado.');auth.signOut();return;}
       perm=d.data();aplicarEventos();
     },()=>{});
   }
-  unsubE=db.collection('eventos').orderBy('criadoEm','desc').onSnapshot(s=>{
+  // Suspensão em tempo real
+  unsubO=db.collection('organizadores').doc(ORG).onSnapshot(d=>{
+    if(!d.exists)return;orgInfo=d.data();$('orgNome').textContent=orgInfo.nome||'Controle de Inscrições';
+    if(orgInfo.status!=='ativo'&&!suporte){pararScan();aviso('Acesso suspenso','O acesso de <b>'+esc(orgInfo.nome||ORG)+'</b> foi suspenso. Os dados continuam guardados. Fale com o administrador do sistema.');}
+  },()=>{});
+  unsubE=col('eventos').orderBy('criadoEm','desc').onSnapshot(s=>{
     eventosTodos=s.docs.map(d=>({id:d.id,...d.data()}));
     aplicarEventos();
   },err=>{
-    if(err.code==='permission-denied'){alert('Esta conta não tem permissão de administrador. Confira o e-mail nas regras do Firestore.');auth.signOut();}
+    if(err.code==='permission-denied'){aviso('Sem acesso','Não foi possível carregar os eventos deste organizador. O acesso pode ter sido suspenso.');}
     else toast('Erro: '+err.message);
   });
 }
-function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};document.body.classList.remove('isEquipe');}
+function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}if(unsubO){unsubO();unsubO=null;}subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};ORG='';orgInfo={};document.body.classList.remove('isEquipe');}
 function eventoSel(){return eventos.find(e=>e.id===selId);}
 
 function renderSelect(){
@@ -372,7 +423,7 @@ function assinarInscritos(){
   if(unsubI){unsubI();unsubI=null;}
   subId=selId;inscritos=[];renderInscritos();
   if(!selId)return;
-  unsubI=db.collection('inscricoes').where('eventoId','==',selId).onSnapshot(s=>{
+  unsubI=col('inscricoes').where('eventoId','==',selId).onSnapshot(s=>{
     inscritos=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
     renderInscritos();renderEventos();
   },err=>{
@@ -437,7 +488,7 @@ async function marcarPagoGrupo(grupo,excetoId){
   const alvo=inscritos.filter(x=>x.grupo===grupo&&devePagar(x)&&x.id!==excetoId);
   if(!alvo.length)return 0;
   const b=db.batch();
-  alvo.forEach(x=>b.update(db.collection('inscricoes').doc(x.id),{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(x,ev)}));
+  alvo.forEach(x=>b.update(col('inscricoes').doc(x.id),{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(x,ev)}));
   await b.commit();return alvo.length;
 }
 async function pagarGrupo(id){
@@ -586,8 +637,8 @@ async function salvarEvento(id){
   if(imgTemp!==undefined)d.imagem=imgTemp;
   $('btnSalvarEv').disabled=true;
   try{
-    if(id)await db.collection('eventos').doc(id).update(d);
-    else{d.criadoEm=TS();const r=await db.collection('eventos').add(d);selecionarEvento(r.id);}
+    if(id)await col('eventos').doc(id).update(d);
+    else{d.criadoEm=TS();const r=await col('eventos').add(d);selecionarEvento(r.id);}
     fecharModal();toast('Evento salvo');
   }catch(e){toast('Erro: '+e.message);$('btnSalvarEv').disabled=false;}
 }
@@ -596,9 +647,9 @@ async function excluirEvento(id){
   if(!confirm(`Excluir "${e.titulo}" e TODAS as inscrições dele? Isso não pode ser desfeito.`))return;
   try{
     const docs=[];
-    (await db.collection('inscricoes').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
-    (await db.collection('bloqueios').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
-    docs.push(db.collection('eventos').doc(id));
+    (await col('inscricoes').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
+    (await col('bloqueios').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
+    docs.push(col('eventos').doc(id));
     for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(r=>b.delete(r));await b.commit();}
     fecharModal();toast('Evento excluído');
   }catch(err){toast('Erro: '+err.message);}
@@ -669,13 +720,14 @@ async function iniciarScan(){
 async function pararScan(){if(scanner&&escaneando){try{await scanner.stop();}catch(e){}}escaneando=false;ocupado=false;if($('btnScan'))$('btnScan').textContent='📷 Abrir câmera';}
 function extrairId(txt){
   txt=String(txt||'').trim();
-  try{const u=new URL(txt);if(u.searchParams.get('v'))return{id:u.searchParams.get('v')};if(u.searchParams.get('e'))return{link:true};return{invalido:true};}
+  try{const u=new URL(txt);if(u.searchParams.get('v')){const o=u.searchParams.get('o');if(o&&o!==ORG)return{outroOrg:true};return{id:u.searchParams.get('v')};}if(u.searchParams.get('e'))return{link:true};return{invalido:true};}
   catch(e){return{id:txt};}
 }
 async function lido(txt){
   if(ocupado)return;ocupado=true;
   try{scanner.pause(true);}catch(e){}
   const r=extrairId(txt);
+  if(r.outroOrg){mostrarResultado({tipo:'warn',titulo:'Voucher de outro organizador',msg:'Este voucher não é de um evento deste organizador.'});return;}
   if(r.link){mostrarResultado({tipo:'warn',titulo:'Isto é o QR de inscrição',msg:'Este QR leva à página de inscrição do evento, não é um voucher.'});return;}
   if(r.invalido||!r.id||r.id.includes('/')||r.id.length>40){mostrarResultado({tipo:'bad',titulo:'QR inválido',msg:'Este QR code não é um voucher deste sistema.'});return;}
   await consultar(r.id);
@@ -700,13 +752,13 @@ async function buscarManual(){
     return;
   }
   if(/^[A-Z0-9]{6}$/.test(cod)){
-    try{const s=await db.collection('inscricoes').where('codigo','==',cod).limit(1).get();if(!s.empty)return consultar(s.docs[0].id);}catch(e){}
+    try{const s=await col('inscricoes').where('codigo','==',cod).limit(1).get();if(!s.empty)return consultar(s.docs[0].id);}catch(e){}
   }
   mostrarResultado({tipo:'bad',titulo:'Não encontrado',msg:'Nenhuma inscrição neste evento com o código, nome ou CPF "'+esc(txt)+'".'});
 }
 async function consultar(id){
   try{
-    const d=await db.collection('inscricoes').doc(id).get();
+    const d=await col('inscricoes').doc(id).get();
     if(!d.exists){mostrarResultado({tipo:'bad',titulo:'Voucher não encontrado',msg:'Esta inscrição não existe ou foi excluída.'});return;}
     const i={id:d.id,...d.data()};
     if(i.eventoId!==selId){
@@ -751,7 +803,7 @@ async function fazerCheckin(id,auto,pagar,grupoTambem){
     const ev=eventoSel();
     let grupo=null;
     await db.runTransaction(async t=>{
-      const r=db.collection('inscricoes').doc(id),s=await t.get(r);
+      const r=col('inscricoes').doc(id),s=await t.get(r);
       if(!s.exists)throw new Error('NAOEXISTE');
       if(s.data().checkin)throw new Error('JA');
       const up={checkin:true,checkinEm:TS(),checkinPor:usuario(),checkinPorNome:meuNome()};
@@ -760,7 +812,7 @@ async function fazerCheckin(id,auto,pagar,grupoTambem){
       t.update(r,up);
     });
     if(pagar&&grupoTambem&&grupo){try{const n=await marcarPagoGrupo(grupo,id);if(n)toast(`Pagamento de mais ${n} pessoa(s) do grupo confirmado`);}catch(e){toast('Erro no pagamento do grupo: '+e.message);}}
-    const i=(await db.collection('inscricoes').doc(id).get()).data();
+    const i=(await col('inscricoes').doc(id).get()).data();
     mostrarResultado({tipo:'ok',titulo:'Entrada confirmada',insc:{id,...i}});
     if(auto&&escaneando)setTimeout(()=>{if(ocupado)retomar();},2500);
   }catch(e){
@@ -816,7 +868,7 @@ async function marcarPago(id,sim){
   if(!sim&&!confirm('Desfazer a confirmação de pagamento?'))return;
   const ev=eventoSel();
   try{
-    await db.collection('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(inscritos.find(x=>x.id===id)||{},ev)}:{pago:false,pagoEm:null,pagoPor:null,pagoPorNome:null,valorPago:null});
+    await col('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(inscritos.find(x=>x.id===id)||{},ev)}:{pago:false,pagoEm:null,pagoPor:null,pagoPorNome:null,valorPago:null});
     fecharModal();toast(sim?'Pagamento confirmado':'Pagamento desfeito');
   }catch(e){toast('Erro: '+e.message);}
 }
@@ -825,11 +877,11 @@ function whatsInscrito(id){
   const msg=`Olá, ${i.nome.split(' ')[0]}! Sobre sua inscrição em "${ev.titulo}" (código ${i.codigo}).\nSeu voucher: ${linkVoucher(id)}`;
   window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
 }
-async function fazerCheckinLista(id){try{await db.collection('inscricoes').doc(id).update({checkin:true,checkinEm:TS(),checkinPor:usuario(),checkinPorNome:meuNome()});toast('Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
-async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await db.collection('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinPor:null,checkinPorNome:null});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
+async function fazerCheckinLista(id){try{await col('inscricoes').doc(id).update({checkin:true,checkinEm:TS(),checkinPor:usuario(),checkinPorNome:meuNome()});toast('Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
+async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await col('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinPor:null,checkinPorNome:null});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
 async function excluirInscricao(id){
   const i=inscritos.find(x=>x.id===id);if(!confirm(`Excluir a inscrição de ${i.nome}?`))return;
-  try{const b=db.batch();b.delete(db.collection('inscricoes').doc(id));if(i.cpf)b.delete(db.collection('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();fecharModal();toast('Inscrição excluída');}
+  try{const b=db.batch();b.delete(col('inscricoes').doc(id));if(i.cpf)b.delete(col('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();fecharModal();toast('Inscrição excluída');}
   catch(e){toast('Erro: '+e.message);}
 }
 function exportarCSV(){
@@ -848,7 +900,7 @@ function abrirLinkPublico(){if(!selId)return toast('Selecione um evento');window
 /* ================== Equipe (usuários de check-in) ================== */
 function assinarEquipe(){
   if(unsubQ)return;
-  unsubQ=db.collection('equipe').onSnapshot(s=>{
+  unsubQ=col('equipe').onSnapshot(s=>{
     equipe=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
     renderEquipe();
   },err=>{
@@ -880,7 +932,7 @@ async function salvarMembro(){
   if(!acesso.todosEventos&&!acesso.eventos.length)return toast('Escolha pelo menos um evento (ou marque Todos os eventos)');
   if(!nome)return toast('Informe o nome');
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return toast('E-mail inválido');
-  if(email===usuario())return toast('Esse é o seu próprio e-mail de administrador');
+  if(email===usuario()||email===orgInfo.donoEmail||email===SUPER)return toast('Esse e-mail é do responsável pelo organizador');
   if(senha.length<6)return toast('A senha precisa ter pelo menos 6 caracteres');
   $('btnMb').disabled=true;$('btnMb').textContent='Cadastrando…';
   let jaExistia=false;
@@ -892,7 +944,12 @@ async function salvarMembro(){
     try{await a2.createUserWithEmailAndPassword(email,senha);}
     catch(e){if(e.code==='auth/email-already-in-use')jaExistia=true;else throw e;}
     await a2.signOut().catch(()=>{});
-    await db.collection('equipe').doc(email).set({nome,email,podePagar,verValores,...acesso,ativo:true,criadoEm:TS()});
+    // Cadastro na equipe + vínculo do login com este organizador
+    const b=db.batch();
+    b.set(col('equipe').doc(email),{nome,email,podePagar,verValores,...acesso,ativo:true,criadoEm:TS()});
+    b.set(db.collection('usuarios').doc(email),{orgId:ORG,papel:'equipe'});
+    try{await b.commit();}
+    catch(e){if(e.code==='permission-denied')throw new Error('Este e-mail já está ligado a outro organizador ou é de um responsável. Use outro e-mail.');throw e;}
     fecharModal();
     if(jaExistia)alert('Usuário adicionado à equipe.\n\nEste e-mail já tinha uma conta, então a senha informada NÃO foi aplicada. A pessoa entra com a senha que já usa, ou toca em "Esqueci a senha" na tela de login.');
     else alert(`Usuário cadastrado!\n\nEnvie para ${nome}:\n• Link: ${location.href.split(/[?#]/)[0]}\n• E-mail: ${email}\n• Senha: ${senha}`);
@@ -938,13 +995,13 @@ async function salvarAcesso(id){
   if(!a.todosEventos&&!a.eventos.length)return toast('Escolha pelo menos um evento (ou marque Todos os eventos)');
   await atualizarMembro(id,a);
 }
-async function atualizarMembro(id,dados){try{await db.collection('equipe').doc(id).update(dados);toast('Atualizado');}catch(e){toast('Erro: '+e.message);}}
+async function atualizarMembro(id,dados){try{await col('equipe').doc(id).update(dados);toast('Atualizado');}catch(e){toast('Erro: '+e.message);}}
 async function resetSenha(email){try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado');}catch(e){toast('Erro: '+e.message);}}
 function enviarAcesso(id){const m=equipe.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(`Olá, ${m.nome}! Acesse o controle de check-in:\n${location.href.split(/[?#]/)[0]}\nEntre com o e-mail ${m.email}.`),'_blank');}
 async function removerMembro(id){
   const m=equipe.find(x=>x.id===id);
   if(!confirm(`Remover ${m.nome||m.email} da equipe? A pessoa perde o acesso na hora.`))return;
-  try{await db.collection('equipe').doc(id).delete();fecharModal();toast('Removido da equipe');}catch(e){toast('Erro: '+e.message);}
+  try{const b=db.batch();b.delete(col('equipe').doc(id));b.delete(db.collection('usuarios').doc(id));await b.commit();fecharModal();toast('Removido da equipe');}catch(e){toast('Erro: '+e.message);}
 }
 </script>
 </body>

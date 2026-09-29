@@ -97,13 +97,14 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function fmtData(e){if(!e||!e.data)return '';const[a,m,d]=e.data.split('-');return `${d}/${m}/${a}`+(e.hora?` às ${e.hora}`:'');}
 function metaEv(e){return [fmtData(e),e.local].filter(Boolean).join(' · ');}
 const BASE=location.href.split(/[?#]/)[0];
-const linkVoucher=id=>BASE+'?v='+id;
+const qo=()=>'?o='+encodeURIComponent(ORG)+'&';
+const linkVoucher=id=>BASE+qo()+'v='+id;
 function gerarCodigo(){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(n=>s+=a[n%a.length]);return s;}
 function cpfValido(c){c=c.replace(/\D/g,'');if(c.length!==11||/^(\d)\1+$/.test(c))return false;for(let t=9;t<11;t++){let s=0;for(let i=0;i<t;i++)s+=+c[i]*(t+1-i);if(((s*10)%11)%10!==+c[t])return false;}return true;}
 function mascaraCPF(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');el.value=v;}
 function mascaraTel(el){let v=el.value.replace(/\D/g,'').slice(0,11);if(v.length>10)v=v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');else if(v.length>6)v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');else if(v.length>2)v=v.replace(/(\d{2})(\d+)/,'($1) $2');el.value=v;}
 function meus(){try{return JSON.parse(localStorage.getItem('meusVouchers')||'[]');}catch(e){return[];}}
-function guardar(v){const l=meus().filter(x=>x.id!==v.id);l.unshift(v);localStorage.setItem('meusVouchers',JSON.stringify(l.slice(0,50)));}
+function guardar(v){v.org=ORG;const l=meus().filter(x=>x.id!==v.id);l.unshift(v);localStorage.setItem('meusVouchers',JSON.stringify(l.slice(0,50)));}
 function topo(sm,t,m){$('topSmall').textContent=sm;$('topTitulo').textContent=t;$('topMeta').textContent=m||'';document.title=t;}
 function tela(html){$('conteudo').innerHTML=html;}
 function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
@@ -160,34 +161,47 @@ const configurado=!String(firebaseConfig.apiKey).startsWith('COLE');
 let db;
 if(configurado){firebase.initializeApp(firebaseConfig);db=firebase.firestore();}
 const P=new URLSearchParams(location.search);
+// Organizador dono do evento (?o=). Links antigos (sem ?o=) usam o organizador indicado em config/legado.
+let ORG=P.get('o')||'';
+const col=n=>db.collection('organizadores').doc(ORG).collection(n);
+function msgErro(e){
+  if(e&&e.code==='permission-denied')return 'Inscrições indisponíveis no momento. Fale com a organização do evento.';
+  if(e&&e.code==='unavailable')return 'Sem conexão com a internet. Tente novamente.';
+  return (e&&e.message)||'Erro desconhecido.';
+}
 const MAX_GRUPO=10;
 let evento=null;
 
 (async function inicio(){
   if(!configurado){topo('Inscrição','Configuração pendente');tela('<div class="card">Cole a configuração do Firebase no arquivo <b>inscricao.html</b>.</div>');return;}
   try{
+    if(!ORG&&(P.get('v')||P.get('vs')||P.get('e'))){
+      const l=await db.collection('config').doc('legado').get().catch(()=>null);
+      ORG=l&&l.exists?l.data().orgId:'';
+      if(!ORG){topo('Inscrição','Link incompleto');tela('<div class="card"><p class="muted center">Este link está incompleto. Peça o link atualizado para a organização do evento.</p></div>');return;}
+    }
     if(P.get('v'))return await abrirVouchers([P.get('v')],true);
     if(P.get('vs'))return await abrirVouchers(P.get('vs').split(',').filter(Boolean).slice(0,MAX_GRUPO),false);
     if(P.get('e'))return await abrirFormulario(P.get('e'));
     listaMeus();
-  }catch(e){topo('Inscrição','Não foi possível carregar');tela(`<div class="card"><div class="msg bad">${esc(e.code==='unavailable'?'Sem conexão com a internet. Tente novamente.':e.message)}</div></div>`);}
+  }catch(e){topo('Inscrição','Não foi possível carregar');tela(`<div class="card"><div class="msg bad">${esc(msgErro(e))}</div></div>`);}
 })();
 
 function listaMeus(){
   topo('Inscrição','Meus vouchers');
   const l=meus();
-  tela(`<div class="card">${l.length?l.map(v=>`<a class="item" href="?v=${esc(v.id)}"><b>${esc(v.titulo)}</b><br><span class="muted">${esc(v.nome)} · ${esc(v.codigo||'')}</span></a>`).join(''):'<p class="muted center">Nenhum voucher salvo neste aparelho.<br>Use o link de inscrição enviado pelo organizador.</p>'}</div>`);
+  tela(`<div class="card">${l.length?l.map(v=>`<a class="item" href="?${v.org?'o='+encodeURIComponent(v.org)+'&':''}v=${esc(v.id)}"><b>${esc(v.titulo)}</b><br><span class="muted">${esc(v.nome)} · ${esc(v.codigo||'')}</span></a>`).join(''):'<p class="muted center">Nenhum voucher salvo neste aparelho.<br>Use o link de inscrição enviado pelo organizador.</p>'}</div>`);
 }
 
 /* ================== Formulário (uma ou várias pessoas) ================== */
 let seqP=0;
 async function abrirFormulario(eid){
-  const d=await db.collection('eventos').doc(eid).get();
+  const d=await col('eventos').doc(eid).get();
   if(!d.exists){topo('Inscrição','Evento não encontrado');tela('<div class="card"><p class="muted center">Este link de inscrição não é válido ou o evento foi removido.</p></div>');return;}
   evento={id:d.id,...d.data()};
   topo('Inscrição',evento.titulo,metaEv(evento));
   const ja=meus().filter(v=>v.eventoId===eid);
-  const aviso=ja.length?`<div class="msg ok">Já existe inscrição feita neste aparelho para este evento. <a href="?vs=${esc(ja.map(v=>v.id).join(','))}"><b>Ver voucher${ja.length>1?'s':''}</b></a></div>`:'';
+  const aviso=ja.length?`<div class="msg ok">Já existe inscrição feita neste aparelho para este evento. <a href="${qo()}vs=${esc(ja.map(v=>v.id).join(','))}"><b>Ver voucher${ja.length>1?'s':''}</b></a></div>`:'';
   if(!evento.aberto){tela(`<div class="card">${banner(evento)}${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}<div class="msg bad">As inscrições para este evento estão encerradas.</div>${aviso}</div>`);return;}
   seqP=0;
   tela(`<div class="card">
@@ -299,7 +313,7 @@ async function enviar(){
   if(erros.length){$('erro').innerHTML=`<div class="msg bad">${erros.map(esc).join('<br>')}</div>`;$('erro').scrollIntoView({behavior:'smooth',block:'center'});return;}
   $('erro').innerHTML='';$('btnEnviar').disabled=true;$('btnEnviar').textContent='Enviando…';
 
-  const refs=pessoas.map(()=>db.collection('inscricoes').doc());
+  const refs=pessoas.map(()=>col('inscricoes').doc());
   const grupo=pessoas.length>1?{grupo:'G'+gerarCodigo(),grupoIds:refs.map(r=>r.id)}:{};
   const ok=[],falhas=[];let encerrado=false;
   for(let k=0;k<pessoas.length;k++){
@@ -307,14 +321,14 @@ async function enviar(){
     const dados={eventoId:evento.id,codigo:gerarCodigo(),nome:p.nome,cpf:p.cpf,telefone:p.telefone,email:p.email,extra:'',respostas:p.respostas,...grupo,...(criancasGratis(evento)?{crianca:p.crianca,nascimento:p.nasc,isento:p.crianca}:{}),...(p.meia?{meia:true,meiaMotivo:p.meiaMotivo.slice(0,80)}:{}),...(termoAtivo(evento)?{termoAceito:true,termoAceitoEm:firebase.firestore.FieldValue.serverTimestamp(),termoVersao:evento.termo.versao||1,termoAceitoPor:pessoas[0].nome}:{}),
       checkin:false,checkinEm:null,pago:false,pagoEm:null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};
     const bt=db.batch();bt.set(ref,dados);
-    if(c.cpf&&p.cpf)bt.set(db.collection('bloqueios').doc(evento.id+'_'+p.cpf),{eventoId:evento.id,inscricaoId:ref.id});
+    if(c.cpf&&p.cpf)bt.set(col('bloqueios').doc(evento.id+'_'+p.cpf),{eventoId:evento.id,inscricaoId:ref.id});
     try{
       await bt.commit();ok.push({id:ref.id,...dados,pessoa:k});
       guardar({id:ref.id,eventoId:evento.id,titulo:evento.titulo,nome:p.nome,codigo:dados.codigo});
     }catch(e){
       let motivo='não foi possível concluir';
       if(e.code==='permission-denied'){
-        if(!encerrado){try{encerrado=!(await db.collection('eventos').doc(evento.id).get()).data().aberto;}catch(x){}}
+        if(!encerrado){try{encerrado=!(await col('eventos').doc(evento.id).get()).data().aberto;}catch(x){}}
         motivo=encerrado?'as inscrições foram encerradas':c.cpf?'este CPF já está inscrito neste evento':'não foi possível concluir';
       }else if(e.code==='unavailable')motivo='sem conexão com a internet';
       falhas.push({nome:p.nome,motivo,pessoa:k});
@@ -324,24 +338,24 @@ async function enviar(){
     $('erro').innerHTML=`<div class="msg bad">${falhas.map(f=>esc((pessoas.length>1?f.nome+': ':'')+f.motivo.charAt(0).toUpperCase()+f.motivo.slice(1)+'.')).join('<br>')}${c.cpf?'<br>Se você perdeu o voucher, fale com a organização.':''}</div>`;
     $('btnEnviar').disabled=false;atualizarPessoas();return;
   }
-  history.replaceState(null,'',ok.length>1?'?vs='+ok.map(i=>i.id).join(','):'?v='+ok[0].id);
+  history.replaceState(null,'',ok.length>1?qo()+'vs='+ok.map(i=>i.id).join(','):qo()+'v='+ok[0].id);
   mostrarVouchers(ok,evento,{novo:true,falhas,grupoTodo:ok});
 }
 
 /* ================== Vouchers (um ou vários) ================== */
 async function abrirVouchers(ids,unico){
-  const docs=(await Promise.all(ids.map(id=>db.collection('inscricoes').doc(id).get().catch(()=>null)))).filter(d=>d&&d.exists);
+  const docs=(await Promise.all(ids.map(id=>col('inscricoes').doc(id).get().catch(()=>null)))).filter(d=>d&&d.exists);
   if(!docs.length){topo('Voucher','Voucher não encontrado');tela('<div class="card"><p class="muted center">Este voucher não existe ou a inscrição foi cancelada.</p></div>');return;}
   const lista=docs.map(d=>({id:d.id,...d.data()}));
-  const e=await db.collection('eventos').doc(lista[0].eventoId).get();
-  const ev=e.exists?{id:e.id,...e.data()}:{titulo:'Evento'};
+  let ev={titulo:'Evento'};
+  try{const e=await col('eventos').doc(lista[0].eventoId).get();if(e.exists)ev={id:e.id,...e.data()};}catch(x){}
   lista.forEach(i=>guardar({id:i.id,eventoId:i.eventoId,titulo:ev.titulo,nome:i.nome,codigo:i.codigo}));
   // Se o voucher faz parte de um grupo, carrega o grupo para calcular o Pix total
   let grupoTodo=lista;
   const gids=lista[0].grupoIds;
   if(Array.isArray(gids)&&gids.length>1){
     const faltam=gids.filter(id=>!lista.find(i=>i.id===id)).slice(0,MAX_GRUPO);
-    const extras=(await Promise.all(faltam.map(id=>db.collection('inscricoes').doc(id).get().catch(()=>null)))).filter(d=>d&&d.exists).map(d=>({id:d.id,...d.data()}));
+    const extras=(await Promise.all(faltam.map(id=>col('inscricoes').doc(id).get().catch(()=>null)))).filter(d=>d&&d.exists).map(d=>({id:d.id,...d.data()}));
     grupoTodo=[...lista,...extras];
   }
   mostrarVouchers(lista,ev,{novo:false,falhas:[],grupoTodo,unico});
@@ -365,7 +379,7 @@ function mostrarVouchers(lista,ev,o){
     </div>`:''}
     ${varios&&!o.novo?`<div class="card"><button class="btn pri" style="margin-top:0" onclick="compartilharTodos()">📤 Compartilhar todos os vouchers</button></div>`:''}
     ${outrosDoGrupo?`<div class="card"><div class="muted">Este voucher faz parte de uma inscrição em grupo (${o.grupoTodo.length} pessoas).</div>
-      <a class="btn" style="text-decoration:none" href="?vs=${esc(o.grupoTodo.map(i=>i.id).join(','))}">👥 Ver todos os vouchers do grupo</a></div>`:''}
+      <a class="btn" style="text-decoration:none" href="${qo()}vs=${esc(o.grupoTodo.map(i=>i.id).join(','))}">👥 Ver todos os vouchers do grupo</a></div>`:''}
     ${px&&pend.length?cartaoPix(ev,pend):''}
     ${lista.map((i,k)=>cartaoVoucher(i,ev,k,varios)).join('')}
     ${termoAtivo(ev)&&lista.some(i=>i.termoAceito)?`<div class="card"><details><summary><b>✔ ${esc(tituloTermo(ev))} aceito</b></summary><div class="termoTxt">${esc(textoTermo(ev))}</div></details></div>`:''}
