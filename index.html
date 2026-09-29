@@ -79,6 +79,11 @@ nav.tabs svg{width:24px;height:24px}
 .login h1{text-align:center;font-size:22px}
 .empty{text-align:center;padding:30px 10px;color:var(--muted)}
 .hidden{display:none!important}
+.cores{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cor{width:34px;height:34px;border-radius:50%!important;border:2px solid var(--line);cursor:pointer;padding:0}
+.cor.on{outline:3px solid var(--text);outline-offset:2px}
+.cores input[type=color]{width:50px;height:40px;padding:2px;cursor:pointer}
+.prev{border:1px dashed var(--line);border-radius:12px;padding:12px;margin-top:12px}
 .evimg{display:block;width:calc(100% + 28px);margin:-14px -14px 12px;height:130px;object-fit:cover;border-radius:13px 13px 0 0}
 .imgprev{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin:6px 0;border:1px solid var(--line)}
 .secao{margin:18px 0 4px;padding-top:12px;border-top:1px solid var(--line);font-weight:700;font-size:15px}
@@ -148,6 +153,8 @@ const firebaseConfig = {
     <!-- EVENTOS -->
     <section id="tabEventos">
       <button class="btn pri full donoOnly" onclick="abrirEvento()">+ Novo evento</button>
+      <div class="donoOnly" style="height:8px"></div>
+      <button class="btn full donoOnly" onclick="abrirTema()">🎨 Cores e estilo</button>
       <div style="height:12px"></div>
       <div id="listaEventos"></div>
     </section>
@@ -252,9 +259,69 @@ function rr(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);
 /* ================== Utilidades ================== */
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ================== Tema (cores e estilo do organizador) ================== */
+const TEMA_PADRAO={cor:'#4338ca',topo:'',fonte:'sistema',cantos:'arredondado',modo:'auto'};
+let TEMA={...TEMA_PADRAO},TEMA_AJUSTE=null;   // TEMA_AJUSTE: cor própria de um evento (página pública)
+const FONTES={
+  sistema:{nome:'Padrão do celular',css:'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif'},
+  moderna:{nome:'Moderna',g:'Inter:wght@400;600;700',css:'"Inter",system-ui,sans-serif'},
+  arredondada:{nome:'Arredondada',g:'Nunito:wght@400;600;800',css:'"Nunito",system-ui,sans-serif'},
+  classica:{nome:'Clássica',g:'Merriweather:wght@400;700',css:'"Merriweather",Georgia,serif'},
+  elegante:{nome:'Elegante',g:'Playfair+Display:wght@600;700&family=Lato:wght@400;700',css:'"Lato",system-ui,sans-serif',titulo:'"Playfair Display",Georgia,serif'},
+  forte:{nome:'Forte',g:'Montserrat:wght@400;600;800',css:'"Montserrat",system-ui,sans-serif'}
+};
+const CANTOS={arredondado:{nome:'Arredondado',c:16,b:12},suave:{nome:'Suave',c:10,b:8},reto:{nome:'Reto',c:3,b:3},pilula:{nome:'Pílula',c:22,b:999}};
+const MODOS={auto:'Automático (segue o celular)',claro:'Sempre claro',escuro:'Sempre escuro'};
+const CORES_SUGERIDAS=['#4338ca','#2563eb','#0891b2','#0d9488','#15803d','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#7c2d12','#334155','#111827'];
+function hexOk(h){return /^#[0-9a-fA-F]{6}$/.test(String(h||''));}
+function hexRgb(h){h=String(h).replace('#','');const n=parseInt(h,16);return[(n>>16)&255,(n>>8)&255,n&255];}
+function mix(a,b,t){const x=hexRgb(a),y=hexRgb(b);return '#'+x.map((v,i)=>Math.round(v+(y[i]-v)*t).toString(16).padStart(2,'0')).join('');}
+function lum(h){const[r,g,b]=hexRgb(h).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);});return .2126*r+.7152*g+.0722*b;}
+const txtSobre=h=>lum(h)>.42?'#1c1d29':'#ffffff';
+function temaAtual(){const t={...TEMA_PADRAO,...TEMA,...(TEMA_AJUSTE||{})};if(!hexOk(t.cor))t.cor=TEMA_PADRAO.cor;if(t.topo&&!hexOk(t.topo))t.topo='';return t;}
+function corTopo(){const t=temaAtual();return t.topo||t.cor;}
+function corPri(){return temaAtual().cor;}
+function cssTema(t){
+  const cor=t.cor,topo=t.topo||cor;
+  const L={pri:cor,pri2:mix(cor,'#ffffff',.9),priTxt:txtSobre(cor),topo,topoTxt:txtSobre(topo)};
+  const D={pri:lum(cor)<.18?mix(cor,'#ffffff',.38):cor,pri2:mix(cor,'#12131a',.78),priTxt:'',topo:lum(topo)>.3?mix(topo,'#12131a',.8):topo,topoTxt:''};
+  D.priTxt=txtSobre(D.pri);D.topoTxt=txtSobre(D.topo);
+  const base={claro:'--bg:#f4f5fb;--card:#fff;--text:#1c1d29;--muted:#6b6f85;--line:#e3e5ee;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;--warn:#92400e;--warnbg:#fef3c7;',
+    escuro:'--bg:#12131a;--card:#1c1d27;--text:#eceef6;--muted:#9a9db3;--line:#2d2f3d;--ok:#4ade80;--okbg:#14301f;--bad:#f87171;--badbg:#3a1a1a;--warn:#fbbf24;--warnbg:#3a2e10;'};
+  const v=(x,b)=>`:root{${b||''}--pri:${x.pri};--pri2:${x.pri2};--priTxt:${x.priTxt};--topo:${x.topo};--topoTxt:${x.topoTxt};color-scheme:${b===base.escuro?'dark':'light'}}`;
+  let css;
+  if(t.modo==='claro')css=v(L,base.claro)+`@media (prefers-color-scheme:dark){${v(L,base.claro)}}`;
+  else if(t.modo==='escuro')css=v(D,base.escuro)+`@media (prefers-color-scheme:dark){${v(D,base.escuro)}}`;
+  else css=v(L)+`@media (prefers-color-scheme:dark){${v(D)}}`;
+  const f=FONTES[t.fonte]||FONTES.sistema,k=CANTOS[t.cantos]||CANTOS.arredondado;
+  css+=`header,.top{background:var(--topo)!important;color:var(--topoTxt)!important}
+header .iconbtn{color:var(--topoTxt)!important;background:color-mix(in srgb,var(--topoTxt) 18%,transparent)!important}
+.btn.pri{background:var(--pri)!important;border-color:var(--pri)!important;color:var(--priTxt)!important}
+body,input,select,textarea,button{font-family:${f.css}}
+${f.titulo?`h1,h2,h3,.nome,.ev h3{font-family:${f.titulo}}`:''}
+.card,.stat,.result,.kpi{border-radius:${k.c}px}
+.btn,input,select,.linkbox,.msg,.preco,.chkp,.seg,.qrbox,.termoTxt,.copia,.iconbtn{border-radius:${Math.min(k.b,999)}px}
+textarea{border-radius:${Math.min(k.b,14)}px}
+.sheet{border-radius:${k.c+2}px ${k.c+2}px 0 0}
+.evimg{border-radius:${k.c-1}px ${k.c-1}px 0 0}.banner{border-radius:${k.c-1}px ${k.c-1}px 0 0}`;
+  return css;
+}
+function aplicarTema(){
+  const t=temaAtual();
+  let st=document.getElementById('temaCss');if(!st){st=document.createElement('style');st.id='temaCss';document.head.appendChild(st);}
+  st.textContent=cssTema(t);
+  const f=FONTES[t.fonte]||FONTES.sistema;
+  let lk=document.getElementById('temaFonte');
+  if(f.g){if(!lk){lk=document.createElement('link');lk.id='temaFonte';lk.rel='stylesheet';document.head.appendChild(lk);}
+    const href='https://fonts.googleapis.com/css2?family='+f.g+'&display=swap';if(lk.href!==href)lk.href=href;}
+  else if(lk)lk.remove();
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=corTopo();
+}
+
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2600);}
 function abrirModal(html){$('sheet').innerHTML=html;$('modal').classList.add('show');}
-function fecharModal(){$('modal').classList.remove('show');}
+function fecharModal(){$('modal').classList.remove('show');if(editandoTema){editandoTema=false;TEMA=temaAntes||TEMA;aplicarTema();}}
+let temaAntes=null,editandoTema=false;
 function fmtData(e){if(!e||!e.data)return '';const[a,m,d]=e.data.split('-');return `${d}/${m}/${a}`+(e.hora?` às ${e.hora}`:'');}
 function fmtTs(ts){if(!ts||!ts.toDate)return '';const d=ts.toDate();return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
 function fmtCPF(c){c=String(c||'');return c.length===11?c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):c;}
@@ -309,7 +376,7 @@ function sair(){pararScan();auth.signOut();}
 
 /* ================== Estado ================== */
 let eventos=[],selId=localStorage.getItem('insc_sel')||'',inscritos=[],unsubE=null,unsubI=null,unsubQ=null,subId=null,filtro='todos';
-let papel=null,perm={},equipe=[],eventosTodos=[],unsubM=null,unsubO=null;
+let papel=null,perm={},equipe=[],eventosTodos=[],unsubM=null,unsubO=null,unsubT=null;
 /* ---- Organizador (cliente) ---- */
 const SUPER='godoygpx@gmail.com';          // administrador geral (painel admin/)
 let ORG='',orgInfo={},suporte=false;
@@ -395,6 +462,8 @@ async function iniciar(){
       perm=d.data();aplicarEventos();
     },()=>{});
   }
+  // Cores e estilo do organizador
+  unsubT=col('publico').doc('tema').onSnapshot(d=>{if(editandoTema)return;TEMA=d.exists?d.data():{};aplicarTema();},()=>{});
   // Suspensão em tempo real
   unsubO=db.collection('organizadores').doc(ORG).onSnapshot(d=>{
     if(!d.exists)return;orgInfo=d.data();$('orgNome').textContent=orgInfo.nome||'Controle de Inscrições';
@@ -408,7 +477,7 @@ async function iniciar(){
     else toast('Erro: '+err.message);
   });
 }
-function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}if(unsubO){unsubO();unsubO=null;}subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};ORG='';orgInfo={};document.body.classList.remove('isEquipe');}
+function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}if(unsubO){unsubO();unsubO=null;}if(unsubT){unsubT();unsubT=null;}TEMA={};aplicarTema();subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};ORG='';orgInfo={};document.body.classList.remove('isEquipe');}
 function eventoSel(){return eventos.find(e=>e.id===selId);}
 
 function renderSelect(){
@@ -540,6 +609,11 @@ function abrirEvento(id){
       <button class="btn bad ${e.imagem?'':'hidden'}" id="evImgRem" onclick="removerImagem()">Remover</button>
     </div>
 
+    <div class="secao">Cor do evento</div>
+    <label class="chk"><input type="checkbox" id="evCorOn" ${e.cor?'checked':''} onchange="$('evCorBox').classList.toggle('hidden',!this.checked)"> Usar uma cor própria na página de inscrição e no voucher deste evento</label>
+    <div id="evCorBox" class="cores ${e.cor?'':'hidden'}">${CORES_SUGERIDAS.map(c=>`<button class="cor" style="background:${c}" onclick="$('evCor').value='${c}'"></button>`).join('')}<input type="color" id="evCor" value="${esc(e.cor||corPri())}"></div>
+    <div class="muted" style="margin-top:4px">Sem cor própria, o evento usa as cores definidas em 🎨 Cores e estilo.</div>
+
     <div class="secao">Dados pedidos na inscrição</div>
     <div class="muted">O nome é sempre pedido.</div>
     <label class="chk"><input type="checkbox" id="cCpf" ${c.cpf?'checked':''}> CPF <span class="muted">(impede inscrição duplicada)</span></label>
@@ -626,7 +700,7 @@ async function salvarEvento(id){
     if(pix.tipo==='cpf'&&![11,14].includes(pix.chave.replace(/\D/g,'').length))return toast('CPF/CNPJ da chave incompleto');
     if(pix.tipo==='tel'&&pix.chave.replace(/\D/g,'').length<10)return toast('Celular da chave incompleto');
   }
-  const d={titulo,data:$('evData').value,hora:$('evHora').value,local:$('evLocal').value.trim(),descricao:$('evDesc').value.trim(),
+  const d={titulo,cor:$('evCorOn').checked&&hexOk($('evCor').value)?$('evCor').value:'',data:$('evData').value,hora:$('evHora').value,local:$('evLocal').value.trim(),descricao:$('evDesc').value.trim(),
     aberto:$('evAberto').checked,campos:{cpf:$('cCpf').checked,telefone:$('cTel').checked,email:$('cEmail').checked,extra},
     extraLabel:'',camposExtras,pix,atualizadoEm:TS()};
   const antigo=id?(eventos.find(x=>x.id===id)||{}).termo||{}:{};
@@ -674,9 +748,9 @@ async function baixarQRLink(id){
   let im=null;if(e.imagem){im=new Image();im.src=e.imagem;try{await im.decode();}catch(x){im=null;}}
   const tmp=document.createElement('div');new QRCode(tmp,{text:link,width:600,height:600,correctLevel:QRCode.CorrectLevel.M});
   const q=tmp.querySelector('canvas');const W=800,H=1000,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
-  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#4338ca';x.fillRect(0,0,W,190);
+  const topoC=e.cor||corTopo();x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle=topoC;x.fillRect(0,0,W,190);
   if(im&&im.naturalWidth){const k=Math.max(W/im.naturalWidth,190/im.naturalHeight),dw=im.naturalWidth*k,dh=im.naturalHeight*k;x.drawImage(im,(W-dw)/2,(190-dh)/2,dw,dh);x.fillStyle='rgba(20,22,60,.6)';x.fillRect(0,0,W,190);}
-  x.fillStyle='#fff';x.textAlign='center';x.font='bold 26px system-ui,sans-serif';x.fillText('INSCRIÇÕES ABERTAS',W/2,52);
+  x.fillStyle=im&&im.naturalWidth?'#fff':txtSobre(topoC);x.textAlign='center';x.font='bold 26px system-ui,sans-serif';x.fillText('INSCRIÇÕES ABERTAS',W/2,52);
   x.font='bold 38px system-ui,sans-serif';quebra(x,e.titulo,W/2,108,W-60,46,2);
   x.drawImage(q,100,220,600,600);
   x.fillStyle='#1c1d29';x.font='28px system-ui,sans-serif';x.fillText('Aponte a câmera do celular para se inscrever',W/2,885);
@@ -1003,6 +1077,56 @@ async function removerMembro(id){
   if(!confirm(`Remover ${m.nome||m.email} da equipe? A pessoa perde o acesso na hora.`))return;
   try{const b=db.batch();b.delete(col('equipe').doc(id));b.delete(db.collection('usuarios').doc(id));await b.commit();fecharModal();toast('Removido da equipe');}catch(e){toast('Erro: '+e.message);}
 }
+
+/* ================== Editor de cores e estilo ================== */
+const TOPOS_SUGERIDOS=['#111827','#1e1b4b','#0f172a','#1f2937','#14532d','#7f1d1d','#3f2d1f','#ffffff'];
+function abrirTema(){
+  temaAntes={...TEMA};
+  const t=temaAtual();
+  abrirModal(`<h2>🎨 Cores e estilo</h2>
+    <div class="muted">Vale para este app, a página de inscrição e os vouchers de todos os seus eventos. A mudança aparece na hora; toque em <b>Salvar</b> para manter.</div>
+    <label>Cor principal</label>
+    <div class="cores" id="tmCores">${CORES_SUGERIDAS.map(c=>`<button class="cor ${c===t.cor?'on':''}" style="background:${c}" data-c="${c}" onclick="temaSet('cor','${c}')"></button>`).join('')}
+      <input type="color" id="tmCor" value="${t.cor}" oninput="temaSet('cor',this.value)"></div>
+    <label>Cor do topo</label>
+    <label class="chk"><input type="checkbox" id="tmTopoIgual" ${t.topo?'':'checked'} onchange="$('tmTopoBox').classList.toggle('hidden',this.checked);temaSet('topo',this.checked?'':$('tmTopo').value)"> Igual à cor principal</label>
+    <div id="tmTopoBox" class="cores ${t.topo?'':'hidden'}">${TOPOS_SUGERIDOS.map(c=>`<button class="cor ${c===t.topo?'on':''}" style="background:${c}" data-c="${c}" onclick="temaSet('topo','${c}')"></button>`).join('')}
+      <input type="color" id="tmTopo" value="${t.topo||t.cor}" oninput="temaSet('topo',this.value)"></div>
+    <label>Fonte</label>
+    <select class="f" id="tmFonte" onchange="temaSet('fonte',this.value)">${Object.entries(FONTES).map(([k,f])=>`<option value="${k}" ${t.fonte===k?'selected':''}>${f.nome}</option>`).join('')}</select>
+    <label>Cantos</label>
+    <div class="seg" id="tmCantos">${Object.entries(CANTOS).map(([k,c])=>`<button data-k="${k}" class="${t.cantos===k?'on':''}" onclick="temaSet('cantos','${k}')">${c.nome}</button>`).join('')}</div>
+    <label>Modo claro / escuro</label>
+    <select class="f" id="tmModo" onchange="temaSet('modo',this.value)">${Object.entries(MODOS).map(([k,n])=>`<option value="${k}" ${t.modo===k?'selected':''}>${n}</option>`).join('')}</select>
+    <div class="prev"><div class="muted" style="margin-bottom:8px">Prévia</div>
+      <button class="btn pri full">Botão principal</button>
+      <div style="margin-top:8px"><span class="tag neu">Etiqueta</span> <span class="tag ok">Pago</span> <b style="color:var(--pri)">Texto em destaque</b></div></div>
+    <div style="height:12px"></div>
+    <button class="btn full" onclick="temaPadrao()">Restaurar padrão</button>
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="tmSalvar" onclick="salvarTema()">Salvar</button></div>`);
+  editandoTema=true;
+}
+function temaSet(k,v){
+  TEMA={...TEMA,[k]:v};aplicarTema();
+  if(k==='cor'){$('tmCor').value=v;document.querySelectorAll('#tmCores .cor').forEach(b=>b.classList.toggle('on',b.dataset.c===v));}
+  if(k==='topo'&&v){$('tmTopo').value=v;document.querySelectorAll('#tmTopoBox .cor').forEach(b=>b.classList.toggle('on',b.dataset.c===v));}
+  if(k==='cantos')document.querySelectorAll('#tmCantos button').forEach(b=>b.classList.toggle('on',b.dataset.k===v));
+}
+function temaPadrao(){
+  TEMA={...TEMA_PADRAO};aplicarTema();
+  const t=temaAtual();$('tmCor').value=t.cor;$('tmTopoIgual').checked=true;$('tmTopoBox').classList.add('hidden');
+  $('tmFonte').value=t.fonte;$('tmModo').value=t.modo;
+  document.querySelectorAll('#tmCores .cor').forEach(b=>b.classList.toggle('on',b.dataset.c===t.cor));
+  document.querySelectorAll('#tmCantos button').forEach(b=>b.classList.toggle('on',b.dataset.k===t.cantos));
+}
+async function salvarTema(){
+  const t=temaAtual(),dados={cor:t.cor,topo:t.topo||'',fonte:t.fonte,cantos:t.cantos,modo:t.modo,atualizadoEm:TS()};
+  $('tmSalvar').disabled=true;
+  try{await col('publico').doc('tema').set(dados);editandoTema=false;fecharModal();toast('Cores e estilo salvos');}
+  catch(e){$('tmSalvar').disabled=false;toast('Erro: '+(e.code==='permission-denied'?'publique as regras novas do Firestore':e.message));}
+}
+aplicarTema();
 </script>
 </body>
 </html>
