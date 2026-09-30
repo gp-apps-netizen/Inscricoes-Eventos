@@ -194,6 +194,10 @@ const auth=firebase.auth(),db=firebase.firestore();
 const TS=()=>firebase.firestore.FieldValue.serverTimestamp();
 const APP=new URL('../',location.href.split(/[?#]/)[0]).href;       // app de controle
 const links=id=>({controle:APP,suporte:APP+'?org='+encodeURIComponent(id)});
+// Registra no histórico do organizador as ações feitas no painel
+function registrarAdm(id,acao,texto){
+  db.collection('organizadores').doc(id).collection('historico').add({em:TS(),email:SUPER,nome:'Administrador',papel:'admin',acao,texto:String(texto).slice(0,300),disp:'Painel admin'}).catch(()=>{});
+}
 
 async function entrar(){
   $('lgErro').textContent='';const b=$('lgBtn');b.disabled=true;
@@ -320,6 +324,8 @@ function novoOrg(){
     <label>Nome *</label><input id="fDono">
     <label>E-mail (será o login) *</label><input id="fEmail" type="email" inputmode="email" autocapitalize="off">
     <label>Senha inicial * (mín. 6)</label><input id="fSenha" autocomplete="off" value="${Math.random().toString(36).slice(2,8)}">
+    <h3>Permissões</h3>
+    <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fPodeCriar" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px"> <span>O organizador pode <b>criar e excluir</b> eventos<br><span class="muted small">Desmarcado: você cria o evento (em "Entrar como suporte") e ele só edita e configura. Bom para cobrança por evento ou por inscrito.</span></span></label>
     ${camposCobranca()}
     <div style="height:14px"></div>
     <div class="row"><button class="btn" onclick="fechar()">Cancelar</button><button class="btn pri" id="fOk" onclick="criarOrg()">Criar organizador e login</button></div>`);
@@ -341,7 +347,7 @@ async function criarOrg(){
     if(u.exists)return volta(`Este e-mail já está no organizador “${u.data().orgId}”`);
     const nova=await criarLogin(email,senha);
     const b=db.batch();
-    b.set(db.collection('organizadores').doc(id),{nome,donoNome,donoEmail:email,status:'ativo',...lerCobranca(),criadoEm:TS()});
+    b.set(db.collection('organizadores').doc(id),{nome,donoNome,donoEmail:email,status:'ativo',podeCriarEventos:$('fPodeCriar').checked,...lerCobranca(),criadoEm:TS()});
     b.set(db.collection('usuarios').doc(email),{orgId:id,papel:'dono'});
     await b.commit();
     fechar();toast('Organizador criado!');
@@ -397,12 +403,13 @@ async function detalhe(id){
     <div>${situacao(o)} <span class="tag neu">${esc(PLANOS[o.plano]||o.plano||'')}</span></div>
     <div class="kv" style="margin-top:10px"><span>Identificador:</span> ${esc(o.id)}</div>
     <div class="kv"><span>Responsável:</span> ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
+    <div class="kv"><span>Eventos:</span> ${o.podeCriarEventos===false?'<b>criados só por você</b> (o organizador edita e configura)':'o organizador cria os próprios eventos'}</div>
     ${o.obs?`<div class="kv"><span>Obs.:</span> ${esc(o.obs)}</div>`:''}
     <div class="kv" id="dUso"><span>Uso:</span> carregando…</div>
     ${proprio?'':secaoCobranca(o)}
     <h3>Links</h3>
     <div class="muted small" style="margin-top:6px">Área do organizador (o responsável entra com o login dele)</div><div class="linkbox">${esc(L.controle)}</div>
-    <div class="row" style="margin-top:8px"><button class="btn" onclick="window.open('${L.suporte}','_blank')">🛠 Entrar como suporte</button>
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="window.open('${L.suporte}','_blank')">${o.podeCriarEventos===false?'📅 Criar/gerenciar eventos (suporte)':'🛠 Entrar como suporte'}</button>
       <button class="btn" onclick="enviarAcesso('${esc(id)}')">💬 Enviar acesso</button></div>
     <h3>Ações</h3>
     <div style="height:8px"></div>
@@ -456,7 +463,7 @@ async function calcular(id){
     if(porInscrito(o))eventos=eventos.filter(e=>e.pagos>0);
     eventos.forEach(e=>e.valor=baseEvento(o,e.pagos));
     const adicionais=totalAdicionais(o),total=eventos.reduce((s,e)=>s+e.valor,0)+adicionais;
-    await r.update({calculo:{data:hoje(),eventos,adicionais,total}});
+    await r.update({calculo:{data:hoje(),eventos,adicionais,total}});registrarAdm(id,'cobranca',`Cobrança calculada: ${brl(total)}`);
     toast('Cálculo atualizado');detalhe(id);
   }catch(e){toast(erroMsg(e));}
 }
@@ -482,7 +489,7 @@ async function salvarPagamento(id){
   const up={ultimoPagamento:data,pagamentos:firebase.firestore.FieldValue.arrayUnion({data,valor,obs,em:Date.now()})};
   if(o.plano==='mensal'){const base=o.vencimento&&diasAte(o.vencimento)>-60?o.vencimento:hoje();up.vencimento=maisMeses(base,1);}
   if(o.status!=='ativo'&&!confirm('Reativar o acesso deste organizador também?'))delete up.status;else if(o.status!=='ativo')up.status='ativo';
-  try{await db.collection('organizadores').doc(id).update(up);toast('Recebimento registrado');detalhe(id);}catch(e){toast(erroMsg(e));}
+  try{await db.collection('organizadores').doc(id).update(up);registrarAdm(id,'cobranca',`Registrou recebimento de ${brl(valor)}${obs?' ('+obs+')':''}`);toast('Recebimento registrado');detalhe(id);}catch(e){toast(erroMsg(e));}
 }
 function textoResumo(o){
   const ad=listaAdicionais(o),c=o.calculo,rec=recebido(o);
@@ -503,7 +510,7 @@ function enviarResumo(id){const o=S.orgs.find(x=>x.id===id);window.open('https:/
 async function alternar(id){
   const o=S.orgs.find(x=>x.id===id),suspender=o.status==='ativo';
   if(suspender&&!confirm(`Suspender ${o.nome}?\n\nO responsável e a equipe perdem o acesso e o link de inscrição deixa de funcionar. Os dados ficam guardados.`))return;
-  try{await db.collection('organizadores').doc(id).update({status:suspender?'suspenso':'ativo'});toast(suspender?'Acesso suspenso':'Acesso reativado');detalhe(id);}catch(e){toast(erroMsg(e));}
+  try{await db.collection('organizadores').doc(id).update({status:suspender?'suspenso':'ativo'});registrarAdm(id,'cobranca',suspender?'Acesso do organizador suspenso':'Acesso do organizador reativado');toast(suspender?'Acesso suspenso':'Acesso reativado');detalhe(id);}catch(e){toast(erroMsg(e));}
 }
 function editar(id){
   const o=S.orgs.find(x=>x.id===id);
@@ -511,15 +518,18 @@ function editar(id){
     <label>Nome do organizador</label><input id="fNome" value="${esc(o.nome)}">
     <label>Nome do responsável</label><input id="fDono" value="${esc(o.donoNome||'')}">
     <div class="muted small" style="margin-top:6px">Login do responsável: ${esc(o.donoEmail)} (para trocar, crie um novo organizador ou fale comigo no suporte).</div>
+    <h3>Permissões</h3>
+    <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fPodeCriar" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px" ${o.podeCriarEventos!==false?'checked':''}> <span>O organizador pode <b>criar e excluir</b> eventos<br><span class="muted small">Desmarcado: você cria o evento (em "Entrar como suporte") e ele só edita e configura.</span></span></label>
     ${camposCobranca(o)}
     <div style="height:14px"></div>
     <div class="row"><button class="btn" onclick="detalhe('${esc(id)}')">Voltar</button><button class="btn pri" onclick="salvarEdicao('${esc(id)}')">Salvar</button></div>`);
   planoUI();
 }
 async function salvarEdicao(id){
+  const o0=S.orgs.find(x=>x.id===id)||{};
   const nome=$('fNome').value.trim(),donoNome=$('fDono').value.trim();
   if(!nome)return toast('Informe o nome');
-  try{await db.collection('organizadores').doc(id).update({nome,donoNome,...lerCobranca()});toast('Salvo');detalhe(id);}catch(e){toast(erroMsg(e));}
+  try{const c=lerCobranca(),pc=$('fPodeCriar').checked;await db.collection('organizadores').doc(id).update({nome,donoNome,podeCriarEventos:pc,...c});if(pc!==(o0.podeCriarEventos!==false))registrarAdm(id,'config',pc?'Organizador liberado para criar e excluir eventos':'Criação e exclusão de eventos reservadas ao administrador');registrarAdm(id,'cobranca',`Cobrança atualizada: ${PLANOS[c.plano]} — ${resumoPlano(c)}`);toast('Salvo');detalhe(id);}catch(e){toast(erroMsg(e));}
 }
 async function apagarColecao(ref,log){
   let total=0;
@@ -541,7 +551,7 @@ async function excluir(id){
     const b=db.batch();eq.docs.forEach(d=>b.delete(db.collection('usuarios').doc(d.id)));
     if(o.donoEmail)b.delete(db.collection('usuarios').doc(o.donoEmail));
     await b.commit();log('Logins desvinculados: '+(eq.size+1));
-    for(const n of ['inscricoes','bloqueios','eventos','equipe']){const t=await apagarColecao(r.collection(n));log(n+': '+t+' apagado(s)');}
+    for(const n of ['inscricoes','bloqueios','eventos','equipe','historico','publico']){const t=await apagarColecao(r.collection(n));log(n+': '+t+' apagado(s)');}
     await r.delete();log('Organizador excluído.');
     log('\nObs.: as contas de login continuam existindo no Firebase (Authentication), mas sem acesso a nada.');
     $('sheet').insertAdjacentHTML('beforeend','<div style="height:10px"></div><button class="btn full" onclick="fechar()">Fechar</button>');
