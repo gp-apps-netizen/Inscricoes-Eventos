@@ -152,7 +152,7 @@ const firebaseConfig = {
   <main>
     <!-- EVENTOS -->
     <section id="tabEventos">
-      <button class="btn pri full donoOnly" onclick="abrirEvento()">+ Novo evento</button>
+      <button class="btn pri full donoOnly" id="btnNovoEv" onclick="abrirEvento()">+ Novo evento</button>
       <div class="donoOnly" style="height:8px"></div>
       <button class="btn full donoOnly" onclick="abrirTema()">🎨 Cores e estilo</button>
       <div style="height:12px"></div>
@@ -206,6 +206,27 @@ const firebaseConfig = {
       </div>
     </section>
 
+    <!-- HISTÓRICO (só o dono) -->
+    <section id="tabHistorico" class="hidden">
+      <div class="card">
+        <b>Histórico</b>
+        <div class="muted" style="margin-top:4px">Quem entrou no app e o que foi feito, com data e hora. Os registros não podem ser apagados nem alterados.</div>
+      </div>
+      <div class="row">
+        <select class="f" id="hTipo" onchange="renderHist()" style="flex:1">
+          <option value="">Tudo</option><option value="acesso">Acessos</option><option value="checkin">Check-ins</option><option value="pago">Pagamentos</option>
+          <option value="evento">Eventos</option><option value="inscricao">Inscrições e planilhas</option><option value="equipe">Equipe</option><option value="config">Configurações e cobrança</option>
+        </select>
+        <select class="f" id="hPessoa" onchange="renderHist()" style="flex:1"></select>
+      </div>
+      <label class="chk"><input type="checkbox" id="hSoEvento" onchange="renderHist()"> Só o evento selecionado no topo</label>
+      <div class="card" style="padding:4px 14px"><div id="listaHist"><div class="empty">Carregando…</div></div></div>
+      <div class="row">
+        <button class="btn" id="hMais" onclick="maisHist()">Carregar mais</button>
+        <button class="btn" onclick="exportarHist()">⬇ Exportar</button>
+      </div>
+    </section>
+
     <!-- EQUIPE (só o dono) -->
     <section id="tabEquipe" class="hidden">
       <div class="card">
@@ -222,6 +243,7 @@ const firebaseConfig = {
     <button data-tab="Leitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/><path d="M13 7h4v4M7 13h4v4"/></svg>Leitor</button>
     <button data-tab="Inscritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2"/></svg>Inscritos</button>
     <button data-tab="Equipe" class="donoOnly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Equipe</button>
+    <button data-tab="Historico" class="donoOnly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>Histórico</button>
   </nav>
 </div>
 
@@ -385,6 +407,8 @@ const col=n=>db.collection('organizadores').doc(ORG).collection(n);
 const usuario=()=>(auth.currentUser&&auth.currentUser.email||'').toLowerCase();
 const ehSuper=()=>usuario()===SUPER;
 const ehDono=()=>papel==='dono';
+// O administrador pode reservar para si a criação/exclusão de eventos (organizador só edita)
+const podeCriar=()=>suporte||ehSuper()||orgInfo.podeCriarEventos!==false;
 const podePagar=()=>papel==='dono'||!!perm.podePagar;
 // Ver valores: cadastros antigos continuam vendo; novos só se marcado
 const verValores=()=>papel==='dono'||perm.verValores!==false;
@@ -401,6 +425,15 @@ function aplicarEventos(){
   if(!eventos.find(e=>e.id===selId))selId=eventos[0]?eventos[0].id:'';
   renderSelect();renderEventos();assinarInscritos();renderInscritos();
 }
+/* ---- Histórico (acessos e ações) ---- */
+function aparelho(){const u=navigator.userAgent;return /Android/i.test(u)?'Android':/iPhone|iPad/i.test(u)?'iPhone/iPad':/Windows/i.test(u)?'Windows':/Mac/i.test(u)?'Mac':'Outro';}
+function registrar(acao,texto,extra){
+  if(!ORG)return;
+  const d={em:TS(),email:usuario(),nome:meuNome(),papel:suporte?'suporte':papel,acao,texto:String(texto).slice(0,300),disp:aparelho()};
+  if(extra&&extra.eventoId)d.eventoId=extra.eventoId;if(extra&&extra.inscricaoId)d.inscricaoId=extra.inscricaoId;
+  col('historico').add(d).catch(()=>{});
+}
+const nomeIns=id=>{const i=inscritos.find(x=>x.id===id);return i?`${i.nome} (${i.codigo})`:id;};
 function aviso(titulo,html){
   $('telaApp').classList.add('hidden');$('avTitulo').textContent=titulo;$('avTexto').innerHTML=html;$('telaAviso').classList.remove('hidden');
 }
@@ -446,6 +479,7 @@ async function detectarPapel(){
   $('suporteTag').classList.toggle('hidden',!suporte);
   $('btnPainel').classList.toggle('hidden',!ehSuper());
   $('telaAviso').classList.add('hidden');$('telaApp').classList.remove('hidden');
+  try{const k='insc_acesso_'+ORG,ult=+localStorage.getItem(k)||0;if(Date.now()-ult>30*60*1000){localStorage.setItem(k,Date.now());registrar('acesso',suporte?'Entrou como suporte':'Entrou no app');}}catch(e){registrar('acesso','Entrou no app');}
   return true;
 }
 
@@ -467,7 +501,7 @@ async function iniciar(){
   unsubT=col('publico').doc('tema').onSnapshot(d=>{if(editandoTema)return;TEMA=d.exists?d.data():{};aplicarTema();},()=>{});
   // Suspensão em tempo real
   unsubO=db.collection('organizadores').doc(ORG).onSnapshot(d=>{
-    if(!d.exists)return;orgInfo=d.data();$('orgNome').textContent=orgInfo.nome||'Controle de Inscrições';
+    if(!d.exists)return;orgInfo=d.data();$('orgNome').textContent=orgInfo.nome||'Controle de Inscrições';renderEventos();
     if(orgInfo.status!=='ativo'&&!suporte){pararScan();aviso('Acesso suspenso','O acesso de <b>'+esc(orgInfo.nome||ORG)+'</b> foi suspenso. Os dados continuam guardados. Fale com o administrador do sistema.');}
   },()=>{});
   unsubE=col('eventos').orderBy('criadoEm','desc').onSnapshot(s=>{
@@ -478,7 +512,7 @@ async function iniciar(){
     else toast('Erro: '+err.message);
   });
 }
-function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}if(unsubO){unsubO();unsubO=null;}if(unsubT){unsubT();unsubT=null;}TEMA={};aplicarTema();subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};ORG='';orgInfo={};document.body.classList.remove('isEquipe');}
+function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}pararHist();hist=[];if(unsubO){unsubO();unsubO=null;}if(unsubT){unsubT();unsubT=null;}TEMA={};aplicarTema();subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};ORG='';orgInfo={};document.body.classList.remove('isEquipe');}
 function eventoSel(){return eventos.find(e=>e.id===selId);}
 
 function renderSelect(){
@@ -505,8 +539,9 @@ function assinarInscritos(){
 /* ================== Abas ================== */
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
-  ['Eventos','Leitor','Inscritos','Equipe'].forEach(t=>$('tab'+t).classList.toggle('hidden',t!==b.dataset.tab));
+  ['Eventos','Leitor','Inscritos','Equipe','Historico'].forEach(t=>$('tab'+t).classList.toggle('hidden',t!==b.dataset.tab));
   if(b.dataset.tab!=='Leitor')pararScan();
+  if(b.dataset.tab==='Historico')assinarHist();else pararHist();
   window.scrollTo(0,0);
 });
 document.querySelectorAll('#filtro button').forEach(b=>b.onclick=()=>{filtro=b.dataset.f;document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x===b));renderInscritos();});
@@ -514,7 +549,8 @@ document.querySelectorAll('#filtro button').forEach(b=>b.onclick=()=>{filtro=b.d
 /* ================== Eventos ================== */
 function renderEventos(){
   const el=$('listaEventos');
-  if(!eventos.length){el.innerHTML='<div class="empty">Nenhum evento ainda.<br>Toque em <b>+ Novo evento</b> para começar.</div>';return;}
+  if($('btnNovoEv'))$('btnNovoEv').classList.toggle('hidden',!podeCriar());
+  if(!eventos.length){el.innerHTML='<div class="empty">'+(!podeCriar()&&ehDono()?'Nenhum evento liberado ainda.<br>O seu evento é criado pelo administrador do sistema; depois disso você edita e configura tudo por aqui.':'Nenhum evento ainda.<br>Toque em <b>+ Novo evento</b> para começar.')+'</div>';return;}
   el.innerHTML=eventos.map(e=>{
     const sel=e.id===selId;
     const pg=inscritos.filter(i=>i.pago).length;
@@ -564,7 +600,7 @@ async function marcarPagoGrupo(grupo,excetoId){
 async function pagarGrupo(id){
   const i=inscritos.find(x=>x.id===id),n=membrosGrupo(i).filter(devePagar).length;
   if(!confirm(`Confirmar o pagamento de ${n} pessoa(s) do grupo?`))return;
-  try{await marcarPagoGrupo(i.grupo);fecharModal();toast('Pagamento do grupo confirmado');}catch(e){toast('Erro: '+e.message);}
+  try{await marcarPagoGrupo(i.grupo);registrar('pago_grupo',`Confirmou o pagamento do grupo de ${i.nome} (${n} pessoa(s))`,{eventoId:i.eventoId,inscricaoId:id});fecharModal();toast('Pagamento do grupo confirmado');}catch(e){toast('Erro: '+e.message);}
 }
 function fmtResposta(v,f){if(v===''||v==null)return '';if(f.tipo==='data'&&/^\d{4}-\d{2}-\d{2}$/.test(v)){const[a,m,d]=v.split('-');return `${d}/${m}/${a}`;}return String(v);}
 function renderCamposEditor(){
@@ -590,6 +626,7 @@ function addCampo(){camposTemp.push({id:'c'+Math.random().toString(36).slice(2,8
 function removerCampo(k){if(camposTemp[k].label&&!confirm(`Remover o campo "${camposTemp[k].label}"? As respostas já enviadas deixam de aparecer.`))return;camposTemp.splice(k,1);renderCamposEditor();}
 function moverCampo(k,d){const t=camposTemp[k];camposTemp[k]=camposTemp[k+d];camposTemp[k+d]=t;renderCamposEditor();}
 function abrirEvento(id){
+  if(!id&&!podeCriar())return toast('Os eventos são criados pelo administrador do sistema');
   const e=id?eventos.find(x=>x.id===id):{titulo:'',data:'',hora:'',local:'',descricao:'',aberto:true,campos:{cpf:true,telefone:true,email:false,extra:false},extraLabel:''};
   const c=e.campos||{},p=e.pix||{ativo:false,valor:0,tipo:'cpf',chave:'',nome:'',cidade:'',whats:''};
   imgTemp=undefined;
@@ -668,7 +705,7 @@ function abrirEvento(id){
     <label class="chk"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
     <div style="height:12px"></div>
     <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnSalvarEv" onclick="salvarEvento('${id||''}')">Salvar</button></div>
-    ${id?`<div style="height:18px"></div><button class="btn bad full" onclick="excluirEvento('${id}')">Excluir evento e inscrições</button>`:''}`);
+    ${id&&podeCriar()?`<div style="height:18px"></div><button class="btn bad full" onclick="excluirEvento('${id}')">Excluir evento e inscrições</button>`:''}`);
 }
 async function escolherImagem(inp){
   const f=inp.files&&inp.files[0];if(!f)return;
@@ -712,8 +749,8 @@ async function salvarEvento(id){
   if(imgTemp!==undefined)d.imagem=imgTemp;
   $('btnSalvarEv').disabled=true;
   try{
-    if(id)await col('eventos').doc(id).update(d);
-    else{d.criadoEm=TS();const r=await col('eventos').add(d);selecionarEvento(r.id);}
+    if(id){await col('eventos').doc(id).update(d);registrar('evento_editado',`Editou o evento "${titulo}"`,{eventoId:id});}
+    else{d.criadoEm=TS();const r=await col('eventos').add(d);selecionarEvento(r.id);registrar('evento_novo',`Criou o evento "${titulo}"`,{eventoId:r.id});}
     fecharModal();toast('Evento salvo');
   }catch(e){toast('Erro: '+e.message);$('btnSalvarEv').disabled=false;}
 }
@@ -726,6 +763,7 @@ async function excluirEvento(id){
     (await col('bloqueios').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
     docs.push(col('eventos').doc(id));
     for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(r=>b.delete(r));await b.commit();}
+    registrar('evento_excluido',`Excluiu o evento "${e.titulo}" e ${docs.length-1} registro(s) de inscrição`,{eventoId:id});
     fecharModal();toast('Evento excluído');
   }catch(err){toast('Erro: '+err.message);}
 }
@@ -888,6 +926,7 @@ async function fazerCheckin(id,auto,pagar,grupoTambem){
     });
     if(pagar&&grupoTambem&&grupo){try{const n=await marcarPagoGrupo(grupo,id);if(n)toast(`Pagamento de mais ${n} pessoa(s) do grupo confirmado`);}catch(e){toast('Erro no pagamento do grupo: '+e.message);}}
     const i=(await col('inscricoes').doc(id).get()).data();
+    registrar('checkin',`Check-in de ${i.nome} (${i.codigo})${pagar?' com pagamento confirmado'+(grupoTambem&&grupo?' do grupo':''):''}`,{eventoId:i.eventoId,inscricaoId:id});
     mostrarResultado({tipo:'ok',titulo:'Entrada confirmada',insc:{id,...i}});
     if(auto&&escaneando)setTimeout(()=>{if(ocupado)retomar();},2500);
   }catch(e){
@@ -944,6 +983,7 @@ async function marcarPago(id,sim){
   const ev=eventoSel();
   try{
     await col('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(inscritos.find(x=>x.id===id)||{},ev)}:{pago:false,pagoEm:null,pagoPor:null,pagoPorNome:null,valorPago:null});
+    registrar(sim?'pago':'pago_desfeito',`${sim?'Confirmou':'Desfez'} o pagamento de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});
     fecharModal();toast(sim?'Pagamento confirmado':'Pagamento desfeito');
   }catch(e){toast('Erro: '+e.message);}
 }
@@ -952,11 +992,11 @@ function whatsInscrito(id){
   const msg=`Olá, ${i.nome.split(' ')[0]}! Sobre sua inscrição em "${ev.titulo}" (código ${i.codigo}).\nSeu voucher: ${linkVoucher(id)}`;
   window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
 }
-async function fazerCheckinLista(id){try{await col('inscricoes').doc(id).update({checkin:true,checkinEm:TS(),checkinPor:usuario(),checkinPorNome:meuNome()});toast('Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
-async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await col('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinPor:null,checkinPorNome:null});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
+async function fazerCheckinLista(id){try{await col('inscricoes').doc(id).update({checkin:true,checkinEm:TS(),checkinPor:usuario(),checkinPorNome:meuNome()});registrar('checkin',`Check-in (pela lista) de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});toast('Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
+async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await col('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinPor:null,checkinPorNome:null});registrar('checkin_desfeito',`Desfez o check-in de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
 async function excluirInscricao(id){
   const i=inscritos.find(x=>x.id===id);if(!confirm(`Excluir a inscrição de ${i.nome}?`))return;
-  try{const b=db.batch();b.delete(col('inscricoes').doc(id));if(i.cpf)b.delete(col('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();fecharModal();toast('Inscrição excluída');}
+  try{const b=db.batch();b.delete(col('inscricoes').doc(id));if(i.cpf)b.delete(col('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();registrar('inscricao_excluida',`Excluiu a inscrição de ${i.nome} (${i.codigo})`,{eventoId:i.eventoId,inscricaoId:id});fecharModal();toast('Inscrição excluída');}
   catch(e){toast('Erro: '+e.message);}
 }
 function exportarCSV(){
@@ -968,6 +1008,7 @@ function exportarCSV(){
     if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm));if(px&&verValores())r.push(i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
     r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinEm),quemCheckin(i));if(tc)r.push(i.termoAceito?'Sim':'Não',fmtTs(i.termoAceitoEm),i.termoVersao||'');return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
+  registrar('exportou',`Exportou a planilha de inscritos de "${ev.titulo}" (${inscritos.length} linhas)`,{eventoId:ev.id});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inscritos-'+ev.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.csv';a.click();
 }
 function abrirLinkPublico(){if(!selId)return toast('Selecione um evento');window.open(linkInscricao(selId),'_blank');}
@@ -1025,6 +1066,7 @@ async function salvarMembro(){
     b.set(db.collection('usuarios').doc(email),{orgId:ORG,papel:'equipe'});
     try{await b.commit();}
     catch(e){if(e.code==='permission-denied')throw new Error('Este e-mail já está ligado a outro organizador ou é de um responsável. Use outro e-mail.');throw e;}
+    registrar('equipe_add',`Cadastrou ${nome} (${email}) na equipe`);
     fecharModal();
     if(jaExistia)alert('Usuário adicionado à equipe.\n\nEste e-mail já tinha uma conta, então a senha informada NÃO foi aplicada. A pessoa entra com a senha que já usa, ou toca em "Esqueci a senha" na tela de login.');
     else alert(`Usuário cadastrado!\n\nEnvie para ${nome}:\n• Link: ${location.href.split(/[?#]/)[0]}\n• E-mail: ${email}\n• Senha: ${senha}`);
@@ -1070,13 +1112,17 @@ async function salvarAcesso(id){
   if(!a.todosEventos&&!a.eventos.length)return toast('Escolha pelo menos um evento (ou marque Todos os eventos)');
   await atualizarMembro(id,a);
 }
-async function atualizarMembro(id,dados){try{await col('equipe').doc(id).update(dados);toast('Atualizado');}catch(e){toast('Erro: '+e.message);}}
+const DESC_PERM={ativo:v=>v?'reativou o acesso':'desativou o acesso',podePagar:v=>v?'permitiu confirmar pagamentos':'tirou a permissão de confirmar pagamentos',verValores:v=>v?'permitiu ver valores':'escondeu os valores',todosEventos:v=>v?'liberou todos os eventos':'restringiu os eventos'};
+async function atualizarMembro(id,dados){try{await col('equipe').doc(id).update(dados);const m=equipe.find(x=>x.id===id)||{};
+  const o=Object.entries(dados).filter(([k])=>DESC_PERM[k]).map(([k,v])=>DESC_PERM[k](v));
+  if(dados.eventos&&dados.todosEventos===false){o.pop();o.push('liberou '+dados.eventos.length+' evento(s): '+dados.eventos.map(e=>(eventosTodos.find(x=>x.id===e)||{}).titulo||e).join(', '));}
+  registrar('equipe_alterada',`Alterou ${m.nome||id}: ${o.join('; ')||'dados atualizados'}`);toast('Atualizado');}catch(e){toast('Erro: '+e.message);}}
 async function resetSenha(email){try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado');}catch(e){toast('Erro: '+e.message);}}
 function enviarAcesso(id){const m=equipe.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(`Olá, ${m.nome}! Acesse o controle de check-in:\n${location.href.split(/[?#]/)[0]}\nEntre com o e-mail ${m.email}.`),'_blank');}
 async function removerMembro(id){
   const m=equipe.find(x=>x.id===id);
   if(!confirm(`Remover ${m.nome||m.email} da equipe? A pessoa perde o acesso na hora.`))return;
-  try{const b=db.batch();b.delete(col('equipe').doc(id));b.delete(db.collection('usuarios').doc(id));await b.commit();fecharModal();toast('Removido da equipe');}catch(e){toast('Erro: '+e.message);}
+  try{const b=db.batch();b.delete(col('equipe').doc(id));b.delete(db.collection('usuarios').doc(id));await b.commit();registrar('equipe_removida',`Removeu ${m.nome||m.email} da equipe`);fecharModal();toast('Removido da equipe');}catch(e){toast('Erro: '+e.message);}
 }
 
 /* ================== Editor de cores e estilo ================== */
@@ -1124,8 +1170,49 @@ function temaPadrao(){
 async function salvarTema(){
   const t=temaAtual(),dados={cor:t.cor,topo:t.topo||'',fonte:t.fonte,cantos:t.cantos,modo:t.modo,atualizadoEm:TS()};
   $('tmSalvar').disabled=true;
-  try{await col('publico').doc('tema').set(dados);editandoTema=false;fecharModal();toast('Cores e estilo salvos');}
+  try{await col('publico').doc('tema').set(dados);registrar('config','Alterou as cores e o estilo');editandoTema=false;fecharModal();toast('Cores e estilo salvos');}
   catch(e){$('tmSalvar').disabled=false;toast('Erro: '+(e.code==='permission-denied'?'publique as regras novas do Firestore':e.message));}
+}
+
+/* ================== Histórico ================== */
+let hist=[],unsubH=null,histLimite=150;
+const GRUPO_HIST=a=>a==='acesso'?'acesso':a.startsWith('checkin')?'checkin':a.startsWith('pago')?'pago':a.startsWith('evento')?'evento':(a==='inscricao_excluida'||a==='exportou')?'inscricao':a.startsWith('equipe')?'equipe':'config';
+const ICONE_HIST={acesso:'🔑',checkin:'✅',pago:'💲',evento:'📅',inscricao:'🗂',equipe:'🛡',config:'⚙'};
+function assinarHist(){
+  if(unsubH)return;
+  unsubH=col('historico').orderBy('em','desc').limit(histLimite).onSnapshot(s=>{
+    hist=s.docs.map(d=>({id:d.id,...d.data()}));
+    $('hMais').classList.toggle('hidden',s.size<histLimite);renderHist();
+  },e=>{$('listaHist').innerHTML=`<div class="empty">${e.code==='permission-denied'?'Publique as regras novas do Firestore para ver o histórico.':esc(e.message)}</div>`;});
+}
+function pararHist(){if(unsubH){unsubH();unsubH=null;}}
+function maisHist(){histLimite+=150;pararHist();assinarHist();}
+function filtrarHist(){
+  const t=$('hTipo').value,p=$('hPessoa').value,so=$('hSoEvento').checked;
+  return hist.filter(h=>(!t||GRUPO_HIST(h.acao)===t)&&(!p||h.email===p)&&(!so||h.eventoId===selId));
+}
+function renderHist(){
+  if(!$('listaHist'))return;
+  const pessoas={};hist.forEach(h=>pessoas[h.email]=h.nome||h.email);
+  const sel=$('hPessoa').value;
+  $('hPessoa').innerHTML='<option value="">Todas as pessoas</option>'+Object.entries(pessoas).sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([e,n])=>`<option value="${esc(e)}" ${e===sel?'selected':''}>${esc(n)}</option>`).join('');
+  const l=filtrarHist();let dia='';
+  $('listaHist').innerHTML=!l.length?'<div class="empty">Nenhum registro'+(hist.length?' neste filtro':' ainda')+'.</div>':l.map(h=>{
+    const d=h.em&&h.em.toDate?h.em.toDate():new Date(),dd=d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
+    const cab=dd!==dia?`<div class="muted" style="padding:10px 0 2px;font-weight:700">${esc(dd)}</div>`:'';dia=dd;
+    const g=GRUPO_HIST(h.acao);
+    return cab+`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+      <div style="font-size:18px;line-height:1.2">${ICONE_HIST[g]||'•'}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:15px">${esc(h.texto)}</div>
+      <div class="muted" style="font-size:12.5px">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · <b>${esc(h.nome||h.email)}</b>${h.papel==='equipe'?' (equipe)':h.papel==='suporte'?' (suporte)':h.papel==='admin'?' (administrador)':''} · ${esc(h.disp||'')}</div></div></div>`;
+  }).join('');
+}
+function exportarHist(){
+  const l=filtrarHist();if(!l.length)return toast('Nada para exportar');
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const linhas=[['Data','Hora','Pessoa','E-mail','Papel','Tipo','O que foi feito','Aparelho'].map(q).join(';')].concat(l.map(h=>{const d=h.em&&h.em.toDate?h.em.toDate():new Date();
+    return[d.toLocaleDateString('pt-BR'),d.toLocaleTimeString('pt-BR'),h.nome,h.email,h.papel,GRUPO_HIST(h.acao),h.texto,h.disp].map(q).join(';');}));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+linhas.join('\r\n')],{type:'text/csv;charset=utf-8'}));a.download='historico-'+ORG+'.csv';a.click();
 }
 aplicarTema();
 </script>
