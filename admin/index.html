@@ -64,6 +64,11 @@ h3{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--li
 .empty{text-align:center;padding:30px 10px;color:var(--muted)}
 .hidden{display:none!important}
 .log{font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:200px;overflow:auto;white-space:pre-wrap}
+.embed header{display:none}
+.embed .login{margin-top:6vh}
+.ebar{display:none;align-items:center;gap:8px;margin-bottom:12px}
+.embed .ebar{display:flex}
+.ebar .t{flex:1;font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -80,6 +85,9 @@ const firebaseConfig = {
   measurementId: "G-NGK7BES79S"
 };
 const SUPER = 'godoygpx@gmail.com';   // único login com acesso a este painel
+// Aberto dentro do Administrador Apps (aba Inscrições)
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) document.documentElement.classList.add('embed');
 </script>
 
 <div id="telaLogin" class="login hidden">
@@ -100,6 +108,7 @@ const SUPER = 'godoygpx@gmail.com';   // único login com acesso a este painel
     <button class="iconbtn" onclick="auth.signOut()">Sair</button>
   </div></header>
   <main>
+    <div class="ebar"><span class="t" id="eQuem"></span><a class="btn" href="../" target="_blank" rel="noopener" style="padding:7px 12px;font-size:14px">Controle ↗</a><button class="btn" style="padding:7px 12px;font-size:14px" onclick="if(confirm('Sair das inscrições neste aparelho?'))auth.signOut()">Sair</button></div>
     <div class="kpis">
       <div class="kpi"><b id="kAtivos">0</b><span>Ativos</span></div>
       <div class="kpi"><b id="kVencidos">0</b><span>Vencidos</span></div>
@@ -206,11 +215,18 @@ async function entrar(){
   b.disabled=false;
 }
 let unsub=null;
+if(EMBED){$('lgEmail').value=SUPER;document.querySelector('#telaLogin h1').textContent='Entrar nas Inscrições';}
+function avisarPainel(){
+  if(!EMBED||parent===window)return;
+  const at=S.orgs.filter(o=>o.status==='ativo');
+  try{parent.postMessage({tipo:'insc-kpis',ativos:at.length,vencidos:S.orgs.filter(vencido).length,suspensos:S.orgs.length-at.length,
+    receita:at.filter(o=>o.plano==='mensal').reduce((s,o)=>s+(o.valor||0),0),logado:!!auth.currentUser},location.origin);}catch(e){}
+}
 auth.onAuthStateChanged(u=>{
   if(unsub){unsub();unsub=null;}
-  if(!u){$('telaApp').classList.add('hidden');$('telaLogin').classList.remove('hidden');return;}
+  if(!u){$('telaApp').classList.add('hidden');$('telaLogin').classList.remove('hidden');if(EMBED&&parent!==window)try{parent.postMessage({tipo:'insc-kpis',logado:false},location.origin);}catch(e){}return;}
   if((u.email||'').toLowerCase()!==SUPER){alert('Este painel é só do administrador geral.');auth.signOut();return;}
-  $('telaLogin').classList.add('hidden');$('telaApp').classList.remove('hidden');
+  $('telaLogin').classList.add('hidden');$('telaApp').classList.remove('hidden');if($('eQuem'))$('eQuem').textContent=u.email;
   unsub=db.collection('organizadores').onSnapshot(s=>{S.orgs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));render();},
     e=>{$('lista').innerHTML=`<div class="card" style="color:var(--bad)">${esc(erroMsg(e))}</div>`;});
   verificarLegado();
@@ -242,6 +258,7 @@ function render(){
       <div class="muted small">${esc(o.id)} · ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
       ${o.plano==='proprio'?'':`<div class="small" style="margin-top:4px">${esc(PLANOS[o.plano]||'')} · ${esc(resumoPlano(o))}${o.calculo&&o.plano!=='mensal'?` · <b>total ${brl(o.calculo.total)}</b>`:''}</div>`}</div>
       ${situacao(o)}</div></div>`).join('');
+  avisarPainel();
 }
 
 /* ================== Criar login sem sair do painel ================== */
