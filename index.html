@@ -92,6 +92,7 @@ nav.tabs svg{width:24px;height:24px}
 .btn.file{position:relative;overflow:hidden}
 .btn.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
 body.isEquipe .donoOnly{display:none!important}
+body:not(.isSuper) .superOnly{display:none!important}
 .papel{display:inline-block;font-size:12px;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 9px;margin-left:6px;vertical-align:middle;font-weight:500}
 </style>
 </head>
@@ -210,7 +211,7 @@ const firebaseConfig = {
     <section id="tabHistorico" class="hidden">
       <div class="card">
         <b>Histórico</b>
-        <div class="muted" style="margin-top:4px">Quem entrou no app e o que foi feito, com data e hora. Os registros não podem ser apagados nem alterados.</div>
+        <div class="muted" style="margin-top:4px">Quem entrou no app e o que foi feito, com data e hora. Só você (administrador) vê esta aba; os registros não podem ser apagados nem alterados.</div>
       </div>
       <div class="row">
         <select class="f" id="hTipo" onchange="renderHist()" style="flex:1">
@@ -243,7 +244,7 @@ const firebaseConfig = {
     <button data-tab="Leitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/><path d="M13 7h4v4M7 13h4v4"/></svg>Leitor</button>
     <button data-tab="Inscritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2"/></svg>Inscritos</button>
     <button data-tab="Equipe" class="donoOnly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Equipe</button>
-    <button data-tab="Historico" class="donoOnly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>Histórico</button>
+    <button data-tab="Historico" class="superOnly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>Histórico</button>
   </nav>
 </div>
 
@@ -478,6 +479,8 @@ async function detectarPapel(){
   $('papelTag').classList.toggle('hidden',papel!=='equipe');
   $('suporteTag').classList.toggle('hidden',!suporte);
   $('btnPainel').classList.toggle('hidden',!ehSuper());
+  document.body.classList.toggle('isSuper',ehSuper());
+  if(ehSuper()&&q.get('aba')==='historico')setTimeout(()=>{const b=document.querySelector('nav.tabs button[data-tab="Historico"]');if(b)b.click();},300);
   $('telaAviso').classList.add('hidden');$('telaApp').classList.remove('hidden');
   try{const k='insc_acesso_'+ORG,ult=+localStorage.getItem(k)||0;if(Date.now()-ult>30*60*1000){localStorage.setItem(k,Date.now());registrar('acesso',suporte?'Entrou como suporte':'Entrou no app');}}catch(e){registrar('acesso','Entrou no app');}
   return true;
@@ -512,7 +515,7 @@ async function iniciar(){
     else toast('Erro: '+err.message);
   });
 }
-function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}pararHist();hist=[];if(unsubO){unsubO();unsubO=null;}if(unsubT){unsubT();unsubT=null;}TEMA={};aplicarTema();subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};ORG='';orgInfo={};document.body.classList.remove('isEquipe');}
+function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}pararHist();hist=[];if(unsubO){unsubO();unsubO=null;}if(unsubT){unsubT();unsubT=null;}TEMA={};aplicarTema();subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};ORG='';orgInfo={};document.body.classList.remove('isEquipe');document.body.classList.remove('isSuper');}
 function eventoSel(){return eventos.find(e=>e.id===selId);}
 
 function renderSelect(){
