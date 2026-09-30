@@ -411,6 +411,7 @@ async function detalhe(id){
     <div class="muted small" style="margin-top:6px">Área do organizador (o responsável entra com o login dele)</div><div class="linkbox">${esc(L.controle)}</div>
     <div class="row" style="margin-top:8px"><button class="btn" onclick="window.open('${L.suporte}','_blank')">${o.podeCriarEventos===false?'📅 Criar/gerenciar eventos (suporte)':'🛠 Entrar como suporte'}</button>
       <button class="btn" onclick="enviarAcesso('${esc(id)}')">💬 Enviar acesso</button></div>
+    <button class="btn full" style="margin-top:8px" onclick="window.open('${L.suporte}&aba=historico','_blank')">📜 Ver histórico de acessos e ações</button>
     <h3>Ações</h3>
     <div style="height:8px"></div>
     <div class="row"><button class="btn" onclick="editar('${esc(id)}')">Editar${proprio?'':' / cobrança'}</button>
