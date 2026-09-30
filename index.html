@@ -93,6 +93,16 @@ nav.tabs svg{width:24px;height:24px}
 .btn.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
 body.isEquipe .donoOnly{display:none!important}
 body:not(.isSuper) .superOnly{display:none!important}
+.netbar{margin-top:10px;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;background:rgba(255,255,255,.95);color:#1c1d29}
+.netbar.off{background:#fee2e2;color:#991b1b}.netbar.sync{background:#fef3c7;color:#92400e}.netbar.ok{background:#dcfce7;color:#166534}
+.letra{position:sticky;top:0;background:var(--card);font-weight:800;color:var(--pri);font-size:14px;padding:8px 0 4px;border-bottom:2px solid var(--pri2)}
+.fila{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.fila:last-child{border-bottom:0}
+.fila .bola{flex:0 0 auto;min-width:54px;text-align:center;font-weight:800;border-radius:10px;padding:8px 6px;background:var(--pri2);color:var(--pri);font-size:14px}
+.filaTag{display:inline-block;background:var(--pri);color:#fff;border-radius:8px;padding:4px 10px;font-weight:700;font-size:14px}
+.filaEd{display:flex;gap:6px;align-items:center;margin:6px 0}
+.filaEd input{flex:2;padding:9px}.filaEd select{flex:0 0 64px;padding:9px 4px}
+.pend{font-size:12px;color:var(--warn)}
 .papel{display:inline-block;font-size:12px;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 9px;margin-left:6px;vertical-align:middle;font-weight:500}
 </style>
 </head>
@@ -148,6 +158,7 @@ const firebaseConfig = {
       <button class="iconbtn" onclick="sair()">Sair</button>
     </div>
     <select id="selEvento" onchange="selecionarEvento(this.value)"></select>
+    <div id="netBar" class="netbar hidden"></div>
   </header>
 
   <main>
@@ -165,7 +176,13 @@ const firebaseConfig = {
       <div class="card">
         <div class="muted">Lendo vouchers do evento:</div>
         <b id="leitorEvento">—</b>
+        <div class="filaBox hidden" style="margin-top:8px"><div class="muted">Minha fila:</div><select class="f selFila" onchange="escolherFila(this.value)"></select><div class="muted filaFixa hidden" style="margin-top:4px">Fila definida pelo organizador.</div></div>
         <label class="chk" style="margin-top:8px"><input type="checkbox" id="autoCheck" onchange="localStorage.setItem('insc_auto',this.checked?'1':'')"> Confirmar entrada automaticamente ao ler</label>
+      </div>
+      <div class="card" id="offCard">
+        <b>📥 Usar sem internet</b>
+        <div class="muted" id="offInfo" style="margin-top:4px">Antes de ir para o local, com internet, toque abaixo para guardar o app e os inscritos deste evento neste celular.</div>
+        <button class="btn full" style="margin-top:10px" id="btnOff" onclick="prepararOffline()">📥 Preparar este celular para o evento</button>
       </div>
       <div id="reader"></div>
       <div style="height:10px"></div>
@@ -192,6 +209,8 @@ const firebaseConfig = {
       <div class="card pixOnly valOnly" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px">
         <span class="muted">Arrecadado (Pix confirmados)</span><b id="stValor">R$ 0,00</b>
       </div>
+      <div class="card hidden" id="filasCard" style="padding:4px 14px"></div>
+      <div class="filaBox hidden" style="margin-bottom:8px"><select class="f selFila" onchange="escolherFila(this.value)"></select></div>
       <input id="busca" placeholder="Buscar por nome, CPF, telefone ou código" oninput="renderInscritos()">
       <select class="f hidden" id="filtroQuem" style="margin-top:8px" onchange="filtroQuem=this.value;renderInscritos()"></select>
       <div class="seg" id="filtro">
@@ -202,6 +221,7 @@ const firebaseConfig = {
       </div>
       <div class="card" style="padding:4px 14px"><div id="listaInscritos"></div></div>
       <div class="row">
+        <button class="btn" onclick="imprimirLista()">🖨 Lista em papel</button>
         <button class="btn" onclick="exportarCSV()">⬇ Exportar planilha</button>
         <button class="btn" onclick="abrirLinkPublico()">+ Inscrever pessoa</button>
       </div>
@@ -347,7 +367,7 @@ function abrirModal(html){$('sheet').innerHTML=html;$('modal').classList.add('sh
 function fecharModal(){$('modal').classList.remove('show');if(editandoTema){editandoTema=false;TEMA=temaAntes||TEMA;aplicarTema();}}
 let temaAntes=null,editandoTema=false;
 function fmtData(e){if(!e||!e.data)return '';const[a,m,d]=e.data.split('-');return `${d}/${m}/${a}`+(e.hora?` às ${e.hora}`:'');}
-function fmtTs(ts){if(!ts||!ts.toDate)return '';const d=ts.toDate();return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+function fmtTs(ts){if(!ts)return '';const d=ts.toDate?ts.toDate():ts instanceof Date?ts:null;if(!d)return '';return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
 function fmtCPF(c){c=String(c||'');return c.length===11?c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):c;}
 function linkInscricao(id){return new URL('inscricao.html?o='+encodeURIComponent(ORG)+'&e='+id,location.href.split(/[?#]/)[0]).href;}
 function linkVoucher(id){return new URL('inscricao.html?o='+encodeURIComponent(ORG)+'&v='+id,location.href.split(/[?#]/)[0]).href;}
@@ -377,12 +397,14 @@ function comprimirImagem(file){
 
 /* ================== Firebase ================== */
 const configurado=!String(firebaseConfig.apiKey).startsWith('COLE');
-let auth,db;
+let auth,db,persistOk=true;
+// Modo offline: guarda o app no celular (sw.js)
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(!configurado){$('telaConfig').classList.remove('hidden');}
 else{
   firebase.initializeApp(firebaseConfig);
   auth=firebase.auth();db=firebase.firestore();
-  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{persistOk=false;});
   auth.onAuthStateChanged(u=>{
     if(u){$('telaLogin').classList.add('hidden');iniciar();}
     else{$('telaApp').classList.add('hidden');$('telaAviso').classList.add('hidden');$('telaLogin').classList.remove('hidden');pararTudo();}
@@ -390,13 +412,141 @@ else{
 }
 const TS=()=>firebase.firestore.FieldValue.serverTimestamp();
 
+/* ================== Sem internet ================== */
+let pendentes=0,tinhaPend=0,redeRuimAte=0;
+const semRede=()=>!navigator.onLine||Date.now()<redeRuimAte;
+// Espera no máximo "ms"; depois segue (a operação continua em segundo plano)
+function comPrazo(p,ms){p.catch(()=>{});return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error('PRAZO'),{code:'unavailable'})),ms))]);}
+// Gravação que não trava sem internet: o Firebase guarda no celular e envia quando a conexão voltar
+function gravar(p){
+  let fim=false;
+  p.then(()=>{fim=true;},e=>{if(fim)toast('⚠ Não foi possível enviar uma alteração: '+(e.code==='permission-denied'?'sem permissão':e.message));fim=true;});
+  return new Promise((res,rej)=>{p.then(res,rej);setTimeout(()=>{if(!fim){fim=true;res('pendente');}},semRede()?30:4000);});
+}
+// Lê um documento da internet ou, sem ela, da cópia guardada no celular
+async function lerDoc(ref){
+  if(semRede()){try{return await ref.get({source:'cache'});}catch(e){return ref.get();}}
+  try{return await ref.get();}catch(e){if(e.code==='unavailable')return ref.get({source:'cache'});throw e;}
+}
+function renderNet(){
+  const b=$('netBar');if(!b)return;
+  const tinha=tinhaPend;tinhaPend=pendentes;
+  if(!navigator.onLine){b.className='netbar off';b.innerHTML='📴 Sem internet — o check-in continua funcionando'+(pendentes?` · <b>${pendentes}</b> aguardando envio`:'');}
+  else if(pendentes){b.className='netbar sync';b.innerHTML=`⏳ Enviando ${pendentes} alteração(ões)…`;}
+  else if(tinha){b.className='netbar ok';b.innerHTML='✅ Tudo enviado';b._okAte=Date.now()+3000;setTimeout(renderNet,3100);}
+  else if(Date.now()>(b._okAte||0))b.className='netbar hidden';
+}
+window.addEventListener('online',()=>{redeRuimAte=0;renderNet();});
+window.addEventListener('offline',renderNet);
+function infoOff(){try{return JSON.parse(localStorage.getItem('insc_off_'+ORG+'_'+selId)||'null');}catch(e){return null;}}
+function renderOff(){
+  if(!$('offInfo'))return;const o=infoOff();
+  $('offInfo').innerHTML=o?`✅ <b>Pronto para usar sem internet.</b> ${o.n} inscrito(s) guardado(s) em ${new Date(o.t).toLocaleDateString('pt-BR')} às ${new Date(o.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}. Com o app aberto e com internet, as novas inscrições também são guardadas.`
+    :'Antes de ir para o local, com internet, toque abaixo para guardar o app e os inscritos deste evento neste celular. Depois é só fazer o check-in normalmente, mesmo sem sinal.';
+  $('btnOff').textContent=o?'↻ Atualizar dados guardados':'📥 Preparar este celular para o evento';
+}
+function guardarApp(){
+  if(!('serviceWorker' in navigator))return Promise.reject(new Error('este navegador não abre o app sem internet. Use o Chrome.'));
+  return comPrazo(navigator.serviceWorker.ready.then(reg=>new Promise(res=>{
+    const ok=e=>{if(e.data==='guardado'){navigator.serviceWorker.removeEventListener('message',ok);res();}};
+    navigator.serviceWorker.addEventListener('message',ok);
+    (reg.active||reg.waiting||reg.installing).postMessage('guardar');
+  })),20000);
+}
+async function prepararOffline(){
+  const ev=eventoSel();if(!ev)return toast('Selecione um evento');
+  if(!navigator.onLine)return toast('Conecte-se à internet para preparar o celular');
+  if(!persistOk)return alert('Este navegador não está guardando dados no celular (aba anônima ou outro app aberto em várias abas). Feche as outras abas do app e abra pelo Chrome normal ou pelo app instalado.');
+  const b=$('btnOff');b.disabled=true;b.textContent='Guardando…';
+  try{
+    const s=await col('inscricoes').where('eventoId','==',selId).get({source:'server'});
+    const srv={source:'server'},nada=()=>{};
+    await Promise.all([
+      suporte?null:db.collection('usuarios').doc(usuario()).get(srv).catch(nada),
+      db.collection('organizadores').doc(ORG).get(srv),
+      col('eventos').get(srv).catch(nada),
+      col('publico').doc('tema').get(srv).catch(nada),
+      ehDono()?col('equipe').get(srv).catch(nada):col('equipe').doc(usuario()).get(srv).catch(nada)
+    ]);
+    await guardarApp();
+    try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist();}catch(e){}
+    localStorage.setItem('insc_off_'+ORG+'_'+selId,JSON.stringify({n:s.size,t:Date.now()}));
+    registrar('offline',`Preparou o celular para usar sem internet (${s.size} inscritos de "${ev.titulo}")`,{eventoId:selId});
+    renderOff();
+    alert(`Pronto! ${s.size} inscrito(s) de "${ev.titulo}" guardados neste celular.\n\nNo local, mesmo sem internet:\n• abra o app normalmente (não saia da conta);\n• leia os QR codes e confirme as entradas;\n• as entradas ficam guardadas e são enviadas sozinhas quando a internet voltar.`);
+  }catch(e){toast('Não foi possível preparar: '+e.message);}
+  b.disabled=false;renderOff();
+}
+
+/* ================== Filas de check-in ================== */
+const LETRAS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+// Peso aproximado das iniciais de nomes no Brasil (usado antes de haver inscritos)
+const PESO_LETRA={A:12,B:3,C:6,D:5,E:5,F:4,G:4,H:1.5,I:2,J:9,K:1.5,L:7,M:11,N:2.5,O:1,P:4,Q:.1,R:6,S:4,T:3,U:.3,V:3,W:2,X:.1,Y:.3,Z:.3};
+const semAcento=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function letraDe(nome){const c=semAcento(nome).trim().charAt(0).toUpperCase();return LETRAS.includes(c)?c:'#';}
+const faixa=q=>q.de===q.ate?q.de:q.de+'–'+q.ate;
+const filasAtivas=ev=>!!(ev&&ev.filas&&ev.filas.ativo&&(ev.filas.lista||[]).length);
+function listaFilas(ev){
+  if(!filasAtivas(ev))return[];const f=ev.filas;
+  const l=f.lista.map(q=>({id:q.id,de:q.de,ate:q.ate,nome:q.nome||('Adultos '+faixa(q))}));
+  if(f.criancas)l.push({id:'cri',cri:true,nome:'Crianças'});
+  return l;
+}
+function filaDe(i,ev){
+  ev=ev||eventos.find(e=>e.id===i.eventoId);if(!filasAtivas(ev))return null;
+  const f=ev.filas;let base=i;
+  if(f.gruposJuntos&&i.grupo){const r=responsavelGrupo(i);if(r)base=r;}
+  if(f.criancas&&base.crianca)return 'cri';
+  const L=letraDe(base.nome),q=f.lista.find(q=>L>=q.de&&L<=q.ate);
+  return (q||f.lista[0]).id;
+}
+function nomeFila(id,ev){const q=listaFilas(ev||eventoSel()).find(x=>x.id===id);return q?q.nome:'';}
+// Fila definida pelo organizador para este membro da equipe (no evento selecionado)
+function filaFixa(){if(papel!=='equipe')return '';const v=(perm.filas||{})[selId];return v&&listaFilas(eventoSel()).some(q=>q.id===v)?v:'';}
+function minhaFila(){
+  const ev=eventoSel();if(!filasAtivas(ev))return '';
+  const fx=filaFixa();if(fx)return fx;
+  const v=localStorage.getItem('insc_fila_'+selId)||'';return listaFilas(ev).some(q=>q.id===v)?v:'';
+}
+function escolherFila(v){if(filaFixa())return;localStorage.setItem('insc_fila_'+selId,v);renderFilaSel();renderInscritos();}
+function renderFilaSel(){
+  const ev=eventoSel(),on=filasAtivas(ev),fx=filaFixa(),cur=minhaFila();
+  document.querySelectorAll('.filaBox').forEach(b=>b.classList.toggle('hidden',!on));
+  document.querySelectorAll('.filaFixa').forEach(b=>b.classList.toggle('hidden',!fx));
+  if(!on)return;
+  const op='<option value="">Todas as filas</option>'+listaFilas(ev).map(q=>`<option value="${q.id}">${q.cri?'🎈':'🔤'} ${esc(q.nome)}</option>`).join('');
+  document.querySelectorAll('.selFila').forEach(s=>{s.innerHTML=op;s.value=cur;s.disabled=!!fx;});
+}
+function renderFilasCard(ev){
+  const c=$('filasCard');if(!c)return;
+  if(!filasAtivas(ev)||!selId){c.classList.add('hidden');return;}
+  const cur=minhaFila(),fx=filaFixa();c.classList.remove('hidden');
+  c.innerHTML=`<div class="muted" style="padding:10px 0 4px">Filas de check-in${fx?'':' · toque para ver só uma'}</div>`+listaFilas(ev).map(q=>{
+    const l=inscritos.filter(i=>filaDe(i,ev)===q.id),p=l.filter(i=>i.checkin).length;
+    const eq=ehDono()?equipe.filter(m=>m.ativo&&(m.filas||{})[selId]===q.id).map(m=>m.nome||m.email):[];
+    return `<div class="fila" ${fx?'':`onclick="escolherFila('${q.id===cur?'':q.id}')"`} style="cursor:pointer;${q.id===cur?'background:var(--pri2);margin:0 -14px;padding:10px 14px':''}">
+      <div class="bola">${q.cri?'🎈':faixa(q)}</div>
+      <div style="flex:1;min-width:0"><b>${esc(q.nome)}</b><div class="muted">${l.length} inscrito(s) · ${p} presente(s)${ehDono()?' · '+(eq.length?'🛡 '+esc(eq.join(', ')):'sem ninguém da equipe'):''}</div></div>
+      ${q.id===cur?'<span class="tag neu">vendo</span>':''}</div>`;}).join('');
+}
+// Divide A–Z em N filas com quantidades parecidas de pessoas
+function dividirLetras(n,peso){
+  const w=LETRAS.map(L=>peso[L]||0),tot=w.reduce((a,b)=>a+b,0)||1,res=[];let k=0,acc=0,ini=0;
+  for(let j=0;j<26;j++){
+    acc+=w[j];const faltamGrupos=n-k-1,faltamLetras=25-j;
+    const alvo=tot*(k+1)/n,prox=j<25?w[j+1]:0;
+    if(k<n-1&&faltamLetras>=faltamGrupos&&(acc>0||faltamLetras===faltamGrupos)&&(acc>=alvo||acc+prox-alvo>alvo-acc||faltamLetras===faltamGrupos)){res.push([ini,j]);ini=j+1;k++;}
+  }
+  res.push([ini,25]);return res.map(([a,b])=>({de:LETRAS[a],ate:LETRAS[b]}));
+}
+
 async function entrar(){
   $('lgErro').textContent='';
   try{await auth.signInWithEmailAndPassword($('lgEmail').value.trim(),$('lgSenha').value);}
   catch(e){$('lgErro').textContent=({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'Senha incorreta.','auth/user-not-found':'Usuário não encontrado.','auth/too-many-requests':'Muitas tentativas. Aguarde um pouco.','auth/unauthorized-domain':'Domínio não autorizado no Firebase (Authentication > Configurações > Domínios autorizados).'})[e.code]||e.message;}
 }
 async function esqueci(){const em=$('lgEmail').value.trim();if(!em)return toast('Digite seu e-mail primeiro');try{await auth.sendPasswordResetEmail(em);toast('E-mail de redefinição enviado');}catch(e){toast(e.message);}}
-function sair(){pararScan();auth.signOut();}
+function sair(){if(!navigator.onLine&&!confirm('Você está sem internet. Se sair agora, só vai conseguir entrar de novo quando a internet voltar. Sair mesmo assim?'))return;pararScan();auth.signOut();}
 
 /* ================== Estado ================== */
 let eventos=[],selId=localStorage.getItem('insc_sel')||'',inscritos=[],unsubE=null,unsubI=null,unsubQ=null,subId=null,filtro='todos';
@@ -446,7 +596,7 @@ async function detectarPapel(){
   try{
     if(ehSuper()&&q.get('org')){ORG=q.get('org');papel='dono';suporte=true;}
     else{
-      const u=await db.collection('usuarios').doc(usuario()).get();
+      const u=await lerDoc(db.collection('usuarios').doc(usuario()));
       if(!u.exists){
         aviso('Conta sem organizador',ehSuper()
           ?'Você é o administrador geral. Abra o <a href="admin/">painel de administrador</a> para criar os organizadores (inclusive o seu, sem cobrança) ou use <b>?org=identificador</b> no link para entrar como suporte.'
@@ -455,7 +605,7 @@ async function detectarPapel(){
       }
       ORG=u.data().orgId;papel=u.data().papel==='equipe'?'equipe':'dono';
     }
-    const o=await db.collection('organizadores').doc(ORG).get();
+    const o=await lerDoc(db.collection('organizadores').doc(ORG));
     if(!o.exists){aviso('Organizador não encontrado','O organizador <b>'+esc(ORG)+'</b> não existe mais. Fale com o administrador do sistema.');return false;}
     orgInfo=o.data();
     if(orgInfo.status!=='ativo'&&!suporte){
@@ -463,12 +613,13 @@ async function detectarPapel(){
     }
     if(papel==='dono'&&!suporte&&orgInfo.donoEmail!==usuario()){aviso('Sem acesso','Este login não é o responsável por este organizador.');return false;}
     if(papel==='equipe'){
-      const m=await col('equipe').doc(usuario()).get();
+      const m=await lerDoc(col('equipe').doc(usuario()));
       if(!m.exists||!m.data().ativo){aviso('Acesso desativado','Seu acesso de equipe foi desativado ou removido. Fale com o organizador do evento.');return false;}
       perm=m.data();
     }
   }catch(e){
-    if(e.code==='permission-denied')aviso('Sem acesso','Não foi possível abrir este organizador. O acesso pode estar suspenso ou ter sido removido.');
+    if(e.code==='unavailable'||!navigator.onLine)aviso('Sem internet','Este celular ainda não tem os dados guardados para usar sem internet.<br><br>Conecte-se uma vez, entre no app e toque em <b>📥 Preparar este celular para o evento</b> (aba Leitor).<br><br><button class="btn pri full" onclick="location.reload()">Tentar de novo</button>');
+    else if(e.code==='permission-denied')aviso('Sem acesso','Não foi possível abrir este organizador. O acesso pode estar suspenso ou ter sido removido.');
     else aviso('Erro','Não foi possível carregar: '+esc(e.message));
     return false;
   }
@@ -522,6 +673,7 @@ function renderSelect(){
   const s=$('selEvento');
   s.innerHTML=eventos.length?eventos.map(e=>`<option value="${e.id}" ${e.id===selId?'selected':''}>${esc(e.titulo)}${e.data?' — '+esc(fmtData({data:e.data})):''}</option>`).join(''):'<option value="">'+(restrito()?'Nenhum evento liberado para você':'Nenhum evento cadastrado')+'</option>';
   const ev=eventoSel();$('leitorEvento').textContent=ev?ev.titulo:'—';
+  renderFilaSel();renderOff();
 }
 function selecionarEvento(id){selId=id;localStorage.setItem('insc_sel',id);renderSelect();renderEventos();assinarInscritos();$('resultado').innerHTML='';}
 
@@ -530,9 +682,10 @@ function assinarInscritos(){
   if(unsubI){unsubI();unsubI=null;}
   subId=selId;inscritos=[];renderInscritos();
   if(!selId)return;
-  unsubI=col('inscricoes').where('eventoId','==',selId).onSnapshot(s=>{
-    inscritos=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
-    renderInscritos();renderEventos();
+  unsubI=col('inscricoes').where('eventoId','==',selId).onSnapshot({includeMetadataChanges:true},s=>{
+    inscritos=s.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'}),_pend:d.metadata.hasPendingWrites})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+    pendentes=inscritos.filter(i=>i._pend).length;
+    renderInscritos();renderEventos();renderNet();
   },err=>{
     if(err.code==='permission-denied'){alert('Esta conta não tem permissão para acessar o controle. Peça ao organizador para cadastrar seu e-mail na Equipe.');auth.signOut();}
     else toast('Erro ao carregar inscritos: '+err.message);
@@ -598,7 +751,7 @@ async function marcarPagoGrupo(grupo,excetoId){
   if(!alvo.length)return 0;
   const b=db.batch();
   alvo.forEach(x=>b.update(col('inscricoes').doc(x.id),{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(x,ev)}));
-  await b.commit();return alvo.length;
+  await gravar(b.commit());return alvo.length;
 }
 async function pagarGrupo(id){
   const i=inscritos.find(x=>x.id===id),n=membrosGrupo(i).filter(devePagar).length;
@@ -635,6 +788,8 @@ function abrirEvento(id){
   imgTemp=undefined;
   camposTemp=camposDoEvento(e).map(f=>({...f,opcoes:[...(f.opcoes||[])]}));
   setTimeout(renderCamposEditor,0);
+  const fl=e.filas||{};filasEdId=id||'';filasTemp=(fl.lista||[]).map(q=>({...q}));
+  setTimeout(renderFilasEditor,0);
   abrirModal(`<h2>${id?'Editar evento':'Novo evento'}</h2>
     <label>Nome do evento *</label><input id="evTitulo" value="${esc(e.titulo)}" maxlength="100">
     <div class="row"><div style="flex:1"><label>Data</label><input id="evData" type="date" value="${esc(e.data)}"></div>
@@ -704,11 +859,70 @@ function abrirEvento(id){
       <div class="muted" style="margin-top:6px">O modelo é só um ponto de partida: revise o texto com quem for responsável pelo evento. Ao alterar o texto, a versão aumenta e cada inscrição guarda a versão que aceitou.</div>
     </div>
 
+    <div class="secao">Filas de check-in</div>
+    <label class="chk"><input type="checkbox" id="flAtivo" ${fl.ativo?'checked':''} onchange="$('flBox').classList.toggle('hidden',!this.checked);if(this.checked&&!filasTemp.length)dividirFilas()"> Organizar a entrada em filas (adultos de A a Z pela letra do nome)</label>
+    <div id="flBox" class="${fl.ativo?'':'hidden'}">
+      <div class="row" style="align-items:center;margin-top:4px"><span class="muted" style="flex:1">Quantas filas de adultos?</span>
+        <select class="f" id="flQtd" style="flex:0 0 76px">${[1,2,3,4,5,6,7,8].map(n=>`<option ${n===((fl.lista||[]).length||2)?'selected':''}>${n}</option>`).join('')}</select>
+        <button class="btn sm" style="flex:0 0 auto" onclick="dividirFilas()">↻ Dividir A–Z</button></div>
+      <div class="muted" style="margin-top:4px">A divisão equilibra a quantidade de pessoas em cada fila${id&&id===selId&&inscritos.length?' (pelos inscritos atuais)':' (pelas iniciais de nomes mais comuns)'}. Ajuste as letras e os nomes se quiser.</div>
+      <div id="flEditor"></div>
+      <label class="chk"><input type="checkbox" id="flCri" ${fl.criancas?'checked':''} onchange="renderFilasEditor()"> 🎈 Crianças em uma fila separada</label>
+      ${e.pix&&e.pix.criancasGratis?'':'<div class="muted">As crianças são as inscritas como <b>Criança não paga</b> (em Pagamento via Pix → Crianças não pagam, com a idade máxima).</div>'}
+      <label class="chk"><input type="checkbox" id="flGrupo" ${fl.gruposJuntos?'checked':''} onchange="renderFilasEditor()"> 👥 Grupos entram juntos, na fila de quem fez a inscrição</label>
+      <div class="muted">Depois, na aba <b>Equipe</b>, escolha a fila de cada pessoa do check-in. O leitor avisa quando alguém estiver na fila errada.</div>
+    </div>
+
     <div class="secao">Situação</div>
     <label class="chk"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
     <div style="height:12px"></div>
     <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnSalvarEv" onclick="salvarEvento('${id||''}')">Salvar</button></div>
     ${id&&podeCriar()?`<div style="height:18px"></div><button class="btn bad full" onclick="excluirEvento('${id}')">Excluir evento e inscrições</button>`:''}`);
+}
+let filasTemp=[],filasEdId='';
+function eventoFilasTemp(){return{id:filasEdId,filas:{ativo:true,lista:filasTemp,criancas:$('flCri').checked,gruposJuntos:$('flGrupo').checked}};}
+function renderFilasEditor(){
+  const el=$('flEditor');if(!el)return;
+  const conta=filasEdId&&filasEdId===selId&&inscritos.length,evT=eventoFilasTemp();
+  const n=id=>conta?inscritos.filter(i=>filaDe(i,evT)===id).length:null;
+  const opt=v=>LETRAS.map(L=>`<option ${L===v?'selected':''}>${L}</option>`).join('');
+  el.innerHTML=filasTemp.map((q,k)=>`<div class="filaEd">
+      <input placeholder="Adultos ${faixa(q)}" value="${esc(q.nome||'')}" maxlength="40" oninput="filasTemp[${k}].nome=this.value">
+      <select class="f" onchange="mudarLetra(${k},'de',this.value)">${opt(q.de)}</select><span class="muted">a</span>
+      <select class="f" onchange="mudarLetra(${k},'ate',this.value)">${opt(q.ate)}</select>
+      ${conta?`<span class="muted" style="flex:0 0 auto;min-width:34px;text-align:right">${n(q.id)}</span>`:''}</div>`).join('')
+    +($('flCri').checked?`<div class="filaEd"><input value="🎈 Crianças" disabled><span class="muted" style="flex:1"></span>${conta?`<span class="muted" style="flex:0 0 auto;min-width:34px;text-align:right">${n('cri')}</span>`:''}</div>`:'')
+    +(conta?'<div class="muted" style="text-align:right">número = inscritos em cada fila</div>':'');
+}
+function mudarLetra(k,campo,v){
+  const q=filasTemp[k];q[campo]=v;
+  if(q.de>q.ate){if(campo==='de')q.ate=v;else q.de=v;}
+  // Mantém a sequência sem buracos: a próxima fila começa na letra seguinte
+  for(let j=k+1;j<filasTemp.length;j++){const prox=LETRAS[Math.min(25,LETRAS.indexOf(filasTemp[j-1].ate)+1)];filasTemp[j].de=prox;if(filasTemp[j].ate<prox)filasTemp[j].ate=prox;}
+  for(let j=k-1;j>=0;j--){const ant=LETRAS[Math.max(0,LETRAS.indexOf(filasTemp[j+1].de)-1)];filasTemp[j].ate=ant;if(filasTemp[j].de>ant)filasTemp[j].de=ant;}
+  renderFilasEditor();
+}
+function dividirFilas(){
+  const n=+$('flQtd').value||1;let peso=PESO_LETRA;
+  if(filasEdId&&filasEdId===selId&&inscritos.length){
+    const evT=eventoFilasTemp(),cri=$('flCri').checked;peso={};
+    inscritos.forEach(i=>{let b=i;if(evT.filas.gruposJuntos&&i.grupo){const r=responsavelGrupo(i);if(r)b=r;}if(cri&&b.crianca)return;const L=letraDe(b.nome);if(L!=='#')peso[L]=(peso[L]||0)+1;});
+    if(!Object.keys(peso).length)peso=PESO_LETRA;
+  }
+  const novas=dividirLetras(n,peso);
+  filasTemp=novas.map((q,k)=>({id:(filasTemp[k]&&filasTemp[k].id)||'f'+Math.random().toString(36).slice(2,7),nome:'',de:q.de,ate:q.ate}));
+  renderFilasEditor();
+}
+function lerFilas(){
+  const ativo=$('flAtivo').checked;
+  const lista=filasTemp.map(q=>({id:q.id,nome:(q.nome||'').trim().slice(0,40),de:q.de,ate:q.ate}));
+  if(ativo){
+    if(!lista.length)return{erro:'Crie pelo menos uma fila (toque em Dividir A–Z)'};
+    let esperado='A';
+    for(const q of lista){if(q.de!==esperado||q.ate<q.de)return{erro:'As letras das filas precisam ir de A a Z, em sequência, sem pular nem repetir'};esperado=LETRAS[LETRAS.indexOf(q.ate)+1];}
+    if(lista[lista.length-1].ate!=='Z')return{erro:'A última fila precisa terminar na letra Z'};
+  }
+  return{filas:{ativo,lista,criancas:$('flCri').checked,gruposJuntos:$('flGrupo').checked}};
 }
 async function escolherImagem(inp){
   const f=inp.files&&inp.files[0];if(!f)return;
@@ -750,6 +964,7 @@ async function salvarEvento(id){
   d.termo={ativo:$('trAtivo').checked,titulo:$('trTitulo').value.trim()||'Termo de Responsabilidade',texto:trTexto,
     versao:antigo.versao?(antigo.texto!==trTexto?antigo.versao+1:antigo.versao):1};
   if(imgTemp!==undefined)d.imagem=imgTemp;
+  const fr=lerFilas();if(fr.erro)return toast(fr.erro);d.filas=fr.filas;
   $('btnSalvarEv').disabled=true;
   try{
     if(id){await col('eventos').doc(id).update(d);registrar('evento_editado',`Editou o evento "${titulo}"`,{eventoId:id});}
@@ -862,7 +1077,7 @@ async function buscarManual(){
   if(achados.length>1){
     $('resultado').innerHTML=`<div class="card" style="margin-top:12px;padding:4px 14px">
       <div class="muted" style="padding:10px 0 4px">${achados.length} inscritos encontrados — toque para abrir:</div>
-      ${achados.slice(0,30).map(i=>`<div class="item" onclick="consultar('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):''}</span></div>
+      ${achados.slice(0,30).map(i=>`<div class="item" onclick="consultar('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):''}${filaDe(i)?' · fila '+esc(nomeFila(filaDe(i))):''}</span></div>
         <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div>`).join('')}
       <div style="padding:10px 0"><button class="btn full" onclick="$('resultado').innerHTML=''">Fechar</button></div></div>`;
     return;
@@ -874,24 +1089,36 @@ async function buscarManual(){
 }
 async function consultar(id){
   try{
-    const d=await col('inscricoes').doc(id).get();
-    if(!d.exists){mostrarResultado({tipo:'bad',titulo:'Voucher não encontrado',msg:'Esta inscrição não existe ou foi excluída.'});return;}
-    const i={id:d.id,...d.data()};
+    let i=inscritos.find(x=>x.id===id);   // já está no celular (funciona sem internet)
+    if(!i){
+      const d=await lerDoc(col('inscricoes').doc(id));
+      if(!d.exists){mostrarResultado({tipo:'bad',titulo:'Voucher não encontrado',msg:'Esta inscrição não existe ou foi excluída.'});return;}
+      i={id:d.id,...d.data({serverTimestamps:'estimate'})};
+    }
     if(i.eventoId!==selId){
       const ev=eventos.find(e=>e.id===i.eventoId);
       if(!ev&&restrito()){mostrarResultado({tipo:'warn',titulo:'Voucher de outro evento',msg:'Este voucher não é do evento selecionado nem de um evento liberado para você.'});return;}
       mostrarResultado({tipo:'warn',titulo:'Voucher de outro evento',msg:'Este voucher é do evento <b>'+esc(ev?ev.titulo:'(excluído)')+'</b>.',insc:i});return;
     }
-    if(i.checkin){mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Entrada registrada em '+esc(fmtTs(i.checkinEm))+(quemCheckin(i)?' por <b>'+esc(quemCheckin(i))+'</b>':'')+'.',insc:i});return;}
+    if(i.checkin){mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Entrada registrada em '+esc(fmtTs(i.checkinLocal||i.checkinEm))+(quemCheckin(i)?' por <b>'+esc(quemCheckin(i))+'</b>':'')+'.',insc:i});return;}
     const ev=eventoSel();
-    if(cobra(ev)&&devePagar(i)){mostrarResultado({tipo:'warn',titulo:'Pagamento pendente',msg:'Inscrição válida, mas o pagamento'+(verValores()?' de <b>'+esc(moeda(valorDe(i,ev)))+'</b>':'')+(i.meia?' (meia-entrada)':'')+' ainda não foi confirmado.',insc:i,botaoPagar:true});return;}
+    // Filas: avisa quando a pessoa é de outra fila
+    const fl=minhaFila(),fi=filaDe(i,ev),outra=!!(fl&&fi&&fi!==fl);
+    const avFila=outra?`<div class="kv" style="background:var(--warnbg);color:var(--warn);padding:8px;border-radius:8px;margin:6px 0"><b>↪ Esta pessoa é da fila ${esc(nomeFila(fi))}</b><br>Oriente a ir para a fila certa ou confirme a entrada aqui mesmo.</div>`:'';
+    if(cobra(ev)&&devePagar(i)){mostrarResultado({tipo:'warn',titulo:'Pagamento pendente',msg:avFila+'Inscrição válida, mas o pagamento'+(verValores()?' de <b>'+esc(moeda(valorDe(i,ev)))+'</b>':'')+(i.meia?' (meia-entrada)':'')+' ainda não foi confirmado.',insc:i,botaoPagar:true});return;}
+    if(outra){mostrarResultado({tipo:'warn',titulo:'Outra fila: '+nomeFila(fi),msg:avFila,insc:i,botaoCheck:true});return;}
     if($('autoCheck').checked){await fazerCheckin(i.id,true);return;}
     mostrarResultado({tipo:'ok',titulo:'Inscrição válida',insc:i,botaoCheck:true});
-  }catch(e){mostrarResultado({tipo:'bad',titulo:'Erro na consulta',msg:esc(e.message)});}
+  }catch(e){
+    if(e.code==='unavailable'||!navigator.onLine)mostrarResultado({tipo:'bad',titulo:'Não encontrado neste celular',msg:'Sem internet, só dá para conferir os inscritos que já estavam guardados. Pode ser inscrição feita depois da preparação ou de outro evento. Confira pelo nome ou peça para mostrar o comprovante.'});
+    else mostrarResultado({tipo:'bad',titulo:'Erro na consulta',msg:esc(e.message)});
+  }
 }
 function dadosHTML(i){
   const ev=eventos.find(e=>e.id===i.eventoId)||{};
+  const fi=filaDe(i,ev.id?ev:null);
   return `<div class="big">${esc(i.nome)}</div>
+    ${fi?`<div style="margin:2px 0 6px"><span class="filaTag">Fila: ${esc(nomeFila(fi,ev))}</span></div>`:''}
     ${i.cpf?`<div class="kv"><span>CPF:</span> ${esc(fmtCPF(i.cpf))}</div>`:''}
     ${i.telefone?`<div class="kv"><span>Telefone:</span> ${esc(i.telefone)}</div>`:''}
     ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
@@ -915,26 +1142,42 @@ function mostrarResultado(o){
   $('resultado').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 async function fazerCheckin(id,auto,pagar,grupoTambem){
+  const ev=eventoSel(),loc=inscritos.find(x=>x.id===id);
+  const montar=d=>{const up={checkin:true,checkinEm:TS(),checkinLocal:new Date(),checkinPor:usuario(),checkinPorNome:meuNome()};
+    if(pagar&&!d.pago)Object.assign(up,{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(d,ev)});return up;};
+  let off=semRede(),base=null,up=null;
   try{
-    const ev=eventoSel();
-    let grupo=null;
-    await db.runTransaction(async t=>{
-      const r=col('inscricoes').doc(id),s=await t.get(r);
-      if(!s.exists)throw new Error('NAOEXISTE');
-      if(s.data().checkin)throw new Error('JA');
-      const up={checkin:true,checkinEm:TS(),checkinPor:usuario(),checkinPorNome:meuNome()};
-      if(pagar&&!s.data().pago)Object.assign(up,{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(s.data(),ev)});
-      grupo=s.data().grupo||null;
-      t.update(r,up);
-    });
+    if(!off){
+      try{
+        // Com internet: transação garante que duas pessoas não liberem o mesmo voucher
+        await comPrazo(db.runTransaction(async t=>{
+          const r=col('inscricoes').doc(id),s=await t.get(r);
+          if(!s.exists)throw new Error('NAOEXISTE');
+          if(s.data().checkin)throw new Error('JA');
+          base=s.data();up=montar(base);t.update(r,up);
+        }),8000);
+      }catch(e){
+        if(['JA','NAOEXISTE'].includes(e.message)||e.code==='permission-denied')throw e;
+        off=true;redeRuimAte=Date.now()+60000;   // internet fraca: segue offline por 1 minuto
+      }
+    }
+    if(off){
+      // Sem internet: confere pelos dados guardados e grava no celular (envia quando a internet voltar)
+      if(!loc)throw new Error('SEMDADOS');
+      if(loc.checkin)throw new Error('JA');
+      base=loc;up=montar(loc);gravar(col('inscricoes').doc(id).update(up));
+    }
+    const grupo=base.grupo||null;
     if(pagar&&grupoTambem&&grupo){try{const n=await marcarPagoGrupo(grupo,id);if(n)toast(`Pagamento de mais ${n} pessoa(s) do grupo confirmado`);}catch(e){toast('Erro no pagamento do grupo: '+e.message);}}
-    const i=(await col('inscricoes').doc(id).get()).data();
-    registrar('checkin',`Check-in de ${i.nome} (${i.codigo})${pagar?' com pagamento confirmado'+(grupoTambem&&grupo?' do grupo':''):''}`,{eventoId:i.eventoId,inscricaoId:id});
-    mostrarResultado({tipo:'ok',titulo:'Entrada confirmada',insc:{id,...i}});
+    const i={...base,...up,id,checkinEm:null};
+    const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    registrar('checkin',`Check-in de ${i.nome} (${i.codigo})${pagar?' com pagamento confirmado'+(grupoTambem&&grupo?' do grupo':''):''}${off?' — feito sem internet às '+hora:''}`,{eventoId:i.eventoId,inscricaoId:id});
+    mostrarResultado({tipo:'ok',titulo:off?'Entrada confirmada (sem internet)':'Entrada confirmada',msg:off?'<span class="pend">Guardada no celular. Será enviada sozinha quando a internet voltar.</span>':'',insc:i});
     if(auto&&escaneando)setTimeout(()=>{if(ocupado)retomar();},2500);
   }catch(e){
     if(e.message==='JA')mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Outra pessoa já registrou esta entrada.'});
-    else toast('Erro: '+(e.code==='unavailable'?'sem internet':e.message));
+    else if(e.message==='SEMDADOS')mostrarResultado({tipo:'bad',titulo:'Sem internet',msg:'Esta inscrição não está guardada neste celular. Tente de novo quando a internet voltar.'});
+    else toast('Erro: '+e.message);
   }
 }
 
@@ -944,7 +1187,9 @@ function renderInscritos(){
   document.querySelectorAll('.pixOnly').forEach(el=>el.classList.toggle('hidden',!px));
   document.querySelectorAll('.valOnly').forEach(el=>el.classList.toggle('hidden',!px||!verValores()));
   if(!px&&filtro==='pend'){filtro='todos';document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x.dataset.f==='todos'));}
-  const tot=inscritos.length,pres=inscritos.filter(i=>i.checkin).length,pagos=inscritos.filter(i=>i.pago);
+  const fl=minhaFila(),base=fl?inscritos.filter(i=>filaDe(i,ev)===fl):inscritos;
+  renderFilasCard(ev);
+  const tot=base.length,pres=base.filter(i=>i.checkin).length,pagos=base.filter(i=>i.pago);
   $('stTotal').textContent=tot;$('stPres').textContent=pres;$('stAus').textContent=tot-pres;
   $('stPagos').textContent=pagos.length;
   $('stValor').textContent=moeda(pagos.reduce((s,i)=>s+Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)),0));
@@ -954,20 +1199,20 @@ function renderInscritos(){
   $('filtroQuem').classList.toggle('hidden',!quems.length);
   $('filtroQuem').innerHTML='<option value="">Check-in feito por: todos</option>'+quems.map(q=>`<option ${q===filtroQuem?'selected':''}>${esc(q)}</option>`).join('')
     +(quems.length?`<option disabled>──────────</option>${quems.map(q=>`<option disabled>${esc(q)}: ${inscritos.filter(i=>quemCheckin(i)===q).length} entrada(s)</option>`).join('')}`:'');
-  let l=inscritos.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:filtro==='pend'?devePagar(i):!i.checkin));
+  let l=base.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:filtro==='pend'?devePagar(i):!i.checkin));
   if(filtroQuem)l=l.filter(i=>quemCheckin(i)===filtroQuem);
   if(ehDono()&&$('listaEquipe'))renderEquipe();
   if(q)l=l.filter(i=>(i.nome||'').toLowerCase().includes(q)||(i.codigo||'').toLowerCase()===q||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
   $('listaInscritos').innerHTML=!selId?'<div class="empty">Selecione um evento.</div>':!l.length?'<div class="empty">Nenhuma inscrição'+(q||filtro!=='todos'?' encontrada':' ainda')+'.</div>':
-    l.map(i=>`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}${i.grupo?' · 👥 grupo':''}${i.checkin&&quemCheckin(i)?' · ✓ '+esc(quemCheckin(i)):''}</span></div>
+    (()=>{let ult='';return l.map(i=>{const L=letraDe(i.nome),div=!q&&L!==ult?`<div class="letra">${L==='#'?'Outros':L}</div>`:'';ult=L;return div+`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}${i.grupo?' · 👥 grupo':''}${!fl&&filaDe(i,ev)?' · fila '+esc(nomeFila(filaDe(i,ev),ev)):''}${i.checkin&&quemCheckin(i)?' · ✓ '+esc(quemCheckin(i)):''}${i._pend?' · <span class="pend">⏳ aguardando envio</span>':''}</span></div>
       <div class="tags">${i.meia?'<span class="tag warn">Meia</span>':''}${px?(i.isento?'<span class="tag neu">Criança · isenta</span>':`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`):(i.crianca?'<span class="tag neu">Criança</span>':'')}
-      <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div></div>`).join('');
+      <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div></div>`;}).join('');})();
 }
 function detalhe(id){
   const i=inscritos.find(x=>x.id===id);if(!i)return;
   const px=cobra(eventoSel());
   abrirModal(`<h2>Inscrição</h2>${dadosHTML(i)}
-    <div class="kv" style="margin-top:6px"><span>Situação:</span> ${i.checkin?'<b style="color:var(--ok)">Presente</b> — '+esc(fmtTs(i.checkinEm))+(quemCheckin(i)?' <span>por</span> <b>'+esc(quemCheckin(i))+'</b>':''):'Aguardando entrada'}</div>
+    <div class="kv" style="margin-top:6px"><span>Situação:</span> ${i.checkin?'<b style="color:var(--ok)">Presente</b> — '+esc(fmtTs(i.checkinLocal||i.checkinEm))+(quemCheckin(i)?' <span>por</span> <b>'+esc(quemCheckin(i))+'</b>':''):'Aguardando entrada'}</div>
     ${i.pago&&i.pagoPor?`<div class="kv"><span>Pagamento confirmado por</span> <b>${esc(nomeDe(i.pagoPor,i.pagoPorNome))}</b></div>`:''}
     <div style="height:14px"></div>
     ${px&&!i.isento?(i.pago?`<button class="btn full donoOnly" onclick="marcarPago('${id}',false)">Desfazer pagamento</button><div class="donoOnly" style="height:8px"></div>`:(podePagar()?`<button class="btn ok full" onclick="marcarPago('${id}',true)">💲 Confirmar pagamento</button><div style="height:8px"></div>`:'')):''}
@@ -985,7 +1230,7 @@ async function marcarPago(id,sim){
   if(!sim&&!confirm('Desfazer a confirmação de pagamento?'))return;
   const ev=eventoSel();
   try{
-    await col('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(inscritos.find(x=>x.id===id)||{},ev)}:{pago:false,pagoEm:null,pagoPor:null,pagoPorNome:null,valorPago:null});
+    await gravar(col('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(inscritos.find(x=>x.id===id)||{},ev)}:{pago:false,pagoEm:null,pagoPor:null,pagoPorNome:null,valorPago:null}));
     registrar(sim?'pago':'pago_desfeito',`${sim?'Confirmou':'Desfez'} o pagamento de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});
     fecharModal();toast(sim?'Pagamento confirmado':'Pagamento desfeito');
   }catch(e){toast('Erro: '+e.message);}
@@ -995,8 +1240,8 @@ function whatsInscrito(id){
   const msg=`Olá, ${i.nome.split(' ')[0]}! Sobre sua inscrição em "${ev.titulo}" (código ${i.codigo}).\nSeu voucher: ${linkVoucher(id)}`;
   window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
 }
-async function fazerCheckinLista(id){try{await col('inscricoes').doc(id).update({checkin:true,checkinEm:TS(),checkinPor:usuario(),checkinPorNome:meuNome()});registrar('checkin',`Check-in (pela lista) de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});toast('Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
-async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await col('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinPor:null,checkinPorNome:null});registrar('checkin_desfeito',`Desfez o check-in de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
+async function fazerCheckinLista(id){try{const off=semRede();await gravar(col('inscricoes').doc(id).update({checkin:true,checkinEm:TS(),checkinLocal:new Date(),checkinPor:usuario(),checkinPorNome:meuNome()}));registrar('checkin',`Check-in (pela lista) de ${nomeIns(id)}${off?' — feito sem internet':''}`,{eventoId:selId,inscricaoId:id});toast(off?'Entrada guardada — envia quando a internet voltar':'Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
+async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await gravar(col('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinLocal:null,checkinPor:null,checkinPorNome:null}));registrar('checkin_desfeito',`Desfez o check-in de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
 async function excluirInscricao(id){
   const i=inscritos.find(x=>x.id===id);if(!confirm(`Excluir a inscrição de ${i.nome}?`))return;
   try{const b=db.batch();b.delete(col('inscricoes').doc(id));if(i.cpf)b.delete(col('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();registrar('inscricao_excluida',`Excluiu a inscrição de ${i.nome} (${i.codigo})`,{eventoId:i.eventoId,inscricaoId:id});fecharModal();toast('Inscrição excluída');}
@@ -1005,14 +1250,33 @@ async function excluirInscricao(id){
 function exportarCSV(){
   const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
   const c=ev.campos||{},px=cobra(ev),cx=camposDoEvento(ev);
-  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em','Check-in por');const tc=termoAtivo(ev)||inscritos.some(i=>i.termoAceito);if(tc)cab.push('Termo aceito','Termo aceito em','Versão do termo');
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em','Check-in por');const fa=filasAtivas(ev);if(fa)cab.push('Fila');const tc=termoAtivo(ev)||inscritos.some(i=>i.termoAceito);if(tc)cab.push('Termo aceito','Termo aceito em','Versão do termo');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(i.meia?'Sim — '+(i.meiaMotivo||''):'Não',i.crianca?(i.isento?'Sim (isenta)':'Sim'):'Não',idadeTxt(i),rg?rg.nome:'',fmtTs(i.criadoEm));
     if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm));if(px&&verValores())r.push(i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
-    r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinEm),quemCheckin(i));if(tc)r.push(i.termoAceito?'Sim':'Não',fmtTs(i.termoAceitoEm),i.termoVersao||'');return r.map(q).join(';');});
+    r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinLocal||i.checkinEm),quemCheckin(i));if(fa)r.push(nomeFila(filaDe(i,ev),ev));if(tc)r.push(i.termoAceito?'Sim':'Não',fmtTs(i.termoAceitoEm),i.termoVersao||'');return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
   registrar('exportou',`Exportou a planilha de inscritos de "${ev.titulo}" (${inscritos.length} linhas)`,{eventoId:ev.id});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inscritos-'+ev.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.csv';a.click();
+}
+function imprimirLista(){
+  const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para imprimir');
+  const fl=minhaFila(),fa=filasAtivas(ev),px=cobra(ev);
+  const l=inscritos.filter(i=>!fl||filaDe(i,ev)===fl);
+  const cpfM=c=>{c=String(c||'');return c.length===11?'•••.•••.'+c.slice(6,9)+'-'+c.slice(9):'';};
+  const sit=i=>i.isento?'Criança isenta':!px?'':i.pago?'Pago':'A PAGAR';
+  const col=4+(px?1:0)+(fa&&!fl?1:0);
+  let ult='',linhas='';
+  l.forEach(i=>{const L=letraDe(i.nome);if(L!==ult){linhas+=`<tr class="L"><td colspan="${col+1}">${L==='#'?'Outros':L}</td></tr>`;ult=L;}
+    linhas+=`<tr><td class="cx">${i.checkin?'✔':'☐'}</td><td><b>${esc(i.nome)}</b>${i.meia?' <i>(meia)</i>':''}${i.crianca?' 🎈':''}</td><td>${esc(i.codigo)}</td><td>${esc(cpfM(i.cpf))}</td>${px?`<td>${sit(i)}</td>`:''}${fa&&!fl?`<td>${esc(nomeFila(filaDe(i,ev),ev))}</td>`:''}<td style="width:22%"></td></tr>`;});
+  const w=window.open('','_blank');if(!w)return toast('Permita abrir janelas para imprimir');
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lista - ${esc(ev.titulo)}</title>
+<style>body{font-family:system-ui,sans-serif;margin:14px;font-size:12px;color:#000}h1{font-size:17px;margin:0 0 2px}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{border:1px solid #888;padding:5px 6px;text-align:left;vertical-align:top}th{background:#eee}.L td{background:#d9d9d9;font-weight:800;font-size:14px}.cx{width:18px;text-align:center;font-size:15px}button{font-size:16px;padding:10px 18px;margin:8px 0}@media print{button{display:none}tr{page-break-inside:avoid}}</style></head><body>
+<h1>${esc(ev.titulo)}${fl?' — '+esc(nomeFila(fl,ev)):''}</h1><div>${l.length} pessoa(s) · ${l.filter(i=>i.checkin).length} já presente(s) · gerada em ${new Date().toLocaleString('pt-BR')}</div>
+<button onclick="print()">🖨 Imprimir / salvar PDF</button>
+<table><tr><th class="cx">✓</th><th>Nome</th><th>Código</th><th>CPF</th>${px?'<th>Pagamento</th>':''}${fa&&!fl?'<th>Fila</th>':''}<th>Obs.</th></tr>${linhas}</table></body></html>`);
+  w.document.close();
+  registrar('exportou',`Gerou a lista em papel de "${ev.titulo}"${fl?' (fila '+nomeFila(fl,ev)+')':''} — ${l.length} pessoas`,{eventoId:ev.id});
 }
 function abrirLinkPublico(){if(!selId)return toast('Selecione um evento');window.open(linkInscricao(selId),'_blank');}
 
@@ -1021,7 +1285,7 @@ function assinarEquipe(){
   if(unsubQ)return;
   unsubQ=col('equipe').onSnapshot(s=>{
     equipe=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
-    renderEquipe();
+    renderEquipe();renderFilasCard(eventoSel());
   },err=>{
     if(err.code==='permission-denied'){alert('Esta conta não tem permissão de administrador nem está cadastrada na Equipe.');auth.signOut();}
     else toast('Erro ao carregar equipe: '+err.message);
@@ -1030,7 +1294,7 @@ function assinarEquipe(){
 function renderEquipe(){
   $('listaEquipe').innerHTML=!equipe.length?'<div class="empty">Nenhum usuário cadastrado.<br>Toque em <b>+ Cadastrar usuário</b>.</div>':
     equipe.map(m=>`<div class="item" onclick="detalheMembro('${esc(m.id)}')"><div class="nm"><b>${esc(m.nome||m.email)}</b><span class="muted">${esc(m.email)}</span></div>
-      <div class="tags"><span class="tag ${m.ativo?'ok':'bad'}">${m.ativo?'Ativo':'Desativado'}</span>${(()=>{const n=inscritos.filter(i=>i.checkin&&i.checkinPor===m.id).length;return n?`<span class="tag ok">${n} check-in${n>1?'s':''} neste evento</span>`:'';})()}${m.verValores!==false?'<span class="tag neu">Vê valores</span>':'<span class="tag neu">Só check-in</span>'}${m.podePagar?'<span class="tag neu">Confirma Pix</span>':''}<span class="tag neu">${m.todosEventos===false?((m.eventos||[]).length+' evento'+((m.eventos||[]).length===1?'':'s')):'Todos os eventos'}</span></div></div>`).join('');
+      <div class="tags"><span class="tag ${m.ativo?'ok':'bad'}">${m.ativo?'Ativo':'Desativado'}</span>${(()=>{const n=inscritos.filter(i=>i.checkin&&i.checkinPor===m.id).length;return n?`<span class="tag ok">${n} check-in${n>1?'s':''} neste evento</span>`:'';})()}${m.verValores!==false?'<span class="tag neu">Vê valores</span>':'<span class="tag neu">Só check-in</span>'}${m.podePagar?'<span class="tag neu">Confirma Pix</span>':''}${(m.filas||{})[selId]&&nomeFila(m.filas[selId])?`<span class="tag warn">Fila ${esc(nomeFila(m.filas[selId]))}</span>`:''}<span class="tag neu">${m.todosEventos===false?((m.eventos||[]).length+' evento'+((m.eventos||[]).length===1?'':'s')):'Todos os eventos'}</span></div></div>`).join('');
 }
 function formMembro(){
   abrirModal(`<h2>Cadastrar usuário de check-in</h2>
@@ -1090,6 +1354,7 @@ function detalheMembro(id){
     <label class="chk"><input type="checkbox" ${m.podePagar?'checked':''} onchange="atualizarMembro('${esc(id)}',{podePagar:this.checked})"> Pode confirmar pagamentos (Pix)</label>
     ${seletorEventos('dm',m)}
     <button class="btn full" style="margin-top:6px" onclick="salvarAcesso('${esc(id)}')">Salvar eventos liberados</button>
+    ${seletorFilas(m)}
     <div style="height:12px"></div>
     <button class="btn full" onclick="resetSenha('${esc(m.email)}')">📧 Enviar e-mail para redefinir a senha</button>
     <div style="height:8px"></div>
@@ -1097,6 +1362,22 @@ function detalheMembro(id){
     <div style="height:8px"></div>
     <button class="btn bad full" onclick="removerMembro('${esc(id)}')">Remover da equipe</button>
     <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+}
+function seletorFilas(m){
+  const evs=eventos.filter(e=>filasAtivas(e)&&(m.todosEventos!==false||(m.eventos||[]).includes(e.id)));
+  if(!evs.length)return '';
+  return `<div class="secao" style="margin-top:14px">Fila no check-in</div>
+    <div class="muted">A pessoa lê os vouchers da fila escolhida. Se alguém de outra fila aparecer, o leitor avisa.</div>
+    ${evs.map(e=>{const v=(m.filas||{})[e.id]||'';return `<label>${esc(e.titulo)}</label><select class="f" onchange="definirFila('${esc(m.id)}','${e.id}',this.value)">
+      <option value="">Livre (a pessoa escolhe no celular)</option>${listaFilas(e).map(q=>`<option value="${q.id}" ${q.id===v?'selected':''}>${q.cri?'🎈':'🔤'} ${esc(q.nome)}</option>`).join('')}</select>`;}).join('')}`;
+}
+async function definirFila(id,eid,v){
+  const m=equipe.find(x=>x.id===id)||{},e=eventos.find(x=>x.id===eid);
+  try{
+    await gravar(col('equipe').doc(id).update({['filas.'+eid]:v||firebase.firestore.FieldValue.delete()}));
+    registrar('equipe_alterada',`Definiu a fila de ${m.nome||id} em "${e?e.titulo:eid}": ${v?nomeFila(v,e):'livre'}`,{eventoId:eid});
+    toast('Fila salva');
+  }catch(err){toast('Erro: '+err.message);}
 }
 function seletorEventos(px,m){
   const todos=m.todosEventos!==false,sel=m.eventos||[];
@@ -1179,7 +1460,7 @@ async function salvarTema(){
 
 /* ================== Histórico ================== */
 let hist=[],unsubH=null,histLimite=150;
-const GRUPO_HIST=a=>a==='acesso'?'acesso':a.startsWith('checkin')?'checkin':a.startsWith('pago')?'pago':a.startsWith('evento')?'evento':(a==='inscricao_excluida'||a==='exportou')?'inscricao':a.startsWith('equipe')?'equipe':'config';
+const GRUPO_HIST=a=>(a==='acesso'||a==='offline')?'acesso':a.startsWith('checkin')?'checkin':a.startsWith('pago')?'pago':a.startsWith('evento')?'evento':(a==='inscricao_excluida'||a==='exportou')?'inscricao':a.startsWith('equipe')?'equipe':'config';
 const ICONE_HIST={acesso:'🔑',checkin:'✅',pago:'💲',evento:'📅',inscricao:'🗂',equipe:'🛡',config:'⚙'};
 function assinarHist(){
   if(unsubH)return;
