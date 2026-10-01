@@ -756,7 +756,7 @@ async function marcarPagoGrupo(grupo,excetoId){
 async function pagarGrupo(id){
   const i=inscritos.find(x=>x.id===id),n=membrosGrupo(i).filter(devePagar).length;
   if(!confirm(`Confirmar o pagamento de ${n} pessoa(s) do grupo?`))return;
-  try{await marcarPagoGrupo(i.grupo);registrar('pago_grupo',`Confirmou o pagamento do grupo de ${i.nome} (${n} pessoa(s))`,{eventoId:i.eventoId,inscricaoId:id});fecharModal();toast('Pagamento do grupo confirmado');}catch(e){toast('Erro: '+e.message);}
+  try{await marcarPagoGrupo(i.grupo);registrar('pago_grupo',`Confirmou o pagamento do grupo de ${i.nome} (${n} pessoa(s))`,{eventoId:i.eventoId,inscricaoId:id});avisoPago(membrosGrupo(i).map(x=>x.id));}catch(e){toast('Erro: '+e.message);}
 }
 function fmtResposta(v,f){if(v===''||v==null)return '';if(f.tipo==='data'&&/^\d{4}-\d{2}-\d{2}$/.test(v)){const[a,m,d]=v.split('-');return `${d}/${m}/${a}`;}return String(v);}
 function renderCamposEditor(){
@@ -840,6 +840,8 @@ function abrirEvento(id){
         <label>Quem tem direito</label><input id="pxMeiaQuem" maxlength="150" value="${esc(p.meiaQuem||'')}" placeholder="Ex.: estudantes, idosos 60+, professores">
         <div class="muted" style="margin-top:4px">O participante marca "Meia-entrada" e informa o motivo. Na entrada, o leitor avisa para conferir o comprovante.</div>
       </div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxTrava" ${p.qrAposPagamento!==false?'checked':''}> Liberar o QR code do voucher só depois do pagamento confirmado</label>
+      <div class="muted">Antes da confirmação, o QR aparece embaçado com a tarja <b>⏳ Aguardando pagamento</b>. Quando você confirma o Pix, a tarja sai sozinha na tela do participante.</div>
       <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxCri" ${p.criancasGratis?'checked':''} onchange="$('pxCriBox').classList.toggle('hidden',!this.checked)"> Crianças não pagam</label>
       <div id="pxCriBox" class="${p.criancasGratis?'':'hidden'}">
         <label>Grátis para crianças de até quantos anos? *</label>
@@ -944,7 +946,7 @@ async function salvarEvento(id){
   const pix={ativo:$('pxAtivo').checked,valor:lerValor($('pxValor').value),tipo:$('pxTipo').value,chave:$('pxChave').value.trim(),
     nome:$('pxNome').value.trim(),cidade:$('pxCidade').value.trim(),whats:$('pxWhats').value.trim(),
     meia:$('pxMeia').checked,valorMeia:lerValor($('pxMeiaVal').value),meiaQuem:$('pxMeiaQuem').value.trim(),
-    criancasGratis:$('pxCri').checked,idadeMax:Math.max(0,Math.min(17,parseInt($('pxIdade').value,10)||0))};
+    qrAposPagamento:$('pxTrava').checked,criancasGratis:$('pxCri').checked,idadeMax:Math.max(0,Math.min(17,parseInt($('pxIdade').value,10)||0))};
   if(pix.ativo&&pix.meia&&!(pix.valorMeia>0&&pix.valorMeia<pix.valor))return toast('O valor da meia deve ser maior que zero e menor que o valor inteiro');
   if(pix.ativo&&pix.criancasGratis&&!(parseInt($('pxIdade').value,10)>=0))return toast('Informe a idade máxima das crianças');
   if(pix.ativo){
@@ -1232,8 +1234,30 @@ async function marcarPago(id,sim){
   try{
     await gravar(col('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(inscritos.find(x=>x.id===id)||{},ev)}:{pago:false,pagoEm:null,pagoPor:null,pagoPorNome:null,valorPago:null}));
     registrar(sim?'pago':'pago_desfeito',`${sim?'Confirmou':'Desfez'} o pagamento de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});
-    fecharModal();toast(sim?'Pagamento confirmado':'Pagamento desfeito');
+    if(sim)avisoPago([id]);else{fecharModal();toast('Pagamento desfeito');}
   }catch(e){toast('Erro: '+e.message);}
+}
+// Depois de confirmar o Pix: oferece avisar o participante (o QR code dele é liberado na hora)
+function linkVouchers(ids){return ids.length>1?new URL('inscricao.html?o='+encodeURIComponent(ORG)+'&vs='+ids.join(','),location.href.split(/[?#]/)[0]).href:linkVoucher(ids[0]);}
+function avisoPago(ids){
+  const ev=eventoSel(),ls=ids.map(id=>inscritos.find(x=>x.id===id)).filter(Boolean);
+  const resp=ls.find(x=>x.telefone)||ls[0]||{};
+  const trava=cobra(ev)&&ev.pix.qrAposPagamento!==false;
+  abrirModal(`<div class="center"><div style="font-size:46px">✅</div><h2>Pagamento confirmado</h2>
+    <div class="muted">${ls.length>1?ls.length+' pessoas':esc(resp.nome||'')}${trava?' · o QR code já foi liberado no voucher':''}</div></div>
+    <div style="height:14px"></div>
+    ${resp.telefone?`<button class="btn ok full" onclick="avisarWhats(${esc(JSON.stringify(ids))})">💬 Avisar pelo WhatsApp</button><div style="height:8px"></div>`:'<div class="muted center" style="margin-bottom:8px">Sem telefone cadastrado para avisar.</div>'}
+    <button class="btn full" onclick="copiar('${linkVouchers(ids)}')">🔗 Copiar link do voucher</button><div style="height:8px"></div>
+    <button class="btn full" onclick="fecharModal()">Fechar</button>`);
+}
+function avisarWhats(ids){
+  const ev=eventoSel(),ls=ids.map(id=>inscritos.find(x=>x.id===id)).filter(Boolean),r=ls.find(x=>x.telefone)||ls[0];
+  let d=(r.telefone||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
+  const trava=cobra(ev)&&ev.pix.qrAposPagamento!==false;
+  const msg=`Olá, ${r.nome.split(' ')[0]}! ✅ Pagamento confirmado — ${ev.titulo}.\n`+(ls.length>1?ls.map(i=>`• ${i.nome} (código ${i.codigo})`).join('\n')+'\n':'')+
+    `${trava?(ls.length>1?'Os QR codes de entrada já estão liberados':'Seu QR code de entrada já está liberado'):(ls.length>1?'Seus vouchers':'Seu voucher')}:\n${linkVouchers(ids)}\n\nApresente o QR code na entrada. Até lá! 🎉`;
+  window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
+  registrar('pago_aviso',`Avisou ${r.nome} pelo WhatsApp sobre o pagamento confirmado`,{eventoId:selId,inscricaoId:ids[0]});
 }
 function whatsInscrito(id){
   const i=inscritos.find(x=>x.id===id),ev=eventoSel();let d=(i.telefone||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
