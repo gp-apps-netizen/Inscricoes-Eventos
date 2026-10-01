@@ -34,7 +34,13 @@ input.err,select.err,textarea.err{border-color:var(--bad)}
 .msg.ok{background:var(--okbg);color:var(--ok)}
 .voucher{text-align:center}
 .voucher .nome{font-size:22px;font-weight:700;margin:4px 0}
-.qrbox{display:inline-block;padding:12px;background:#fff;border-radius:12px;margin:12px 0 4px;border:1px solid #e3e5ee}
+.qrbox{display:inline-block;padding:12px;background:#fff;border-radius:12px;margin:12px 0 4px;border:1px solid #e3e5ee;position:relative;overflow:hidden}
+.qrbox .qrin{transition:filter .9s ease,opacity .9s ease}
+.qrbox.travado .qrin{filter:blur(9px);opacity:.55}
+.tarja{position:absolute;left:-30px;right:-30px;top:50%;transform:translateY(-50%) rotate(-8deg);background:#f59e0b;color:#1c1d29;font-weight:900;font-size:13px;letter-spacing:.3px;padding:10px 0;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.25);transition:transform .9s cubic-bezier(.5,-0.3,.7,1),opacity .9s ease;line-height:1.25}
+.tarja small{display:block;font-weight:600;font-size:10.5px;letter-spacing:0}
+.qrbox.liberando .tarja{transform:translate(130%,-50%) rotate(-8deg);opacity:0}
+.qrbox.liberando .qrin{filter:none;opacity:1}
 .codigo{font-size:26px;font-weight:800;letter-spacing:.2em;color:var(--pri)}
 .row{display:flex;gap:8px}.row .btn{flex:1}
 .item{display:block;padding:12px 0;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none}
@@ -169,6 +175,9 @@ function topo(sm,t,m){$('topSmall').textContent=sm;$('topTitulo').textContent=t;
 function tela(html){$('conteudo').innerHTML=html;}
 function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo&&ev.pix.valor>0);}
+// QR do voucher só liberado depois do pagamento confirmado (opção do evento; ligada por padrão)
+const travaQR=ev=>cobra(ev)&&ev.pix.qrAposPagamento!==false;
+const travado=(i,ev)=>travaQR(ev)&&!i.pago&&!i.isento;
 function temMeia(ev){return cobra(ev)&&!!ev.pix.meia&&ev.pix.valorMeia>0;}
 function valorDe(i,ev){if(!cobra(ev)||i.isento)return 0;return i.meia&&temMeia(ev)?Number(ev.pix.valorMeia):Number(ev.pix.valor);}
 const termoAtivo=e=>!!(e&&e.termo&&e.termo.ativo);
@@ -424,17 +433,19 @@ async function abrirVouchers(ids,unico){
   mostrarVouchers(lista,ev,{novo:false,falhas:[],grupoTodo,unico});
 }
 
-let atual=null;
-function mostrarVouchers(lista,ev,o){
+let atual=null,unsubV=[],ultO=null;
+function mostrarVouchers(lista,ev,o,liberar){
   if(hexOk(ev.cor)){TEMA_AJUSTE={cor:ev.cor,topo:ev.cor};aplicarTema();}
-  atual={lista,ev,img:null,pix:''};
+  atual={lista,ev,img:null,pix:'',liberar:liberar||[]};ultO=o;
   if(ev.imagem){const im=new Image();im.src=ev.imagem;atual.img=im;}
   const px=cobra(ev),varios=lista.length>1;
   const pend=(o.grupoTodo||lista).filter(i=>!i.pago&&!i.isento);
   atual.pend=pend;
   topo(varios?'Vouchers de inscrição':'Voucher de inscrição',ev.titulo,metaEv(ev));
   const outrosDoGrupo=(o.grupoTodo||[]).length>lista.length;
+  const liberados=atual.liberar.length;
   tela(`
+    ${liberados?`<div class="card"><div class="msg ok" style="margin-top:0">✅ <b>Pagamento confirmado!</b> ${liberados>1?'Os QR codes foram liberados':'Seu QR code foi liberado'}. Salve o voucher para apresentar na entrada.</div></div>`:''}
     ${o.novo?`<div class="card"><div class="msg ok" style="margin-top:0">✅ ${varios?lista.length+' inscrições realizadas!':'Inscrição realizada!'}${px&&pend.length?' Falta só o pagamento via Pix (abaixo).':''}</div>
       ${o.falhas.length?`<div class="msg bad">Não foi possível inscrever:<br>${o.falhas.map(f=>'• '+esc(f.nome)+' — '+esc(f.motivo)).join('<br>')}</div>`:''}
       ${varios?`<div class="muted" style="margin-top:10px">Cada pessoa tem o seu voucher abaixo. Salve ou compartilhe todos.</div>
@@ -450,6 +461,32 @@ function mostrarVouchers(lista,ev,o){
     ${ev.descricao?`<div class="card"><p class="desc" style="margin:0">${esc(ev.descricao)}</p></div>`:''}`);
   lista.forEach((i,k)=>new QRCode($('qr'+k),{text:linkVoucher(i.id),width:varios?180:220,height:varios?180:220,correctLevel:QRCode.CorrectLevel.M}));
   if(px&&pend.length)new QRCode($('qrPix'),{text:atual.pix,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+  // Tarja sai da frente do QR (animação) para quem acabou de ter o pagamento confirmado
+  if(liberados)setTimeout(()=>lista.forEach((i,k)=>{if(atual.liberar.includes(i.id))$('qb'+k).classList.add('liberando');}),400);
+  acompanhar(o.grupoTodo||lista);
+}
+// Acompanha os vouchers em tempo real: quando a organização confirma o Pix, a página atualiza sozinha
+function acompanhar(todos){
+  const ids=todos.map(i=>i.id).join(',');
+  if(acompanhar.ids===ids)return;
+  unsubV.forEach(u=>u());unsubV=[];acompanhar.ids=ids;
+  todos.forEach(i=>{
+    unsubV.push(col('inscricoes').doc(i.id).onSnapshot(d=>{
+      if(!d.exists||!atual)return;
+      const novo={id:d.id,...d.data()};
+      const g=(ultO.grupoTodo||atual.lista),pos=g.findIndex(x=>x.id===novo.id);
+      const ant=pos>=0?g[pos]:null;
+      if(!ant||(!!ant.pago===!!novo.pago&&!!ant.checkin===!!novo.checkin))return;
+      if(pos>=0)g[pos]=novo;
+      const li=atual.lista.findIndex(x=>x.id===novo.id);if(li>=0)atual.lista[li]=novo;
+      const liberou=!ant.pago&&novo.pago&&travaQR(atual.ev)?[novo.id]:[];
+      clearTimeout(acompanhar.t);
+      acompanhar.lib=[...(acompanhar.lib||[]),...liberou];
+      acompanhar.t=setTimeout(()=>{const l=acompanhar.lib;acompanhar.lib=[];
+        const y=scrollY;mostrarVouchers(atual.lista,atual.ev,{...ultO,novo:false,falhas:[]},l);scrollTo(0,y);
+        if(l.length){try{navigator.vibrate&&navigator.vibrate([120,60,120]);}catch(e){}}},250);
+    },()=>{}));
+  });
 }
 function cartaoVoucher(i,ev,k,varios){
   const px=cobra(ev);
@@ -459,11 +496,12 @@ function cartaoVoucher(i,ev,k,varios){
     ${i.isento?'<div style="margin-top:4px"><span class="st ok">🎈 Criança — inscrição gratuita</span></div>':px?`<div style="margin-top:4px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span>${i.meia?' <span class="st pend">🎟 Meia-entrada</span>':''}</div>`:''}
     <div class="muted" style="margin-top:12px">${varios?'Participante '+(k+1):'Participante'}</div>
     <div class="nome">${esc(i.nome)}</div>
-    <div class="qrbox"><div id="qr${k}"></div></div>
+    <div class="qrbox ${travado(i,ev)||atual.liberar.includes(i.id)?'travado':''}" id="qb${k}"><div class="qrin" id="qr${k}"></div>${travado(i,ev)||atual.liberar.includes(i.id)?'<div class="tarja">⏳ AGUARDANDO PAGAMENTO<small>liberado após a confirmação do Pix</small></div>':''}</div>
     <div class="muted">Código</div><div class="codigo">${esc(i.codigo)}</div>
-    <p class="muted">Apresente este QR code na entrada do evento.</p>
+    ${travado(i,ev)?`<p class="muted">O QR code é liberado aqui assim que a organização confirmar o pagamento. Esta página se atualiza sozinha.</p>
+    <button class="btn" onclick="copiarLink(${k})">🔗 Copiar link do voucher</button>`:`<p class="muted">Apresente este QR code na entrada do evento.</p>
     <button class="btn ${varios?'':'pri'}" onclick="compartilhar(${k})">📤 Salvar / compartilhar ${varios?'este voucher':'voucher'}</button>
-    <div class="row"><button class="btn" onclick="baixar(${k})">⬇ Baixar imagem</button><button class="btn" onclick="copiarLink(${k})">🔗 Copiar link</button></div>
+    <div class="row"><button class="btn" onclick="baixar(${k})">⬇ Baixar imagem</button><button class="btn" onclick="copiarLink(${k})">🔗 Copiar link</button></div>`}
   </div>`;
 }
 function cartaoPix(ev,pend){
@@ -483,8 +521,7 @@ function cartaoPix(ev,pend){
     </div>
     <button class="btn" onclick="copiarTexto(${esc(JSON.stringify(ev.pix.chave))},'Chave Pix copiada!')">Copiar só a chave</button>
     ${ev.pix.whats?`<button class="btn" onclick="enviarComprovante()">💬 Enviar comprovante pelo WhatsApp</button>`:''}
-    <p class="muted" style="margin-bottom:0">Depois que a organização confirmar o pagamento, esta página mostra <b>Pagamento confirmado</b>.</p>
-    <button class="btn" onclick="location.reload()">🔄 Atualizar situação</button>
+    <p class="muted" style="margin-bottom:0">Depois que a organização confirmar o pagamento, esta página mostra <b>Pagamento confirmado</b>${travaQR(ev)?' e libera o QR code de entrada':''} — sozinha, sem precisar recarregar.</p>
   </div>`;
 }
 function copiarTexto(t,ok){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert(ok)).catch(()=>prompt('Copie:',t));}
@@ -515,7 +552,12 @@ function imagemVoucher(k){
   x.fillStyle='#fff';x.beginPath();x.moveTo(60,290);x.arcTo(740,290,740,1120,24);x.arcTo(740,1120,60,1120,24);x.arcTo(60,1120,60,290,24);x.arcTo(60,290,740,290,24);x.fill();
   x.fillStyle='#6b6f85';x.font='24px system-ui,sans-serif';x.fillText('Participante',W/2,345);
   x.fillStyle='#1c1d29';x.font='bold 38px system-ui,sans-serif';quebra(x,i.nome,W/2,395,W-160,44,2);
-  x.drawImage(q,140,450,520,520);
+  if(travado(i,ev)){
+    x.save();x.filter='blur(16px)';x.globalAlpha=.5;x.drawImage(q,140,450,520,520);x.restore();
+    x.save();x.translate(W/2,710);x.rotate(-12*Math.PI/180);x.fillStyle='#f59e0b';x.fillRect(-420,-48,840,96);
+    x.fillStyle='#1c1d29';x.textAlign='center';x.font='bold 36px system-ui,sans-serif';x.fillText('⏳ AGUARDANDO PAGAMENTO',0,6);
+    x.font='22px system-ui,sans-serif';x.fillText('liberado após a confirmação do Pix',0,36);x.restore();
+  }else x.drawImage(q,140,450,520,520);
   x.fillStyle='#6b6f85';x.font='24px system-ui,sans-serif';x.fillText('Código',W/2,1015);
   x.fillStyle=lum(corPri())>.5?mix(corPri(),'#000000',.45):corPri();x.font='bold 46px system-ui,sans-serif';x.fillText(i.codigo.split('').join(' '),W/2,1068);
   x.fillStyle='#6b6f85';x.font='22px system-ui,sans-serif';x.fillText('Apresente este QR code na entrada',W/2,1160);
