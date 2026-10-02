@@ -519,6 +519,7 @@ function cartaoPixAuto(ev,pend){
     <div id="mpArea"><p class="muted" style="margin:18px 0">⏳ Gerando o seu Pix…</p></div>
   </div>`;
 }
+function tentarPixDeNovo(){const a=$('mpArea');if(a)a.innerHTML='<p class="muted" style="margin:18px 0">⏳ Gerando o seu Pix…</p>';carregarPixAuto(atual.pend||[]);}
 async function carregarPixAuto(pend){
   const area=$('mpArea');if(!area)return;
   try{
@@ -538,7 +539,7 @@ async function carregarPixAuto(pend){
       <p class="muted" style="margin-bottom:0">Pix válido até ${ate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} de ${ate.toLocaleDateString('pt-BR')}. Pagamento processado pelo Mercado Pago.</p>`;
     new QRCode($('qrPix'),{text:r.qr,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
   }catch(e){
-    area.innerHTML=`<div class="msg bad">Não foi possível gerar o Pix agora${e&&e.message?': '+esc(e.message):''}.</div><button class="btn pri" onclick="this.parentNode.innerHTML='<p class=\'muted\' style=\'margin:18px 0\'>⏳ Gerando o seu Pix…</p>';carregarPixAuto(atual.pend)">🔄 Tentar de novo</button>`;
+    area.innerHTML=`<div class="msg bad">Não foi possível gerar o Pix agora${e&&e.message?': '+esc(e.message):''}.</div><button class="btn pri" onclick="tentarPixDeNovo()">🔄 Tentar de novo</button>`;
   }
 }
 function cartaoPix(ev,pend){
