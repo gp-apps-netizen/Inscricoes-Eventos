@@ -64,11 +64,6 @@ h3{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--li
 .empty{text-align:center;padding:30px 10px;color:var(--muted)}
 .hidden{display:none!important}
 .log{font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:200px;overflow:auto;white-space:pre-wrap}
-.embed header{display:none}
-.embed .login{margin-top:6vh}
-.ebar{display:none;align-items:center;gap:8px;margin-bottom:12px}
-.embed .ebar{display:flex}
-.ebar .t{flex:1;font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -85,9 +80,6 @@ const firebaseConfig = {
   measurementId: "G-NGK7BES79S"
 };
 const SUPER = 'godoygpx@gmail.com';   // único login com acesso a este painel
-// Aberto dentro do Administrador Apps (aba Inscrições)
-const EMBED = new URLSearchParams(location.search).get('embed') === '1';
-if (EMBED) document.documentElement.classList.add('embed');
 </script>
 
 <div id="telaLogin" class="login hidden">
@@ -108,7 +100,6 @@ if (EMBED) document.documentElement.classList.add('embed');
     <button class="iconbtn" onclick="auth.signOut()">Sair</button>
   </div></header>
   <main>
-    <div class="ebar"><span class="t" id="eQuem"></span><a class="btn" href="../" target="_blank" rel="noopener" style="padding:7px 12px;font-size:14px">Controle ↗</a><button class="btn" style="padding:7px 12px;font-size:14px" onclick="if(confirm('Sair das inscrições neste aparelho?'))auth.signOut()">Sair</button></div>
     <div class="kpis">
       <div class="kpi"><b id="kAtivos">0</b><span>Ativos</span></div>
       <div class="kpi"><b id="kVencidos">0</b><span>Vencidos</span></div>
@@ -215,18 +206,11 @@ async function entrar(){
   b.disabled=false;
 }
 let unsub=null;
-if(EMBED){$('lgEmail').value=SUPER;document.querySelector('#telaLogin h1').textContent='Entrar nas Inscrições';}
-function avisarPainel(){
-  if(!EMBED||parent===window)return;
-  const at=S.orgs.filter(o=>o.status==='ativo');
-  try{parent.postMessage({tipo:'insc-kpis',ativos:at.length,vencidos:S.orgs.filter(vencido).length,suspensos:S.orgs.length-at.length,
-    receita:at.filter(o=>o.plano==='mensal').reduce((s,o)=>s+(o.valor||0),0),logado:!!auth.currentUser},location.origin);}catch(e){}
-}
 auth.onAuthStateChanged(u=>{
   if(unsub){unsub();unsub=null;}
-  if(!u){$('telaApp').classList.add('hidden');$('telaLogin').classList.remove('hidden');if(EMBED&&parent!==window)try{parent.postMessage({tipo:'insc-kpis',logado:false},location.origin);}catch(e){}return;}
+  if(!u){$('telaApp').classList.add('hidden');$('telaLogin').classList.remove('hidden');return;}
   if((u.email||'').toLowerCase()!==SUPER){alert('Este painel é só do administrador geral.');auth.signOut();return;}
-  $('telaLogin').classList.add('hidden');$('telaApp').classList.remove('hidden');if($('eQuem'))$('eQuem').textContent=u.email;
+  $('telaLogin').classList.add('hidden');$('telaApp').classList.remove('hidden');
   unsub=db.collection('organizadores').onSnapshot(s=>{S.orgs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));render();},
     e=>{$('lista').innerHTML=`<div class="card" style="color:var(--bad)">${esc(erroMsg(e))}</div>`;});
   verificarLegado();
@@ -258,7 +242,6 @@ function render(){
       <div class="muted small">${esc(o.id)} · ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
       ${o.plano==='proprio'?'':`<div class="small" style="margin-top:4px">${esc(PLANOS[o.plano]||'')} · ${esc(resumoPlano(o))}${o.calculo&&o.plano!=='mensal'?` · <b>total ${brl(o.calculo.total)}</b>`:''}</div>`}</div>
       ${situacao(o)}</div></div>`).join('');
-  avisarPainel();
 }
 
 /* ================== Criar login sem sair do painel ================== */
@@ -322,6 +305,17 @@ function lerCobranca(){
   }else Object.assign(d,{adicionais:null,condicao:null});
   return d;
 }
+/* ---- Pix automático (Mercado Pago) com comissão da plataforma ---- */
+function camposMP(o={}){
+  const on=!!o.mpLiberado,pct=o.comissaoMP!=null?o.comissaoMP:5;
+  return `<h3>Pix automático (Mercado Pago)</h3>
+    <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fMp" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px" ${on?'checked':''} onchange="$('fMpBox').classList.toggle('hidden',!this.checked)"> <span>Liberar o <b>Pix automático</b> para este organizador<br><span class="muted small">Ele conecta a conta Mercado Pago dele; o Pix cai direto na conta dele e a sua comissão cai na sua conta, automaticamente.</span></span></label>
+    <div id="fMpBox" class="${on?'':'hidden'}">
+      <label>Comissão da plataforma (% de cada pagamento)</label><input id="fMpPct" inputmode="decimal" value="${String(pct).replace('.',',')}">
+      <div class="muted small" style="margin-top:4px">Ex.: 5% de uma inscrição de R$ 60,00 = R$ 3,00 para você. A taxa do Mercado Pago (cerca de 0,99% no Pix) é descontada do organizador.</div>
+    </div>`;
+}
+function lerMP(){const pct=Math.max(0,Math.min(50,parseFloat(String($('fMpPct').value).replace(',','.'))||0));return{mpLiberado:$('fMp').checked,comissaoMP:Math.round(pct*100)/100};}
 function estimar(){
   const el=$('fEst');if(!el)return;
   const o=lerCobranca();
@@ -343,6 +337,7 @@ function novoOrg(){
     <label>Senha inicial * (mín. 6)</label><input id="fSenha" autocomplete="off" value="${Math.random().toString(36).slice(2,8)}">
     <h3>Permissões</h3>
     <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fPodeCriar" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px"> <span>O organizador pode <b>criar e excluir</b> eventos<br><span class="muted small">Desmarcado: você cria o evento (em "Entrar como suporte") e ele só edita e configura. Bom para cobrança por evento ou por inscrito.</span></span></label>
+    ${camposMP()}
     ${camposCobranca()}
     <div style="height:14px"></div>
     <div class="row"><button class="btn" onclick="fechar()">Cancelar</button><button class="btn pri" id="fOk" onclick="criarOrg()">Criar organizador e login</button></div>`);
@@ -364,7 +359,7 @@ async function criarOrg(){
     if(u.exists)return volta(`Este e-mail já está no organizador “${u.data().orgId}”`);
     const nova=await criarLogin(email,senha);
     const b=db.batch();
-    b.set(db.collection('organizadores').doc(id),{nome,donoNome,donoEmail:email,status:'ativo',podeCriarEventos:$('fPodeCriar').checked,...lerCobranca(),criadoEm:TS()});
+    b.set(db.collection('organizadores').doc(id),{nome,donoNome,donoEmail:email,status:'ativo',podeCriarEventos:$('fPodeCriar').checked,...lerCobranca(),...lerMP(),criadoEm:TS()});
     b.set(db.collection('usuarios').doc(email),{orgId:id,papel:'dono'});
     await b.commit();
     fechar();toast('Organizador criado!');
@@ -422,6 +417,7 @@ async function detalhe(id){
     <div class="kv"><span>Responsável:</span> ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
     <div class="kv"><span>Eventos:</span> ${o.podeCriarEventos===false?'<b>criados só por você</b> (o organizador edita e configura)':'o organizador cria os próprios eventos'}</div>
     ${o.obs?`<div class="kv"><span>Obs.:</span> ${esc(o.obs)}</div>`:''}
+    <div class="kv"><span>Pix automático:</span> ${o.mpLiberado?(o.mp&&o.mp.conectado?`<b style="color:var(--ok)">Mercado Pago conectado</b>${o.mp.teste?' (teste)':''} · comissão ${String(o.comissaoMP||0).replace('.',',')}%`:`liberado (${String(o.comissaoMP||0).replace('.',',')}%) · <b>aguardando o organizador conectar a conta</b>`):'não liberado'}</div>
     <div class="kv" id="dUso"><span>Uso:</span> carregando…</div>
     ${proprio?'':secaoCobranca(o)}
     <h3>Links</h3>
@@ -460,6 +456,7 @@ function secaoCobranca(o){
       <div class="small muted">Último cálculo em ${fmtDia(c.data)}</div>
       ${(c.eventos||[]).map(e=>`<div class="small">• ${esc(e.titulo)}: ${porInscrito(o)?e.pagos+' pago(s) → ':''}<b>${brl(e.valor)}</b></div>`).join('')}
       ${c.adicionais?`<div class="small">• Adicionais: <b>${brl(c.adicionais)}</b></div>`:''}
+      ${c.mp&&c.mp.pagamentos?`<div class="small" style="margin-top:4px">💳 Mercado Pago: ${c.mp.pagamentos} Pix automático(s) · ${brl(c.mp.total)} pagos · <b>sua comissão já recebida: ${brl(c.mp.comissao)}</b></div>`:''}
       <div style="font-size:18px;margin-top:6px"><b>Total: ${brl(c.total)}</b></div></div>`:''}
     <div class="kv" style="margin-top:8px"><span>Recebido:</span> <b style="color:var(--ok)">${brl(rec)}</b>${c&&o.plano!=='mensal'?` · <span>Saldo:</span> <b style="color:${c.total-rec>0?'var(--bad)':'var(--ok)'}">${brl(Math.max(0,c.total-rec))}</b>`:''}</div>
     ${o.plano==='mensal'&&o.vencimento?`<div class="kv"><span>Vencimento:</span> ${fmtDia(o.vencimento)}</div>`:''}
@@ -474,14 +471,15 @@ async function calcular(id){
   toast('Calculando…');
   try{
     const r=db.collection('organizadores').doc(id);
-    const [evs,pg]=await Promise.all([r.collection('eventos').get(),r.collection('inscricoes').where('pago','==',true).get()]);
+    const [evs,pg,cb]=await Promise.all([r.collection('eventos').get(),r.collection('inscricoes').where('pago','==',true).get(),r.collection('cobrancas').where('status','==','approved').get().catch(()=>({docs:[]}))]);
+    const mp={pagamentos:cb.docs.length,total:Math.round(cb.docs.reduce((s,d)=>s+Number(d.data().total||0),0)*100),comissao:Math.round(cb.docs.reduce((s,d)=>s+Number(d.data().taxaRecebida||d.data().taxa||0),0)*100)};
     const cont={};pg.docs.forEach(d=>{const x=d.data();if(x.isento)return;cont[x.eventoId]=(cont[x.eventoId]||0)+1;});
     let eventos=evs.docs.map(d=>({id:d.id,titulo:d.data().titulo||'Evento',pagos:cont[d.id]||0}));
     // Por inscrito: conta só eventos com inscritos pagos; valor fixo: todos os eventos
     if(porInscrito(o))eventos=eventos.filter(e=>e.pagos>0);
     eventos.forEach(e=>e.valor=baseEvento(o,e.pagos));
     const adicionais=totalAdicionais(o),total=eventos.reduce((s,e)=>s+e.valor,0)+adicionais;
-    await r.update({calculo:{data:hoje(),eventos,adicionais,total}});registrarAdm(id,'cobranca',`Cobrança calculada: ${brl(total)}`);
+    await r.update({calculo:{data:hoje(),eventos,adicionais,total,mp}});registrarAdm(id,'cobranca',`Cobrança calculada: ${brl(total)}`);
     toast('Cálculo atualizado');detalhe(id);
   }catch(e){toast(erroMsg(e));}
 }
@@ -538,6 +536,7 @@ function editar(id){
     <div class="muted small" style="margin-top:6px">Login do responsável: ${esc(o.donoEmail)} (para trocar, crie um novo organizador ou fale comigo no suporte).</div>
     <h3>Permissões</h3>
     <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fPodeCriar" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px" ${o.podeCriarEventos!==false?'checked':''}> <span>O organizador pode <b>criar e excluir</b> eventos<br><span class="muted small">Desmarcado: você cria o evento (em "Entrar como suporte") e ele só edita e configura.</span></span></label>
+    ${camposMP(o)}
     ${camposCobranca(o)}
     <div style="height:14px"></div>
     <div class="row"><button class="btn" onclick="detalhe('${esc(id)}')">Voltar</button><button class="btn pri" onclick="salvarEdicao('${esc(id)}')">Salvar</button></div>`);
@@ -547,7 +546,8 @@ async function salvarEdicao(id){
   const o0=S.orgs.find(x=>x.id===id)||{};
   const nome=$('fNome').value.trim(),donoNome=$('fDono').value.trim();
   if(!nome)return toast('Informe o nome');
-  try{const c=lerCobranca(),pc=$('fPodeCriar').checked;await db.collection('organizadores').doc(id).update({nome,donoNome,podeCriarEventos:pc,...c});if(pc!==(o0.podeCriarEventos!==false))registrarAdm(id,'config',pc?'Organizador liberado para criar e excluir eventos':'Criação e exclusão de eventos reservadas ao administrador');registrarAdm(id,'cobranca',`Cobrança atualizada: ${PLANOS[c.plano]} — ${resumoPlano(c)}`);toast('Salvo');detalhe(id);}catch(e){toast(erroMsg(e));}
+  try{const c=lerCobranca(),pc=$('fPodeCriar').checked,m=lerMP();await db.collection('organizadores').doc(id).update({nome,donoNome,podeCriarEventos:pc,...c,...m});
+    if(m.mpLiberado!==!!o0.mpLiberado||m.comissaoMP!==o0.comissaoMP)registrarAdm(id,'config',m.mpLiberado?`Pix automático (Mercado Pago) liberado — comissão ${String(m.comissaoMP).replace('.',',')}%`:'Pix automático (Mercado Pago) desativado');if(pc!==(o0.podeCriarEventos!==false))registrarAdm(id,'config',pc?'Organizador liberado para criar e excluir eventos':'Criação e exclusão de eventos reservadas ao administrador');registrarAdm(id,'cobranca',`Cobrança atualizada: ${PLANOS[c.plano]} — ${resumoPlano(c)}`);toast('Salvo');detalhe(id);}catch(e){toast(erroMsg(e));}
 }
 async function apagarColecao(ref,log){
   let total=0;
