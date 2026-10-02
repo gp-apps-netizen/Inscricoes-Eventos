@@ -125,6 +125,7 @@ const SUPER = 'godoygpx@gmail.com';   // único login com acesso a este painel
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script>
 /* ================== Utilidades ================== */
 const $=id=>document.getElementById(id);
@@ -191,6 +192,7 @@ const recebido=o=>(o.pagamentos||[]).reduce((s,p)=>s+(p.valor||0),0);
 /* ================== Firebase ================== */
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth(),db=firebase.firestore();
+let fns=null;try{fns=firebase.app().functions('southamerica-east1');}catch(e){}
 const TS=()=>firebase.firestore.FieldValue.serverTimestamp();
 const APP=new URL('../',location.href.split(/[?#]/)[0]).href;       // app de controle
 const links=id=>({controle:APP,suporte:APP+'?org='+encodeURIComponent(id)});
@@ -418,6 +420,7 @@ async function detalhe(id){
     <div class="kv"><span>Eventos:</span> ${o.podeCriarEventos===false?'<b>criados só por você</b> (o organizador edita e configura)':'o organizador cria os próprios eventos'}</div>
     ${o.obs?`<div class="kv"><span>Obs.:</span> ${esc(o.obs)}</div>`:''}
     <div class="kv"><span>Pix automático:</span> ${o.mpLiberado?(o.mp&&o.mp.conectado?`<b style="color:var(--ok)">Mercado Pago conectado</b>${o.mp.teste?' (teste)':''} · comissão ${String(o.comissaoMP||0).replace('.',',')}%`:`liberado (${String(o.comissaoMP||0).replace('.',',')}%) · <b>aguardando o organizador conectar a conta</b>`):'não liberado'}</div>
+    ${o.mpLiberado&&!(o.mp&&o.mp.conectado)?`<button class="btn full" style="margin-top:6px" id="btnLinkMP" onclick="linkConexaoMP('${esc(id)}')">📲 Enviar link para o organizador conectar o Mercado Pago</button>`:''}
     <div class="kv" id="dUso"><span>Uso:</span> carregando…</div>
     ${proprio?'':secaoCobranca(o)}
     <h3>Links</h3>
@@ -440,6 +443,19 @@ async function detalhe(id){
     const [ev,eq]=await Promise.all([r.collection('eventos').get(),r.collection('equipe').get()]);
     if($('dUso'))$('dUso').innerHTML=`<span>Uso:</span> ${ev.size} evento(s) · ${eq.size} na equipe`;
   }catch(e){if($('dUso'))$('dUso').innerHTML='<span>Uso:</span> não foi possível contar';}
+}
+// Link de autorização do Mercado Pago para o organizador abrir no celular dele (vale 7 dias)
+async function linkConexaoMP(id){
+  const o=S.orgs.find(x=>x.id===id),b=$('btnLinkMP');
+  if(!fns)return toast('Módulo de pagamentos indisponível');
+  if(b){b.disabled=true;b.textContent='Gerando link…';}
+  try{
+    const r=await fns.httpsCallable('mpIniciarConexao')({org:id,longo:true});
+    const txt=`Olá, ${o.donoNome||''}! Para receber as inscrições por Pix automático (direto na sua conta Mercado Pago), toque no link abaixo, entre na sua conta Mercado Pago e toque em *Permitir*:\n\n${r.data.url}\n\nO link vale por 7 dias. Depois disso, as inscrições pagas por Pix são confirmadas sozinhas.`;
+    registrarAdm(id,'config','Gerou link de conexão do Mercado Pago para o organizador');
+    window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+  }catch(e){toast('Erro: '+(e.message||e));}
+  if(b){b.disabled=false;b.textContent='📲 Enviar link para o organizador conectar o Mercado Pago';}
 }
 function enviarAcesso(id){const o=S.orgs.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(textoAcesso(o,null)),'_blank');}
 async function resetSenha(email){if(!email)return;try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado para '+email);}catch(e){toast(erroMsg(e));}}
