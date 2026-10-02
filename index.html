@@ -154,7 +154,7 @@ const firebaseConfig = {
   <header>
     <div class="hrow">
       <h1><span id="orgNome">Controle de Inscrições</span><span class="papel hidden" id="papelTag">Equipe</span><span class="papel hidden" id="suporteTag">Suporte</span></h1>
-      <a class="iconbtn hidden" id="btnPainel" href="admin/" style="text-decoration:none">Painel</a>
+      <a class="iconbtn hidden" id="btnPainel" href="admin/" onclick="this.href=urlPainel()" style="text-decoration:none">Painel</a>
       <button class="iconbtn" onclick="sair()">Sair</button>
     </div>
     <select id="selEvento" onchange="selecionarEvento(this.value)"></select>
@@ -414,6 +414,8 @@ else{
   });
 }
 const TS=()=>firebase.firestore.FieldValue.serverTimestamp();
+// Endereço do painel admin a partir da pasta do app (evita /admin/admin/ quando a página já está dentro de /admin/)
+function urlPainel(){const p=location.pathname.replace(/\/admin(\/.*)?$/,'/').replace(/[^/]*$/,'');return location.origin+p+'admin/';}
 
 /* ================== Sem internet ================== */
 let pendentes=0,tinhaPend=0,redeRuimAte=0;
@@ -602,7 +604,7 @@ async function detectarPapel(){
       const u=await lerDoc(db.collection('usuarios').doc(usuario()));
       if(!u.exists){
         aviso('Conta sem organizador',ehSuper()
-          ?'Você é o administrador geral. Abra o <a href="admin/">painel de administrador</a> para criar os organizadores (inclusive o seu, sem cobrança) ou use <b>?org=identificador</b> no link para entrar como suporte.'
+          ?'Você é o administrador geral. Abra o <a href="admin/" onclick="this.href=urlPainel()">painel de administrador</a> para criar os organizadores (inclusive o seu, sem cobrança) ou use <b>?org=identificador</b> no link para entrar como suporte.'
           :'Este login não está ligado a nenhum organizador. Fale com quem enviou o seu acesso.');
         return false;
       }
