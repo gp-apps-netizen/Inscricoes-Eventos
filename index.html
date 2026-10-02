@@ -167,6 +167,7 @@ const firebaseConfig = {
       <button class="btn pri full donoOnly" id="btnNovoEv" onclick="abrirEvento()">+ Novo evento</button>
       <div class="donoOnly" style="height:8px"></div>
       <button class="btn full donoOnly" onclick="abrirTema()">🎨 Cores e estilo</button>
+      <div class="card donoOnly hidden" id="mpCard" style="margin:8px 0 0"></div>
       <div style="height:12px"></div>
       <div id="listaEventos"></div>
     </section>
@@ -274,6 +275,7 @@ const firebaseConfig = {
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
@@ -397,7 +399,7 @@ function comprimirImagem(file){
 
 /* ================== Firebase ================== */
 const configurado=!String(firebaseConfig.apiKey).startsWith('COLE');
-let auth,db,persistOk=true;
+let auth,db,fns=null,persistOk=true;
 // Modo offline: guarda o app no celular (sw.js)
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(!configurado){$('telaConfig').classList.remove('hidden');}
@@ -405,6 +407,7 @@ else{
   firebase.initializeApp(firebaseConfig);
   auth=firebase.auth();db=firebase.firestore();
   db.enablePersistence({synchronizeTabs:true}).catch(()=>{persistOk=false;});
+  try{fns=firebase.app().functions('southamerica-east1');}catch(e){}
   auth.onAuthStateChanged(u=>{
     if(u){$('telaLogin').classList.add('hidden');iniciar();}
     else{$('telaApp').classList.add('hidden');$('telaAviso').classList.add('hidden');$('telaLogin').classList.remove('hidden');pararTudo();}
@@ -703,7 +706,39 @@ document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
 document.querySelectorAll('#filtro button').forEach(b=>b.onclick=()=>{filtro=b.dataset.f;document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x===b));renderInscritos();});
 
 /* ================== Eventos ================== */
+/* ================== Mercado Pago (Pix automático) ================== */
+const mpLiberado=()=>!!(orgInfo.mpLiberado||ehSuper());
+const mpConectado=()=>!!(orgInfo.mp&&orgInfo.mp.conectado);
+function renderMP(){
+  const c=$('mpCard');if(!c)return;
+  c.classList.toggle('hidden',!(ehDono()&&mpLiberado()));
+  if(!mpLiberado())return;
+  const pct=Number(orgInfo.comissaoMP||0);
+  c.innerHTML=mpConectado()
+    ?`<div style="display:flex;gap:10px;align-items:center"><div style="font-size:26px">💳</div><div style="flex:1"><b>Mercado Pago conectado</b>${orgInfo.mp.teste?' <span class="tag warn">modo teste</span>':''}
+      <div class="muted">Conta ${esc(orgInfo.mp.userId||'')} · o Pix automático cai direto na sua conta${pct?` · comissão da plataforma ${String(pct).replace('.',',')}%`:''}</div></div></div>
+      <button class="btn sm full" style="margin-top:8px" onclick="mpDesconectar()">Desconectar</button>`
+    :`<div style="display:flex;gap:10px;align-items:center"><div style="font-size:26px">💳</div><div style="flex:1"><b>Pix automático (Mercado Pago)</b>
+      <div class="muted">Conecte sua conta Mercado Pago: o participante paga o Pix e a inscrição é confirmada sozinha, sem conferir comprovante.${pct?` Comissão da plataforma: ${String(pct).replace('.',',')}% por pagamento.`:''}</div></div></div>
+      <button class="btn pri full" style="margin-top:8px" id="btnMP" onclick="mpConectar()">Conectar Mercado Pago</button>`;
+}
+async function mpConectar(){
+  if(!fns)return toast('Não foi possível carregar o módulo de pagamentos');
+  const b=$('btnMP');if(b){b.disabled=true;b.textContent='Abrindo o Mercado Pago…';}
+  try{const r=await fns.httpsCallable('mpIniciarConexao')({org:ORG});location.href=r.data.url;}
+  catch(e){toast('Erro: '+e.message);if(b){b.disabled=false;b.textContent='Conectar Mercado Pago';}}
+}
+async function mpDesconectar(){
+  if(!confirm('Desconectar a conta Mercado Pago? Os eventos com Pix automático deixam de gerar cobranças até você conectar de novo.'))return;
+  try{await fns.httpsCallable('mpDesconectar')({org:ORG});toast('Conta desconectada');}catch(e){toast('Erro: '+e.message);}
+}
+// Volta do Mercado Pago depois de autorizar
+(function(){const q=new URLSearchParams(location.search);const st=q.get('mp');if(!st)return;
+  setTimeout(()=>{if(st==='ok')alert('✅ Conta Mercado Pago conectada!\n\nAgora, em Editar evento → Pagamento via Pix, escolha "Pix automático (Mercado Pago)".');else alert('Não foi possível conectar o Mercado Pago.\n\n'+(q.get('mpmsg')||''));},800);
+  q.delete('mp');q.delete('mpmsg');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:''));})();
+
 function renderEventos(){
+  renderMP();
   const el=$('listaEventos');
   if($('btnNovoEv'))$('btnNovoEv').classList.toggle('hidden',!podeCriar());
   if(!eventos.length){el.innerHTML='<div class="empty">'+(!podeCriar()&&ehDono()?'Nenhum evento liberado ainda.<br>O seu evento é criado pelo administrador do sistema; depois disso você edita e configura tudo por aqui.':'Nenhum evento ainda.<br>Toque em <b>+ Novo evento</b> para começar.')+'</div>';return;}
@@ -789,7 +824,7 @@ function abrirEvento(id){
   camposTemp=camposDoEvento(e).map(f=>({...f,opcoes:[...(f.opcoes||[])]}));
   setTimeout(renderCamposEditor,0);
   const fl=e.filas||{};filasEdId=id||'';filasTemp=(fl.lista||[]).map(q=>({...q}));
-  setTimeout(renderFilasEditor,0);
+  setTimeout(renderFilasEditor,0);setTimeout(exTaxa,0);
   abrirModal(`<h2>${id?'Editar evento':'Novo evento'}</h2>
     <label>Nome do evento *</label><input id="evTitulo" value="${esc(e.titulo)}" maxlength="100">
     <div class="row"><div style="flex:1"><label>Data</label><input id="evData" type="date" value="${esc(e.data)}"></div>
@@ -822,7 +857,21 @@ function abrirEvento(id){
     <div class="secao">Pagamento via Pix</div>
     <label class="chk"><input type="checkbox" id="pxAtivo" ${p.ativo?'checked':''} onchange="$('pxBox').classList.toggle('hidden',!this.checked)"> Cobrar inscrição via Pix</label>
     <div id="pxBox" class="${p.ativo?'':'hidden'}">
-      <label>Valor (R$) *</label><input id="pxValor" inputmode="decimal" placeholder="25,00" value="${p.valor?esc(Number(p.valor).toFixed(2).replace('.',',')):''}">
+      <label>Valor (R$) *</label><input id="pxValor" inputmode="decimal" oninput="exTaxa()" placeholder="25,00" value="${p.valor?esc(Number(p.valor).toFixed(2).replace('.',',')):''}">
+      ${mpLiberado()?`<label>Como receber</label>
+      <select class="f" id="pxModo" onchange="modoPix()">
+        <option value="manual" ${p.modo!=='mp'?'selected':''}>Pix com a minha chave (confirmo o pagamento manualmente)</option>
+        <option value="mp" ${p.modo==='mp'?'selected':''} ${mpConectado()?'':'disabled'}>Pix automático — Mercado Pago${mpConectado()?'':' (conecte a conta na aba Eventos)'}</option>
+      </select>
+      <div id="pxMPInfo" class="muted ${p.modo==='mp'?'':'hidden'}" style="margin-top:6px;background:var(--pri2);color:var(--pri);padding:8px 10px;border-radius:10px">💳 O Pix é gerado pelo Mercado Pago na sua conta e a inscrição é <b>confirmada sozinha</b> quando o participante paga. Taxa do Mercado Pago (cerca de 0,99% no Pix) descontada do valor recebido. O e-mail passa a ser obrigatório na inscrição.</div>
+      ${Number(orgInfo.comissaoMP||0)?`<div id="pxTaxaBox" class="${p.modo==='mp'?'':'hidden'}">
+      <label>Taxa de serviço da plataforma (${String(orgInfo.comissaoMP).replace('.',',')}%)</label>
+      <select class="f" id="pxTaxaQuem" onchange="exTaxa()">
+        <option value="org" ${!p.taxaComprador?'selected':''}>Embutida no valor — o organizador paga</option>
+        <option value="comp" ${p.taxaComprador?'selected':''}>Somada ao valor — o participante paga</option>
+      </select>
+      <div class="muted" id="pxTaxaEx" style="margin-top:4px"></div></div>`:''}`:''}
+      <div id="pxManual" class="${p.modo==='mp'&&mpLiberado()?'hidden':''}">
       <label>Tipo da chave *</label>
       <select class="f" id="pxTipo">
         <option value="cpf" ${p.tipo==='cpf'?'selected':''}>CPF / CNPJ</option>
@@ -834,6 +883,7 @@ function abrirEvento(id){
       <label>Nome de quem recebe *</label><input id="pxNome" value="${esc(p.nome)}" maxlength="25" placeholder="Como aparece no banco">
       <label>Cidade de quem recebe</label><input id="pxCidade" value="${esc(p.cidade)}" maxlength="15" placeholder="Ex.: Sao Paulo">
       <label>WhatsApp para receber comprovantes</label><input id="pxWhats" inputmode="tel" value="${esc(p.whats)}" placeholder="(00) 00000-0000">
+      </div>
       <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxMeia" ${p.meia?'checked':''} onchange="$('pxMeiaBox').classList.toggle('hidden',!this.checked);if(this.checked&&!$('pxMeiaVal').value&&lerValor($('pxValor').value))$('pxMeiaVal').value=(lerValor($('pxValor').value)/2).toFixed(2).replace('.',',')"> Aceitar meia-entrada</label>
       <div id="pxMeiaBox" class="${p.meia?'':'hidden'}">
         <label>Valor da meia (R$) *</label><input id="pxMeiaVal" inputmode="decimal" placeholder="12,50" value="${p.valorMeia?esc(Number(p.valorMeia).toFixed(2).replace('.',',')):''}">
@@ -926,6 +976,16 @@ function lerFilas(){
   }
   return{filas:{ativo,lista,criancas:$('flCri').checked,gruposJuntos:$('flGrupo').checked}};
 }
+function modoPix(){const mp=$('pxModo')&&$('pxModo').value==='mp';$('pxManual').classList.toggle('hidden',mp);$('pxMPInfo').classList.toggle('hidden',!mp);if($('pxTaxaBox'))$('pxTaxaBox').classList.toggle('hidden',!mp);if(mp)$('cEmail').checked=true;exTaxa();}
+// Exemplo ao vivo de quem paga a taxa de serviço
+function exTaxa(){
+  const el=$('pxTaxaEx');if(!el)return;
+  const v=lerValor($('pxValor').value)||60,pct=Number(orgInfo.comissaoMP||0),t=Math.round(v*pct)/100,mpf=x=>Math.round(x*0.99)/100;
+  const R=x=>x.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  el.innerHTML=$('pxTaxaQuem').value==='comp'
+    ?`Inscrição de ${R(v)}: o participante paga <b>${R(v+t)}</b> (${R(v)} + ${R(t)} de taxa de serviço). O organizador recebe cerca de <b>${R(v-mpf(v+t))}</b> e a plataforma ${R(t)}.`
+    :`Inscrição de ${R(v)}: o participante paga <b>${R(v)}</b>. O organizador recebe cerca de <b>${R(v-t-mpf(v))}</b> e a plataforma ${R(t)}.`;
+}
 async function escolherImagem(inp){
   const f=inp.files&&inp.files[0];if(!f)return;
   try{
@@ -946,10 +1006,12 @@ async function salvarEvento(id){
   const pix={ativo:$('pxAtivo').checked,valor:lerValor($('pxValor').value),tipo:$('pxTipo').value,chave:$('pxChave').value.trim(),
     nome:$('pxNome').value.trim(),cidade:$('pxCidade').value.trim(),whats:$('pxWhats').value.trim(),
     meia:$('pxMeia').checked,valorMeia:lerValor($('pxMeiaVal').value),meiaQuem:$('pxMeiaQuem').value.trim(),
-    qrAposPagamento:$('pxTrava').checked,criancasGratis:$('pxCri').checked,idadeMax:Math.max(0,Math.min(17,parseInt($('pxIdade').value,10)||0))};
+    qrAposPagamento:$('pxTrava').checked,criancasGratis:$('pxCri').checked,modo:$('pxModo')&&$('pxModo').value==='mp'?'mp':'manual',taxaComprador:!!($('pxTaxaQuem')&&$('pxTaxaQuem').value==='comp'),taxaPct:Number(orgInfo.comissaoMP||0),idadeMax:Math.max(0,Math.min(17,parseInt($('pxIdade').value,10)||0))};
   if(pix.ativo&&pix.meia&&!(pix.valorMeia>0&&pix.valorMeia<pix.valor))return toast('O valor da meia deve ser maior que zero e menor que o valor inteiro');
   if(pix.ativo&&pix.criancasGratis&&!(parseInt($('pxIdade').value,10)>=0))return toast('Informe a idade máxima das crianças');
-  if(pix.ativo){
+  if(pix.ativo&&pix.modo==='mp'&&!mpConectado())return toast('Conecte a conta Mercado Pago antes (aba Eventos)');
+  if(pix.ativo&&pix.modo==='mp'){if(!(pix.valor>=1))return toast('Para o Pix automático, o valor mínimo é R$ 1,00');$('cEmail').checked=true;}
+  else if(pix.ativo){
     if(!(pix.valor>0))return toast('Informe o valor da inscrição');
     if(!pix.chave)return toast('Informe a chave Pix');
     if(!pix.nome)return toast('Informe o nome de quem recebe');
