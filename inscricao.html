@@ -94,6 +94,7 @@ const firebaseConfig = {
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script>
@@ -176,6 +177,10 @@ function tela(html){$('conteudo').innerHTML=html;}
 function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo&&ev.pix.valor>0);}
 // QR do voucher só liberado depois do pagamento confirmado (opção do evento; ligada por padrão)
+const pixAuto=ev=>cobra(ev)&&ev.pix.modo==='mp';
+// Taxa de serviço paga pelo participante (somada ao valor), quando o evento usa o Pix automático
+const taxaServ=(ev,v)=>pixAuto(ev)&&ev.pix.taxaComprador&&Number(ev.pix.taxaPct)>0?Math.round(Number(v)*Number(ev.pix.taxaPct))/100:0;
+function precoLinha(rot,v,ev){const t=taxaServ(ev,v);return `<div class="preco"><span>${rot}${t?`<br><small>${esc(moeda(v))} + ${esc(moeda(t))} de taxa de serviço</small>`:''}</span><b>${esc(moeda(v+t))}</b></div>`;}
 const travaQR=ev=>cobra(ev)&&ev.pix.qrAposPagamento!==false;
 const travado=(i,ev)=>travaQR(ev)&&!i.pago&&!i.isento;
 function temMeia(ev){return cobra(ev)&&!!ev.pix.meia&&ev.pix.valorMeia>0;}
@@ -228,8 +233,8 @@ function brcode(p,txid){
 /* ================== Firebase ================== */
 aplicarTema();
 const configurado=!String(firebaseConfig.apiKey).startsWith('COLE');
-let db;
-if(configurado){firebase.initializeApp(firebaseConfig);db=firebase.firestore();}
+let db,fns=null;
+if(configurado){firebase.initializeApp(firebaseConfig);db=firebase.firestore();try{fns=firebase.app().functions('southamerica-east1');}catch(e){}}
 const P=new URLSearchParams(location.search);
 // Organizador dono do evento (?o=). Links antigos (sem ?o=) usam o organizador indicado em config/legado.
 let ORG=P.get('o')||'';
@@ -279,7 +284,7 @@ async function abrirFormulario(eid){
   tela(`<div class="card">
     ${banner(evento)}
     ${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
-    ${cobra(evento)?`<div class="preco"><span>Valor por pessoa</span><b>${esc(moeda(evento.pix.valor))}</b></div>${temMeia(evento)?`<div class="preco"><span>Meia-entrada${evento.pix.meiaQuem?' <small>('+esc(evento.pix.meiaQuem)+')</small>':''}</span><b>${esc(moeda(evento.pix.valorMeia))}</b></div>`:''}<div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
+    ${cobra(evento)?`${precoLinha('Valor por pessoa',Number(evento.pix.valor),evento)}${temMeia(evento)?precoLinha('Meia-entrada'+(evento.pix.meiaQuem?' <small>('+esc(evento.pix.meiaQuem)+')</small>':''),Number(evento.pix.valorMeia),evento):''}<div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
   </div>
   <form id="form" novalidate>
     <div id="pessoas"></div>
@@ -308,7 +313,7 @@ function pessoaHTML(n,primeira){
     <label>Nome completo *</label><input id="${p}nome" autocomplete="${primeira?'name':'off'}" maxlength="120">
     ${criancasGratis(evento)?`<label class="chkp"><input type="checkbox" id="${p}cri" onchange="toggleCrianca(${n})"> 🎈 Criança de até ${esc(evento.pix.idadeMax)} anos — inscrição gratuita</label>
       <div id="${p}criBox" class="hidden"><label>Data de nascimento *</label><input id="${p}nasc" type="date"></div>`:''}
-    ${temMeia(evento)?`<label class="chkp" id="${p}meiaLbl"><input type="checkbox" id="${p}meia" onchange="toggleMeia(${n})"> 🎟 Pagar meia-entrada (${esc(moeda(evento.pix.valorMeia))})</label>
+    ${temMeia(evento)?`<label class="chkp" id="${p}meiaLbl"><input type="checkbox" id="${p}meia" onchange="toggleMeia(${n})"> 🎟 Pagar meia-entrada (${esc(moeda(Number(evento.pix.valorMeia)+taxaServ(evento,evento.pix.valorMeia)))})</label>
       <div id="${p}meiaBox" class="hidden">
         ${evento.pix.meiaQuem?`<div class="muted" style="margin-top:6px">Têm direito: ${esc(evento.pix.meiaQuem)}. Leve o comprovante no dia.</div>`:'<div class="muted" style="margin-top:6px">Leve o comprovante no dia.</div>'}
         <label>Motivo da meia-entrada *</label><input id="${p}meiaMot" maxlength="80" placeholder="Ex.: estudante, idoso, professor">
@@ -339,8 +344,8 @@ function atualizarPessoas(){
   $('btnEnviar').textContent=b.length>1?`Confirmar ${b.length} inscrições`:'Confirmar inscrição';
   const cri=b.filter(ehCrianca).length,meia=b.filter(ehMeia).length,int=b.length-cri-meia;
   const partes=[];if(int)partes.push(int+' inteira'+(int>1?'s':''));if(meia)partes.push(meia+' meia'+(meia>1?'s':''));if(cri)partes.push(cri+' criança'+(cri>1?'s':'')+' grátis');
-  const tot=int*evento.pix.valor+meia*(temMeia(evento)?evento.pix.valorMeia:0);
-  $('total').innerHTML=cobra(evento)&&(b.length>1||cri||meia)?`<div class="preco"><span>Total (${partes.join(' + ')})</span><b>${esc(moeda(tot))}</b></div>`:'';
+  const base=int*evento.pix.valor+meia*(temMeia(evento)?evento.pix.valorMeia:0),tot=base+taxaServ(evento,base);
+  $('total').innerHTML=cobra(evento)&&(b.length>1||cri||meia)?`<div class="preco"><span>Total (${partes.join(' + ')})${taxaServ(evento,base)?' <small>com taxa de serviço</small>':''}</span><b>${esc(moeda(tot))}</b></div>`:'';
 }
 
 async function enviar(){
@@ -460,7 +465,7 @@ function mostrarVouchers(lista,ev,o,liberar){
     ${termoAtivo(ev)&&lista.some(i=>i.termoAceito)?`<div class="card"><details><summary><b>✔ ${esc(tituloTermo(ev))} aceito</b></summary><div class="termoTxt">${esc(textoTermo(ev))}</div></details></div>`:''}
     ${ev.descricao?`<div class="card"><p class="desc" style="margin:0">${esc(ev.descricao)}</p></div>`:''}`);
   lista.forEach((i,k)=>new QRCode($('qr'+k),{text:linkVoucher(i.id),width:varios?180:220,height:varios?180:220,correctLevel:QRCode.CorrectLevel.M}));
-  if(px&&pend.length)new QRCode($('qrPix'),{text:atual.pix,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+  if(px&&pend.length){if(pixAuto(ev))carregarPixAuto(pend);else new QRCode($('qrPix'),{text:atual.pix,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});}
   // Tarja sai da frente do QR (animação) para quem acabou de ter o pagamento confirmado
   if(liberados)setTimeout(()=>lista.forEach((i,k)=>{if(atual.liberar.includes(i.id))$('qb'+k).classList.add('liberando');}),400);
   acompanhar(o.grupoTodo||lista);
@@ -504,7 +509,40 @@ function cartaoVoucher(i,ev,k,varios){
     <div class="row"><button class="btn" onclick="baixar(${k})">⬇ Baixar imagem</button><button class="btn" onclick="copiarLink(${k})">🔗 Copiar link</button></div>`}
   </div>`;
 }
+function cartaoPixAuto(ev,pend){
+  const base=pend.reduce((s,i)=>s+valorDe(i,ev),0),tx=taxaServ(ev,base);
+  return `<div class="card pix center" id="mpBox">
+    <h3>Pagamento via Pix</h3>
+    <div class="valor" id="mpValor">${esc(moeda(base+tx))}</div>
+    <div class="muted" id="mpTaxa">${tx?`${esc(moeda(base))} + ${esc(moeda(tx))} de taxa de serviço`:''}</div>
+    ${pend.length>1||pend.some(i=>i.meia)?`<div class="muted">${pend.map(i=>esc(i.nome.split(' ')[0])+' '+esc(moeda(valorDe(i,ev)))+(i.meia?' (meia)':'')).join(' · ')}</div>`:''}
+    <div id="mpArea"><p class="muted" style="margin:18px 0">⏳ Gerando o seu Pix…</p></div>
+  </div>`;
+}
+async function carregarPixAuto(pend){
+  const area=$('mpArea');if(!area)return;
+  try{
+    if(!fns)throw new Error('módulo de pagamento indisponível');
+    const r=(await fns.httpsCallable('mpCriarPix')({org:ORG,ids:pend.map(i=>i.id)})).data;
+    if(r.pago){area.innerHTML='<p class="muted">Pagamento já confirmado. Atualizando…</p>';return;}
+    atual.pix=r.qr;
+    // o valor que vale é o do servidor
+    if($('mpValor'))$('mpValor').textContent=moeda(r.total);
+    if($('mpTaxa'))$('mpTaxa').textContent=r.taxa?`${moeda(r.base)} + ${moeda(r.taxa)} de taxa de serviço`:'';
+    const ate=new Date(r.expira);
+    area.innerHTML=`<div class="muted" style="margin-top:6px">Abra o app do seu banco, escolha <b>Pix → Ler QR code</b> ou <b>Pix copia e cola</b>.</div>
+      <div class="qrbox"><div id="qrPix"></div></div>
+      <textarea class="copia" readonly onclick="this.select()">${esc(r.qr)}</textarea>
+      <button class="btn pri" onclick="copiarTexto(atual.pix,'Código Pix copiado! Cole no app do banco.')">📋 Copiar Pix copia e cola</button>
+      <div class="msg ok" style="margin-top:12px">⚡ <b>Confirmação automática:</b> assim que o Pix for pago, esta página mostra <b>Pagamento confirmado</b>${travaQR(atual.ev)?' e libera o QR code de entrada':''}. Não precisa enviar comprovante.</div>
+      <p class="muted" style="margin-bottom:0">Pix válido até ${ate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} de ${ate.toLocaleDateString('pt-BR')}. Pagamento processado pelo Mercado Pago.</p>`;
+    new QRCode($('qrPix'),{text:r.qr,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+  }catch(e){
+    area.innerHTML=`<div class="msg bad">Não foi possível gerar o Pix agora${e&&e.message?': '+esc(e.message):''}.</div><button class="btn pri" onclick="this.parentNode.innerHTML='<p class=\'muted\' style=\'margin:18px 0\'>⏳ Gerando o seu Pix…</p>';carregarPixAuto(atual.pend)">🔄 Tentar de novo</button>`;
+  }
+}
 function cartaoPix(ev,pend){
+  if(pixAuto(ev))return cartaoPixAuto(ev,pend);
   const tot=pend.reduce((s,i)=>s+valorDe(i,ev),0),p={...ev.pix,valor:Math.round(tot*100)/100};
   atual.pix=brcode(p,(pend.length>1?'GRP':'INSC')+pend[0].codigo);
   return `<div class="card pix center">
