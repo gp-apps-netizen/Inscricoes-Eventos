@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Administrador · Inscrições</title>
-<meta name="theme-color" content="#1e1b4b">
+<title>Controle de Inscrições</title>
+<meta name="theme-color" content="#4338ca">
 <link rel="manifest" id="manifestLink">
 <link rel="icon" id="favIcon">
 <link rel="apple-touch-icon" id="appleIcon">
@@ -13,63 +13,104 @@
 @media (prefers-color-scheme:dark){:root{--bg:#12131a;--card:#1c1d27;--text:#eceef6;--muted:#9a9db3;--line:#2d2f3d;--pri:#818cf8;--pri2:#262a4a;--ok:#4ade80;--okbg:#14301f;--bad:#f87171;--badbg:#3a1a1a;--warn:#fbbf24;--warnbg:#3a2e10}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:16px}
-header{position:sticky;top:0;z-index:5;background:#1e1b4b;color:#fff;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top))}
-.hrow{display:flex;align-items:center;gap:10px;max-width:760px;margin:0 auto}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:12px 16px calc(12px) 16px;padding-top:calc(12px + env(safe-area-inset-top))}
+@media (prefers-color-scheme:dark){header{background:#2b2f6b}}
+.hrow{display:flex;align-items:center;gap:10px}
 .hrow h1{font-size:18px;margin:0;flex:1}
-.hrow small{display:block;font-weight:400;opacity:.75;font-size:12px}
-.iconbtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:10px;padding:8px 12px;font-size:14px;text-decoration:none}
-main{padding:16px;padding-bottom:60px;max-width:760px;margin:0 auto}
+header select{width:100%;margin-top:10px;padding:10px;border-radius:10px;border:0;font-size:15px;background:rgba(255,255,255,.95);color:#1c1d29}
+.iconbtn{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 12px;font-size:14px}
+main{padding:16px;padding-bottom:100px;max-width:720px;margin:0 auto}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
 .muted{color:var(--muted);font-size:14px}
-.small{font-size:13px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:10px 14px;font-size:15px;cursor:pointer;text-decoration:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:10px 14px;font-size:15px;cursor:pointer}
 .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
 @media (prefers-color-scheme:dark){.btn.pri{color:#12131a}}
 .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
 .btn.bad{color:var(--bad)}
 .btn.full{width:100%}
-.btn:disabled{opacity:.6}
+.btn.sm{padding:7px 10px;font-size:14px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
-.row>*{flex:1}
+.row>.btn{flex:1}
 label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
-input,textarea,select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card);color:var(--text);font-family:inherit}
-h3{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--line)}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-@media (max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
-.kpi b{display:block;font-size:20px}
-.kpi span{font-size:12px;color:var(--muted)}
-.seg{display:flex;background:var(--pri2);border-radius:10px;padding:3px;margin:10px 0}
-.seg button{flex:1;border:0;background:none;padding:8px 4px;border-radius:8px;color:var(--pri);font-size:14px}
-.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.org{cursor:pointer}
-.org .top{display:flex;gap:10px;align-items:flex-start}
-.org h2{font-size:17px;margin:0}
-.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+input,textarea,select.f{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card);color:var(--text);font-family:inherit}
+textarea{min-height:70px;resize:vertical}
+.chk{display:flex;align-items:center;gap:10px;padding:8px 0;color:var(--text);font-size:15px;margin:0}
+.chk input{width:20px;height:20px;accent-color:var(--pri)}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav.tabs button{flex:1;background:none;border:0;padding:10px 4px 12px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button.on{color:var(--pri);font-weight:600}
+nav.tabs svg{width:24px;height:24px}
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600}
 .tag.ok{background:var(--okbg);color:var(--ok)}
 .tag.bad{background:var(--badbg);color:var(--bad)}
-.tag.warn{background:var(--warnbg);color:var(--warn)}
 .tag.neu{background:var(--pri2);color:var(--pri)}
-.kv{font-size:15px;margin:4px 0}
+.ev h3{margin:0 0 4px;font-size:17px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px}
+.stat span{font-size:12px;color:var(--muted)}
+.item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.item:last-child{border-bottom:0}
+.item .nm{flex:1;min-width:0}
+.item .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:flex;background:var(--pri2);border-radius:10px;padding:3px;margin:10px 0}
+.seg button{flex:1;border:0;background:none;padding:8px;border-radius:8px;color:var(--pri);font-size:14px}
+.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#reader{width:100%;border-radius:14px;overflow:hidden;background:#000;min-height:0}
+#reader video{border-radius:14px}
+.result{border-radius:14px;padding:16px;margin-top:12px;border:2px solid}
+.result.ok{background:var(--okbg);border-color:var(--ok)}
+.result.bad{background:var(--badbg);border-color:var(--bad)}
+.result.warn{background:var(--warnbg);border-color:var(--warn)}
+.result h2{margin:0 0 6px;font-size:20px}
+.result .big{font-size:22px;font-weight:700;margin:6px 0}
+.kv{font-size:15px;margin:3px 0}
 .kv span{color:var(--muted)}
-.linkbox{word-break:break-all;font-size:13px;background:var(--pri2);color:var(--pri);padding:9px;border-radius:10px;margin-top:4px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
 .modal.show{display:flex}
 .sheet{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
 .sheet h2{margin:0 0 8px;font-size:19px}
-#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1c1d29;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:90%}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1c1d29;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:90%}
 #toast.show{opacity:1}
+.center{text-align:center}
+.qrbox{display:flex;justify-content:center;padding:14px;background:#fff;border-radius:12px;margin:10px 0}
+.linkbox{word-break:break-all;font-size:13px;background:var(--pri2);color:var(--pri);padding:10px;border-radius:10px}
 .login{max-width:380px;margin:12vh auto 0;padding:16px}
 .login h1{text-align:center;font-size:22px}
 .empty{text-align:center;padding:30px 10px;color:var(--muted)}
 .hidden{display:none!important}
-.log{font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:200px;overflow:auto;white-space:pre-wrap}
+.cores{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cor{width:34px;height:34px;border-radius:50%!important;border:2px solid var(--line);cursor:pointer;padding:0}
+.cor.on{outline:3px solid var(--text);outline-offset:2px}
+.cores input[type=color]{width:50px;height:40px;padding:2px;cursor:pointer}
+.prev{border:1px dashed var(--line);border-radius:12px;padding:12px;margin-top:12px}
+.evimg{display:block;width:calc(100% + 28px);margin:-14px -14px 12px;height:130px;object-fit:cover;border-radius:13px 13px 0 0}
+.imgprev{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin:6px 0;border:1px solid var(--line)}
+.secao{margin:18px 0 4px;padding-top:12px;border-top:1px solid var(--line);font-weight:700;font-size:15px}
+.tag.warn{background:var(--warnbg);color:var(--warn)}
+.tags{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.btn.file{position:relative;overflow:hidden}
+.btn.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+body.isEquipe .donoOnly{display:none!important}
+body:not(.isSuper) .superOnly{display:none!important}
+.netbar{margin-top:10px;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;background:rgba(255,255,255,.95);color:#1c1d29}
+.netbar.off{background:#fee2e2;color:#991b1b}.netbar.sync{background:#fef3c7;color:#92400e}.netbar.ok{background:#dcfce7;color:#166534}
+.letra{position:sticky;top:0;background:var(--card);font-weight:800;color:var(--pri);font-size:14px;padding:8px 0 4px;border-bottom:2px solid var(--pri2)}
+.fila{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.fila:last-child{border-bottom:0}
+.fila .bola{flex:0 0 auto;min-width:54px;text-align:center;font-weight:800;border-radius:10px;padding:8px 6px;background:var(--pri2);color:var(--pri);font-size:14px}
+.filaTag{display:inline-block;background:var(--pri);color:#fff;border-radius:8px;padding:4px 10px;font-weight:700;font-size:14px}
+.filaEd{display:flex;gap:6px;align-items:center;margin:6px 0}
+.filaEd input{flex:2;padding:9px}.filaEd select{flex:0 0 64px;padding:9px 4px}
+.pend{font-size:12px;color:var(--warn)}
+.papel{display:inline-block;font-size:12px;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 9px;margin-left:6px;vertical-align:middle;font-weight:500}
 </style>
 </head>
 <body>
 
+<!-- ================== CONFIGURAÇÃO ================== -->
 <script>
-// Mesmo projeto Firebase do app de Inscrições
+// Cole aqui a configuração do seu projeto Firebase (a MESMA nos dois arquivos: index.html e inscricao.html)
 const firebaseConfig = {
   apiKey: "AIzaSyD7YTTaQSmXe0JRIkHq-u6L1F1CTWw0JaY",
   authDomain: "inscricoes-eventos.firebaseapp.com",
@@ -79,580 +120,1471 @@ const firebaseConfig = {
   appId: "1:882008815212:web:1395f3a4999fa3a5664a49",
   measurementId: "G-NGK7BES79S"
 };
-const SUPER = 'godoygpx@gmail.com';   // único login com acesso a este painel
 </script>
 
+<div id="telaConfig" class="login hidden">
+  <h1>Configuração pendente</h1>
+  <div class="card">Abra o arquivo <b>index.html</b> e cole a configuração do seu projeto Firebase no bloco <b>firebaseConfig</b> (no início do arquivo). Faça o mesmo no <b>inscricao.html</b>.</div>
+</div>
+
 <div id="telaLogin" class="login hidden">
-  <h1>Administrador · Inscrições</h1>
+  <h1>Controle de Inscrições</h1>
   <div class="card">
-    <label>E-mail</label><input id="lgEmail" type="email" autocomplete="username">
-    <label>Senha</label><input id="lgSenha" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()">
+    <label>E-mail</label>
+    <input id="lgEmail" type="email" autocomplete="username">
+    <label>Senha</label>
+    <input id="lgSenha" type="password" autocomplete="current-password">
     <div style="height:14px"></div>
-    <button class="btn pri full" id="lgBtn" onclick="entrar()">Entrar</button>
-    <p id="lgErro" class="muted" style="color:var(--bad);text-align:center"></p>
+    <button class="btn pri full" onclick="entrar()">Entrar</button>
+    <div style="height:8px"></div>
+    <button class="btn full" onclick="esqueci()">Esqueci a senha</button>
+    <p id="lgErro" class="muted center" style="color:var(--bad)"></p>
+  </div>
+</div>
+
+<div id="telaAviso" class="login hidden">
+  <h1 id="avTitulo">Aviso</h1>
+  <div class="card"><div id="avTexto"></div>
+    <div style="height:14px"></div>
+    <button class="btn full" onclick="sair()">Sair</button>
   </div>
 </div>
 
 <div id="telaApp" class="hidden">
-  <header><div class="hrow">
-    <h1>Administrador · Inscrições<small>Organizadores de eventos</small></h1>
-    <a class="iconbtn" href="../">Controle</a>
-    <button class="iconbtn" onclick="auth.signOut()">Sair</button>
-  </div></header>
+  <header>
+    <div class="hrow">
+      <h1><span id="orgNome">Controle de Inscrições</span><span class="papel hidden" id="papelTag">Equipe</span><span class="papel hidden" id="suporteTag">Suporte</span></h1>
+      <a class="iconbtn hidden" id="btnPainel" href="admin/" style="text-decoration:none">Painel</a>
+      <button class="iconbtn" onclick="sair()">Sair</button>
+    </div>
+    <select id="selEvento" onchange="selecionarEvento(this.value)"></select>
+    <div id="netBar" class="netbar hidden"></div>
+  </header>
+
   <main>
-    <div class="kpis">
-      <div class="kpi"><b id="kAtivos">0</b><span>Ativos</span></div>
-      <div class="kpi"><b id="kVencidos">0</b><span>Vencidos</span></div>
-      <div class="kpi"><b id="kSuspensos">0</b><span>Suspensos</span></div>
-      <div class="kpi"><b id="kReceita">R$ 0</b><span>Mensalidades</span></div>
-    </div>
-    <button class="btn pri full" onclick="novoOrg()">+ Novo organizador</button>
-    <div class="row" style="margin-top:8px">
-      <button class="btn hidden" id="btnMeu" onclick="meuOrg()">⭐ Meu organizador (sem cobrança)</button>
-      <button class="btn hidden" id="btnMigrar" onclick="migrar()">⇪ Migrar dados da versão antiga</button>
-    </div>
-    <input id="busca" placeholder="Buscar por nome, identificador ou e-mail" style="margin-top:12px" oninput="render()">
-    <div class="seg" id="filtro">
-      <button data-f="todos" class="on">Todos</button><button data-f="ativos">Ativos</button><button data-f="vencidos">Vencidos</button><button data-f="suspensos">Suspensos</button>
-    </div>
-    <div id="lista"><div class="empty">Carregando…</div></div>
+    <!-- EVENTOS -->
+    <section id="tabEventos">
+      <button class="btn pri full donoOnly" id="btnNovoEv" onclick="abrirEvento()">+ Novo evento</button>
+      <div class="donoOnly" style="height:8px"></div>
+      <button class="btn full donoOnly" onclick="abrirTema()">🎨 Cores e estilo</button>
+      <div class="card donoOnly hidden" id="mpCard" style="margin:8px 0 0"></div>
+      <div style="height:12px"></div>
+      <div id="listaEventos"></div>
+    </section>
+
+    <!-- LEITOR -->
+    <section id="tabLeitor" class="hidden">
+      <div class="card">
+        <div class="muted">Lendo vouchers do evento:</div>
+        <b id="leitorEvento">—</b>
+        <div class="filaBox hidden" style="margin-top:8px"><div class="muted">Minha fila:</div><select class="f selFila" onchange="escolherFila(this.value)"></select><div class="muted filaFixa hidden" style="margin-top:4px">Fila definida pelo organizador.</div></div>
+        <label class="chk" style="margin-top:8px"><input type="checkbox" id="autoCheck" onchange="localStorage.setItem('insc_auto',this.checked?'1':'')"> Confirmar entrada automaticamente ao ler</label>
+      </div>
+      <div class="card" id="offCard">
+        <b>📥 Usar sem internet</b>
+        <div class="muted" id="offInfo" style="margin-top:4px">Antes de ir para o local, com internet, toque abaixo para guardar o app e os inscritos deste evento neste celular.</div>
+        <button class="btn full" style="margin-top:10px" id="btnOff" onclick="prepararOffline()">📥 Preparar este celular para o evento</button>
+      </div>
+      <div id="reader"></div>
+      <div style="height:10px"></div>
+      <button id="btnScan" class="btn pri full" onclick="toggleScan()">📷 Abrir câmera</button>
+      <div class="card" style="margin-top:12px">
+        <label style="margin-top:0">Ou busque por código, nome ou CPF</label>
+        <div class="row">
+          <input id="codManual" placeholder="Ex.: K7P2QX ou Maria Silva" style="flex:2" autocomplete="off" onkeydown="if(event.key==='Enter')buscarManual()">
+          <button class="btn" onclick="buscarManual()">Buscar</button>
+        </div>
+      </div>
+      <div id="resultado"></div>
+      <button class="btn full" style="margin-top:12px" onclick="abrirLinkPublico()">+ Inscrever pessoa no local</button>
+    </section>
+
+    <!-- INSCRITOS -->
+    <section id="tabInscritos" class="hidden">
+      <div class="stats">
+        <div class="stat"><b id="stTotal">0</b><span>Inscritos</span></div>
+        <div class="stat pixOnly"><b id="stPagos">0</b><span>Pagos</span></div>
+        <div class="stat"><b id="stPres">0</b><span>Presentes</span></div>
+        <div class="stat"><b id="stAus">0</b><span>Faltam</span></div>
+      </div>
+      <div class="card pixOnly valOnly" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px">
+        <span class="muted">Arrecadado (Pix confirmados)</span><b id="stValor">R$ 0,00</b>
+      </div>
+      <div class="card hidden" id="filasCard" style="padding:4px 14px"></div>
+      <div class="filaBox hidden" style="margin-bottom:8px"><select class="f selFila" onchange="escolherFila(this.value)"></select></div>
+      <input id="busca" placeholder="Buscar por nome, CPF, telefone ou código" oninput="renderInscritos()">
+      <select class="f hidden" id="filtroQuem" style="margin-top:8px" onchange="filtroQuem=this.value;renderInscritos()"></select>
+      <div class="seg" id="filtro">
+        <button class="on" data-f="todos">Todos</button>
+        <button data-f="pend" class="pixOnly">A pagar</button>
+        <button data-f="pres">Presentes</button>
+        <button data-f="aus">Faltam</button>
+      </div>
+      <div class="card" style="padding:4px 14px"><div id="listaInscritos"></div></div>
+      <div class="row">
+        <button class="btn" onclick="imprimirLista()">🖨 Lista em papel</button>
+        <button class="btn" onclick="exportarCSV()">⬇ Exportar planilha</button>
+        <button class="btn" onclick="abrirLinkPublico()">+ Inscrever pessoa</button>
+      </div>
+    </section>
+
+    <!-- HISTÓRICO (só o dono) -->
+    <section id="tabHistorico" class="hidden">
+      <div class="card">
+        <b>Histórico</b>
+        <div class="muted" style="margin-top:4px">Quem entrou no app e o que foi feito, com data e hora. Só você (administrador) vê esta aba; os registros não podem ser apagados nem alterados.</div>
+      </div>
+      <div class="row">
+        <select class="f" id="hTipo" onchange="renderHist()" style="flex:1">
+          <option value="">Tudo</option><option value="acesso">Acessos</option><option value="checkin">Check-ins</option><option value="pago">Pagamentos</option>
+          <option value="evento">Eventos</option><option value="inscricao">Inscrições e planilhas</option><option value="equipe">Equipe</option><option value="config">Configurações e cobrança</option>
+        </select>
+        <select class="f" id="hPessoa" onchange="renderHist()" style="flex:1"></select>
+      </div>
+      <label class="chk"><input type="checkbox" id="hSoEvento" onchange="renderHist()"> Só o evento selecionado no topo</label>
+      <div class="card" style="padding:4px 14px"><div id="listaHist"><div class="empty">Carregando…</div></div></div>
+      <div class="row">
+        <button class="btn" id="hMais" onclick="maisHist()">Carregar mais</button>
+        <button class="btn" onclick="exportarHist()">⬇ Exportar</button>
+      </div>
+    </section>
+
+    <!-- EQUIPE (só o dono) -->
+    <section id="tabEquipe" class="hidden">
+      <div class="card">
+        <b>Usuários de check-in</b>
+        <div class="muted" style="margin-top:4px">Pessoas que podem ler vouchers, ver a lista de inscritos e confirmar entradas. Elas não criam nem editam eventos e não excluem inscrições.</div>
+      </div>
+      <button class="btn pri full" onclick="formMembro()">+ Cadastrar usuário</button>
+      <div class="card" style="padding:4px 14px;margin-top:12px"><div id="listaEquipe"><div class="empty">Carregando…</div></div></div>
+    </section>
   </main>
+
+  <nav class="tabs">
+    <button data-tab="Eventos" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Eventos</button>
+    <button data-tab="Leitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/><path d="M13 7h4v4M7 13h4v4"/></svg>Leitor</button>
+    <button data-tab="Inscritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2"/></svg>Inscritos</button>
+    <button data-tab="Equipe" class="donoOnly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Equipe</button>
+    <button data-tab="Historico" class="superOnly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>Histórico</button>
+  </nav>
 </div>
 
-<div class="modal" id="modal" onclick="if(event.target===this)fechar()"><div class="sheet" id="sheet"></div></div>
+<div class="modal" id="modal" onclick="if(event.target===this)fecharModal()"><div class="sheet" id="sheet"></div></div>
 <div id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 <script>
+/* ================== PWA (manifesto e ícones embutidos) ================== */
+function makeIcon(size){
+  const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d');const s=size/512;
+  x.fillStyle='#4338ca';x.fillRect(0,0,size,size);
+  x.fillStyle='#fff';rr(x,96*s,140*s,320*s,232*s,28*s);x.fill();
+  x.fillStyle='#4338ca';x.beginPath();x.arc(96*s,256*s,30*s,0,7);x.arc(416*s,256*s,30*s,0,7);x.fill();
+  const q=(px,py)=>{x.fillStyle='#4338ca';x.fillRect(px*s,py*s,56*s,56*s);x.fillStyle='#fff';x.fillRect((px+12)*s,(py+12)*s,32*s,32*s);x.fillStyle='#4338ca';x.fillRect((px+20)*s,(py+20)*s,16*s,16*s);};
+  q(150,170);q(306,170);q(150,286);
+  x.fillStyle='#4338ca';[[306,286],[334,300],[320,318],[348,326],[306,328]].forEach(([a,b])=>x.fillRect(a*s,b*s,14*s,14*s));
+  return c.toDataURL('image/png');
+}
+function rr(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+(function(){
+  const base=location.href.split(/[?#]/)[0];
+  const i192=makeIcon(192),i512=makeIcon(512);
+  const m={name:'Controle de Inscrições',short_name:'Inscrições',start_url:base,scope:base.replace(/[^/]*$/,''),display:'standalone',background_color:'#4338ca',theme_color:'#4338ca',
+    icons:[{src:i192,sizes:'192x192',type:'image/png'},{src:i512,sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
+  document.getElementById('manifestLink').href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));
+  document.getElementById('appleIcon').href=i192;document.getElementById('favIcon').href=i192;
+})();
+
 /* ================== Utilidades ================== */
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2800);}
-function abrir(html){$('sheet').innerHTML=html;$('modal').classList.add('show');}
-function fechar(){$('modal').classList.remove('show');}
-const brl=c=>(Number(c||0)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const cents=s=>{s=String(s||'').replace(/[^\d,.]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:Math.round(n*100);};
-const reais=c=>c?(c/100).toFixed(2).replace('.',','):'';
-const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-function maisMeses(iso,n){const[a,m,d]=iso.split('-').map(Number);const x=new Date(a,m-1+n,1);const ult=new Date(x.getFullYear(),x.getMonth()+1,0).getDate();x.setDate(Math.min(d,ult));return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
-const diasAte=iso=>Math.round((new Date(iso+'T12:00:00')-new Date(hoje()+'T12:00:00'))/864e5);
-const fmtDia=iso=>{if(!iso)return '—';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;};
-const slug=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30);
-const emailOk=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-async function copiar(t){try{await navigator.clipboard.writeText(t);toast('Copiado');}catch(e){prompt('Copie:',t);}}
-const erroMsg=e=>({'auth/invalid-credential':'E-mail ou senha incorretos','auth/wrong-password':'E-mail ou senha incorretos','auth/user-not-found':'E-mail ou senha incorretos',
-  'auth/too-many-requests':'Muitas tentativas. Aguarde um pouco','auth/invalid-email':'E-mail inválido','auth/weak-password':'Senha fraca (mínimo 6 caracteres)',
-  'permission-denied':'Sem permissão (publique as regras novas do Firestore)'}[e.code]||('Erro: '+(e.code||e.message)));
-const PLANOS={inscrito:'Por inscrito pago',taxa:'Taxa paga pelo atleta',evento:'Valor fixo por evento',mensal:'Mensal',proprio:'Próprio (sem cobrança)'};
-const ROT_VALOR={inscrito:'Valor por inscrito pago (R$)',taxa:'Taxa por inscrição (R$)',evento:'Valor por evento (R$)',mensal:'Mensalidade (R$)'};
-const CONDICOES={'50-50':'50% na contratação + 50% até 5 dias após o evento',avista:'À vista na contratação',apos:'Tudo até 5 dias após o evento'};
-const ADIC_PADRAO={checkin:{ativo:false,pessoas:3,turnos:1,valor:15000},conferencia:{ativo:false,valor:35000},outro:{ativo:false,desc:'',valor:0}};
-function adic(o){const a=(o&&o.adicionais)||{};return{checkin:{...ADIC_PADRAO.checkin,...(a.checkin||{})},conferencia:{...ADIC_PADRAO.conferencia,...(a.conferencia||{})},outro:{...ADIC_PADRAO.outro,...(a.outro||{})}};}
-function listaAdicionais(o){
-  const a=adic(o),l=[];
-  if(a.checkin.ativo)l.push({nome:`Check-in presencial: ${a.checkin.pessoas} pessoa(s) × ${a.checkin.turnos} turno(s) × ${brl(a.checkin.valor)}`,valor:a.checkin.pessoas*a.checkin.turnos*a.checkin.valor});
-  if(a.conferencia.ativo)l.push({nome:'Conferência de pagamentos',valor:a.conferencia.valor});
-  if(a.outro.ativo&&a.outro.valor)l.push({nome:a.outro.desc||'Outro',valor:a.outro.valor});
-  return l;
+/* ================== Tema (cores e estilo do organizador) ================== */
+const TEMA_PADRAO={cor:'#4338ca',topo:'',fonte:'sistema',cantos:'arredondado',modo:'auto'};
+let TEMA={...TEMA_PADRAO},TEMA_AJUSTE=null;   // TEMA_AJUSTE: cor própria de um evento (página pública)
+const FONTES={
+  sistema:{nome:'Padrão do celular',css:'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif'},
+  moderna:{nome:'Moderna',g:'Inter:wght@400;600;700',css:'"Inter",system-ui,sans-serif'},
+  arredondada:{nome:'Arredondada',g:'Nunito:wght@400;600;800',css:'"Nunito",system-ui,sans-serif'},
+  classica:{nome:'Clássica',g:'Merriweather:wght@400;700',css:'"Merriweather",Georgia,serif'},
+  elegante:{nome:'Elegante',g:'Playfair+Display:wght@600;700&family=Lato:wght@400;700',css:'"Lato",system-ui,sans-serif',titulo:'"Playfair Display",Georgia,serif'},
+  forte:{nome:'Forte',g:'Montserrat:wght@400;600;800',css:'"Montserrat",system-ui,sans-serif'}
+};
+const CANTOS={arredondado:{nome:'Arredondado',c:16,b:12},suave:{nome:'Suave',c:10,b:8},reto:{nome:'Reto',c:3,b:3},pilula:{nome:'Pílula',c:22,b:999}};
+const MODOS={auto:'Automático (segue o celular)',claro:'Sempre claro',escuro:'Sempre escuro'};
+const CORES_SUGERIDAS=['#4338ca','#2563eb','#0891b2','#0d9488','#15803d','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#7c2d12','#334155','#111827'];
+function hexOk(h){return /^#[0-9a-fA-F]{6}$/.test(String(h||''));}
+function hexRgb(h){h=String(h).replace('#','');const n=parseInt(h,16);return[(n>>16)&255,(n>>8)&255,n&255];}
+function mix(a,b,t){const x=hexRgb(a),y=hexRgb(b);return '#'+x.map((v,i)=>Math.round(v+(y[i]-v)*t).toString(16).padStart(2,'0')).join('');}
+function lum(h){const[r,g,b]=hexRgb(h).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);});return .2126*r+.7152*g+.0722*b;}
+const txtSobre=h=>lum(h)>.42?'#1c1d29':'#ffffff';
+function temaAtual(){const t={...TEMA_PADRAO,...TEMA,...(TEMA_AJUSTE||{})};if(!hexOk(t.cor))t.cor=TEMA_PADRAO.cor;if(t.topo&&!hexOk(t.topo))t.topo='';return t;}
+function corTopo(){const t=temaAtual();return t.topo||t.cor;}
+function corPri(){return temaAtual().cor;}
+function cssTema(t){
+  const cor=t.cor,topo=t.topo||cor;
+  const L={pri:cor,pri2:mix(cor,'#ffffff',.9),priTxt:txtSobre(cor),topo,topoTxt:txtSobre(topo)};
+  const D={pri:lum(cor)<.18?mix(cor,'#ffffff',.38):cor,pri2:mix(cor,'#12131a',.78),priTxt:'',topo:lum(topo)>.3?mix(topo,'#12131a',.8):topo,topoTxt:''};
+  D.priTxt=txtSobre(D.pri);D.topoTxt=txtSobre(D.topo);
+  const base={claro:'--bg:#f4f5fb;--card:#fff;--text:#1c1d29;--muted:#6b6f85;--line:#e3e5ee;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;--warn:#92400e;--warnbg:#fef3c7;',
+    escuro:'--bg:#12131a;--card:#1c1d27;--text:#eceef6;--muted:#9a9db3;--line:#2d2f3d;--ok:#4ade80;--okbg:#14301f;--bad:#f87171;--badbg:#3a1a1a;--warn:#fbbf24;--warnbg:#3a2e10;'};
+  const v=(x,b)=>`:root{${b||''}--pri:${x.pri};--pri2:${x.pri2};--priTxt:${x.priTxt};--topo:${x.topo};--topoTxt:${x.topoTxt};color-scheme:${b===base.escuro?'dark':'light'}}`;
+  let css;
+  if(t.modo==='claro')css=v(L,base.claro)+`@media (prefers-color-scheme:dark){${v(L,base.claro)}}`;
+  else if(t.modo==='escuro')css=v(D,base.escuro)+`@media (prefers-color-scheme:dark){${v(D,base.escuro)}}`;
+  else css=v(L)+`@media (prefers-color-scheme:dark){${v(D)}}`;
+  const f=FONTES[t.fonte]||FONTES.sistema,k=CANTOS[t.cantos]||CANTOS.arredondado;
+  css+=`header,.top{background:var(--topo)!important;color:var(--topoTxt)!important}
+header .iconbtn{color:var(--topoTxt)!important;background:color-mix(in srgb,var(--topoTxt) 18%,transparent)!important}
+.btn.pri{background:var(--pri)!important;border-color:var(--pri)!important;color:var(--priTxt)!important}
+body,input,select,textarea,button{font-family:${f.css}}
+${f.titulo?`h1,h2,h3,.nome,.ev h3{font-family:${f.titulo}}`:''}
+.card,.stat,.result,.kpi{border-radius:${k.c}px}
+.btn,input,select,.seg,.iconbtn{border-radius:${k.b}px}
+textarea,.linkbox,.msg,.preco,.chkp,.qrbox,.copia{border-radius:${Math.min(k.b,14)}px}
+.termoTxt{border-radius:4px!important}
+.sheet{border-radius:${k.c+2}px ${k.c+2}px 0 0}
+.evimg{border-radius:${k.c-1}px ${k.c-1}px 0 0}.banner{border-radius:${k.c-1}px ${k.c-1}px 0 0}`;
+  return css;
 }
-const totalAdicionais=o=>listaAdicionais(o).reduce((s,x)=>s+x.valor,0);
-// Valor base de UM evento com N inscritos pagos (centavos)
-function baseEvento(o,pagos){
-  if(o.plano==='inscrito')return Math.max(pagos*(o.valor||0),o.minimo||0);
-  if(o.plano==='taxa')return pagos*(o.valor||0);
-  if(o.plano==='evento')return o.valor||0;
-  return 0;
+function aplicarTema(){
+  const t=temaAtual();
+  let st=document.getElementById('temaCss');if(!st){st=document.createElement('style');st.id='temaCss';document.head.appendChild(st);}
+  st.textContent=cssTema(t);
+  const f=FONTES[t.fonte]||FONTES.sistema;
+  let lk=document.getElementById('temaFonte');
+  if(f.g){if(!lk){lk=document.createElement('link');lk.id='temaFonte';lk.rel='stylesheet';document.head.appendChild(lk);}
+    const href='https://fonts.googleapis.com/css2?family='+f.g+'&display=swap';if(lk.href!==href)lk.href=href;}
+  else if(lk)lk.remove();
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=corTopo();
 }
-const porInscrito=o=>o.plano==='inscrito'||o.plano==='taxa';
-function resumoPlano(o){
-  switch(o.plano){
-    case 'inscrito':return `${brl(o.valor)} por inscrito pago`+(o.minimo?` · mínimo ${brl(o.minimo)}`:'');
-    case 'taxa':return `${brl(o.valor)} por inscrição, somado ao valor pago pelo atleta`;
-    case 'evento':return `${brl(o.valor)} por evento`;
-    case 'mensal':return `${brl(o.valor)}/mês · vence ${fmtDia(o.vencimento)}`;
-    default:return 'Sem cobrança';
-  }
-}
-const recebido=o=>(o.pagamentos||[]).reduce((s,p)=>s+(p.valor||0),0);
 
-/* ---- PWA ---- */
-(function(){
-  const c=document.createElement('canvas');c.width=c.height=192;const x=c.getContext('2d');
-  x.fillStyle='#1e1b4b';x.fillRect(0,0,192,192);x.fillStyle='#fff';if(x.roundRect){x.beginPath();x.roundRect(36,52,120,88,12);x.fill();}else x.fillRect(36,52,120,88);
-  x.fillStyle='#1e1b4b';x.font='bold 64px system-ui';x.textAlign='center';x.textBaseline='middle';x.fillText('⚙',96,98);
-  const ic=c.toDataURL();$('favIcon').href=ic;$('appleIcon').href=ic;
-  const base=location.href.split(/[?#]/)[0];
-  const m={name:'Administrador · Inscrições',short_name:'Admin Inscrições',start_url:base,scope:base,display:'standalone',background_color:'#1e1b4b',theme_color:'#1e1b4b',icons:[{src:ic,sizes:'192x192',type:'image/png'}]};
-  $('manifestLink').href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));
-})();
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2600);}
+function abrirModal(html){$('sheet').innerHTML=html;$('modal').classList.add('show');}
+function fecharModal(){$('modal').classList.remove('show');if(editandoTema){editandoTema=false;TEMA=temaAntes||TEMA;aplicarTema();}}
+let temaAntes=null,editandoTema=false;
+function fmtData(e){if(!e||!e.data)return '';const[a,m,d]=e.data.split('-');return `${d}/${m}/${a}`+(e.hora?` às ${e.hora}`:'');}
+function fmtTs(ts){if(!ts)return '';const d=ts.toDate?ts.toDate():ts instanceof Date?ts:null;if(!d)return '';return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+function fmtCPF(c){c=String(c||'');return c.length===11?c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):c;}
+function linkInscricao(id){return new URL('inscricao.html?o='+encodeURIComponent(ORG)+'&e='+id,location.href.split(/[?#]/)[0]).href;}
+function linkVoucher(id){return new URL('inscricao.html?o='+encodeURIComponent(ORG)+'&v='+id,location.href.split(/[?#]/)[0]).href;}
+function beep(ok){try{navigator.vibrate&&navigator.vibrate(ok?120:[250,100,250]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.15:.45));}catch(e){}}
+function moeda(v){if(typeof verValores==='function'&&!verValores())return 'R$ •••';return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo);}
+function lerValor(s){s=String(s||'').replace(/[^\d,.]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:Math.round(n*100)/100;}
+function comprimirImagem(file){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>{
+      let q=.82,w=1200,url='';
+      for(let t=0;t<10;t++){
+        const s=Math.min(1,w/img.width),c=document.createElement('canvas');
+        c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+        const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);
+        url=c.toDataURL('image/jpeg',q);
+        if(url.length<550000)break;
+        if(q>.6)q-=.08;else w=Math.round(w*.8);
+      }
+      URL.revokeObjectURL(img.src);res(url);
+    };
+    img.onerror=()=>rej(new Error('Não foi possível ler a imagem'));
+    img.src=URL.createObjectURL(file);
+  });
+}
 
 /* ================== Firebase ================== */
-firebase.initializeApp(firebaseConfig);
-const auth=firebase.auth(),db=firebase.firestore();
-let fns=null;try{fns=firebase.app().functions('southamerica-east1');}catch(e){}
+const configurado=!String(firebaseConfig.apiKey).startsWith('COLE');
+let auth,db,fns=null,persistOk=true;
+// Modo offline: guarda o app no celular (sw.js)
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(!configurado){$('telaConfig').classList.remove('hidden');}
+else{
+  firebase.initializeApp(firebaseConfig);
+  auth=firebase.auth();db=firebase.firestore();
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{persistOk=false;});
+  try{fns=firebase.app().functions('southamerica-east1');}catch(e){}
+  auth.onAuthStateChanged(u=>{
+    if(u){$('telaLogin').classList.add('hidden');iniciar();}
+    else{$('telaApp').classList.add('hidden');$('telaAviso').classList.add('hidden');$('telaLogin').classList.remove('hidden');pararTudo();}
+  });
+}
 const TS=()=>firebase.firestore.FieldValue.serverTimestamp();
-const APP=new URL('../',location.href.split(/[?#]/)[0]).href;       // app de controle
-const links=id=>({controle:APP,suporte:APP+'?org='+encodeURIComponent(id)});
-// Registra no histórico do organizador as ações feitas no painel
-function registrarAdm(id,acao,texto){
-  db.collection('organizadores').doc(id).collection('historico').add({em:TS(),email:SUPER,nome:'Administrador',papel:'admin',acao,texto:String(texto).slice(0,300),disp:'Painel admin'}).catch(()=>{});
+
+/* ================== Sem internet ================== */
+let pendentes=0,tinhaPend=0,redeRuimAte=0;
+const semRede=()=>!navigator.onLine||Date.now()<redeRuimAte;
+// Espera no máximo "ms"; depois segue (a operação continua em segundo plano)
+function comPrazo(p,ms){p.catch(()=>{});return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error('PRAZO'),{code:'unavailable'})),ms))]);}
+// Gravação que não trava sem internet: o Firebase guarda no celular e envia quando a conexão voltar
+function gravar(p){
+  let fim=false;
+  p.then(()=>{fim=true;},e=>{if(fim)toast('⚠ Não foi possível enviar uma alteração: '+(e.code==='permission-denied'?'sem permissão':e.message));fim=true;});
+  return new Promise((res,rej)=>{p.then(res,rej);setTimeout(()=>{if(!fim){fim=true;res('pendente');}},semRede()?30:4000);});
+}
+// Lê um documento da internet ou, sem ela, da cópia guardada no celular
+async function lerDoc(ref){
+  if(semRede()){try{return await ref.get({source:'cache'});}catch(e){return ref.get();}}
+  try{return await ref.get();}catch(e){if(e.code==='unavailable')return ref.get({source:'cache'});throw e;}
+}
+function renderNet(){
+  const b=$('netBar');if(!b)return;
+  const tinha=tinhaPend;tinhaPend=pendentes;
+  if(!navigator.onLine){b.className='netbar off';b.innerHTML='📴 Sem internet — o check-in continua funcionando'+(pendentes?` · <b>${pendentes}</b> aguardando envio`:'');}
+  else if(pendentes){b.className='netbar sync';b.innerHTML=`⏳ Enviando ${pendentes} alteração(ões)…`;}
+  else if(tinha){b.className='netbar ok';b.innerHTML='✅ Tudo enviado';b._okAte=Date.now()+3000;setTimeout(renderNet,3100);}
+  else if(Date.now()>(b._okAte||0))b.className='netbar hidden';
+}
+window.addEventListener('online',()=>{redeRuimAte=0;renderNet();});
+window.addEventListener('offline',renderNet);
+function infoOff(){try{return JSON.parse(localStorage.getItem('insc_off_'+ORG+'_'+selId)||'null');}catch(e){return null;}}
+function renderOff(){
+  if(!$('offInfo'))return;const o=infoOff();
+  $('offInfo').innerHTML=o?`✅ <b>Pronto para usar sem internet.</b> ${o.n} inscrito(s) guardado(s) em ${new Date(o.t).toLocaleDateString('pt-BR')} às ${new Date(o.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}. Com o app aberto e com internet, as novas inscrições também são guardadas.`
+    :'Antes de ir para o local, com internet, toque abaixo para guardar o app e os inscritos deste evento neste celular. Depois é só fazer o check-in normalmente, mesmo sem sinal.';
+  $('btnOff').textContent=o?'↻ Atualizar dados guardados':'📥 Preparar este celular para o evento';
+}
+function guardarApp(){
+  if(!('serviceWorker' in navigator))return Promise.reject(new Error('este navegador não abre o app sem internet. Use o Chrome.'));
+  return comPrazo(navigator.serviceWorker.ready.then(reg=>new Promise(res=>{
+    const ok=e=>{if(e.data==='guardado'){navigator.serviceWorker.removeEventListener('message',ok);res();}};
+    navigator.serviceWorker.addEventListener('message',ok);
+    (reg.active||reg.waiting||reg.installing).postMessage('guardar');
+  })),20000);
+}
+async function prepararOffline(){
+  const ev=eventoSel();if(!ev)return toast('Selecione um evento');
+  if(!navigator.onLine)return toast('Conecte-se à internet para preparar o celular');
+  if(!persistOk)return alert('Este navegador não está guardando dados no celular (aba anônima ou outro app aberto em várias abas). Feche as outras abas do app e abra pelo Chrome normal ou pelo app instalado.');
+  const b=$('btnOff');b.disabled=true;b.textContent='Guardando…';
+  try{
+    const s=await col('inscricoes').where('eventoId','==',selId).get({source:'server'});
+    const srv={source:'server'},nada=()=>{};
+    await Promise.all([
+      suporte?null:db.collection('usuarios').doc(usuario()).get(srv).catch(nada),
+      db.collection('organizadores').doc(ORG).get(srv),
+      col('eventos').get(srv).catch(nada),
+      col('publico').doc('tema').get(srv).catch(nada),
+      ehDono()?col('equipe').get(srv).catch(nada):col('equipe').doc(usuario()).get(srv).catch(nada)
+    ]);
+    await guardarApp();
+    try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist();}catch(e){}
+    localStorage.setItem('insc_off_'+ORG+'_'+selId,JSON.stringify({n:s.size,t:Date.now()}));
+    registrar('offline',`Preparou o celular para usar sem internet (${s.size} inscritos de "${ev.titulo}")`,{eventoId:selId});
+    renderOff();
+    alert(`Pronto! ${s.size} inscrito(s) de "${ev.titulo}" guardados neste celular.\n\nNo local, mesmo sem internet:\n• abra o app normalmente (não saia da conta);\n• leia os QR codes e confirme as entradas;\n• as entradas ficam guardadas e são enviadas sozinhas quando a internet voltar.`);
+  }catch(e){toast('Não foi possível preparar: '+e.message);}
+  b.disabled=false;renderOff();
+}
+
+/* ================== Filas de check-in ================== */
+const LETRAS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+// Peso aproximado das iniciais de nomes no Brasil (usado antes de haver inscritos)
+const PESO_LETRA={A:12,B:3,C:6,D:5,E:5,F:4,G:4,H:1.5,I:2,J:9,K:1.5,L:7,M:11,N:2.5,O:1,P:4,Q:.1,R:6,S:4,T:3,U:.3,V:3,W:2,X:.1,Y:.3,Z:.3};
+const semAcento=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function letraDe(nome){const c=semAcento(nome).trim().charAt(0).toUpperCase();return LETRAS.includes(c)?c:'#';}
+const faixa=q=>q.de===q.ate?q.de:q.de+'–'+q.ate;
+const filasAtivas=ev=>!!(ev&&ev.filas&&ev.filas.ativo&&(ev.filas.lista||[]).length);
+function listaFilas(ev){
+  if(!filasAtivas(ev))return[];const f=ev.filas;
+  const l=f.lista.map(q=>({id:q.id,de:q.de,ate:q.ate,nome:q.nome||('Adultos '+faixa(q))}));
+  if(f.criancas)l.push({id:'cri',cri:true,nome:'Crianças'});
+  return l;
+}
+function filaDe(i,ev){
+  ev=ev||eventos.find(e=>e.id===i.eventoId);if(!filasAtivas(ev))return null;
+  const f=ev.filas;let base=i;
+  if(f.gruposJuntos&&i.grupo){const r=responsavelGrupo(i);if(r)base=r;}
+  if(f.criancas&&base.crianca)return 'cri';
+  const L=letraDe(base.nome),q=f.lista.find(q=>L>=q.de&&L<=q.ate);
+  return (q||f.lista[0]).id;
+}
+function nomeFila(id,ev){const q=listaFilas(ev||eventoSel()).find(x=>x.id===id);return q?q.nome:'';}
+// Fila definida pelo organizador para este membro da equipe (no evento selecionado)
+function filaFixa(){if(papel!=='equipe')return '';const v=(perm.filas||{})[selId];return v&&listaFilas(eventoSel()).some(q=>q.id===v)?v:'';}
+function minhaFila(){
+  const ev=eventoSel();if(!filasAtivas(ev))return '';
+  const fx=filaFixa();if(fx)return fx;
+  const v=localStorage.getItem('insc_fila_'+selId)||'';return listaFilas(ev).some(q=>q.id===v)?v:'';
+}
+function escolherFila(v){if(filaFixa())return;localStorage.setItem('insc_fila_'+selId,v);renderFilaSel();renderInscritos();}
+function renderFilaSel(){
+  const ev=eventoSel(),on=filasAtivas(ev),fx=filaFixa(),cur=minhaFila();
+  document.querySelectorAll('.filaBox').forEach(b=>b.classList.toggle('hidden',!on));
+  document.querySelectorAll('.filaFixa').forEach(b=>b.classList.toggle('hidden',!fx));
+  if(!on)return;
+  const op='<option value="">Todas as filas</option>'+listaFilas(ev).map(q=>`<option value="${q.id}">${q.cri?'🎈':'🔤'} ${esc(q.nome)}</option>`).join('');
+  document.querySelectorAll('.selFila').forEach(s=>{s.innerHTML=op;s.value=cur;s.disabled=!!fx;});
+}
+function renderFilasCard(ev){
+  const c=$('filasCard');if(!c)return;
+  if(!filasAtivas(ev)||!selId){c.classList.add('hidden');return;}
+  const cur=minhaFila(),fx=filaFixa();c.classList.remove('hidden');
+  c.innerHTML=`<div class="muted" style="padding:10px 0 4px">Filas de check-in${fx?'':' · toque para ver só uma'}</div>`+listaFilas(ev).map(q=>{
+    const l=inscritos.filter(i=>filaDe(i,ev)===q.id),p=l.filter(i=>i.checkin).length;
+    const eq=ehDono()?equipe.filter(m=>m.ativo&&(m.filas||{})[selId]===q.id).map(m=>m.nome||m.email):[];
+    return `<div class="fila" ${fx?'':`onclick="escolherFila('${q.id===cur?'':q.id}')"`} style="cursor:pointer;${q.id===cur?'background:var(--pri2);margin:0 -14px;padding:10px 14px':''}">
+      <div class="bola">${q.cri?'🎈':faixa(q)}</div>
+      <div style="flex:1;min-width:0"><b>${esc(q.nome)}</b><div class="muted">${l.length} inscrito(s) · ${p} presente(s)${ehDono()?' · '+(eq.length?'🛡 '+esc(eq.join(', ')):'sem ninguém da equipe'):''}</div></div>
+      ${q.id===cur?'<span class="tag neu">vendo</span>':''}</div>`;}).join('');
+}
+// Divide A–Z em N filas com quantidades parecidas de pessoas
+function dividirLetras(n,peso){
+  const w=LETRAS.map(L=>peso[L]||0),tot=w.reduce((a,b)=>a+b,0)||1,res=[];let k=0,acc=0,ini=0;
+  for(let j=0;j<26;j++){
+    acc+=w[j];const faltamGrupos=n-k-1,faltamLetras=25-j;
+    const alvo=tot*(k+1)/n,prox=j<25?w[j+1]:0;
+    if(k<n-1&&faltamLetras>=faltamGrupos&&(acc>0||faltamLetras===faltamGrupos)&&(acc>=alvo||acc+prox-alvo>alvo-acc||faltamLetras===faltamGrupos)){res.push([ini,j]);ini=j+1;k++;}
+  }
+  res.push([ini,25]);return res.map(([a,b])=>({de:LETRAS[a],ate:LETRAS[b]}));
 }
 
 async function entrar(){
-  $('lgErro').textContent='';const b=$('lgBtn');b.disabled=true;
-  try{await auth.signInWithEmailAndPassword($('lgEmail').value.trim().toLowerCase(),$('lgSenha').value);$('lgSenha').value='';}
-  catch(e){$('lgErro').textContent=erroMsg(e);}
-  b.disabled=false;
+  $('lgErro').textContent='';
+  try{await auth.signInWithEmailAndPassword($('lgEmail').value.trim(),$('lgSenha').value);}
+  catch(e){$('lgErro').textContent=({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'Senha incorreta.','auth/user-not-found':'Usuário não encontrado.','auth/too-many-requests':'Muitas tentativas. Aguarde um pouco.','auth/unauthorized-domain':'Domínio não autorizado no Firebase (Authentication > Configurações > Domínios autorizados).'})[e.code]||e.message;}
 }
-let unsub=null;
-auth.onAuthStateChanged(u=>{
-  if(unsub){unsub();unsub=null;}
-  if(!u){$('telaApp').classList.add('hidden');$('telaLogin').classList.remove('hidden');return;}
-  if((u.email||'').toLowerCase()!==SUPER){alert('Este painel é só do administrador geral.');auth.signOut();return;}
-  $('telaLogin').classList.add('hidden');$('telaApp').classList.remove('hidden');
-  unsub=db.collection('organizadores').onSnapshot(s=>{S.orgs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));render();},
-    e=>{$('lista').innerHTML=`<div class="card" style="color:var(--bad)">${esc(erroMsg(e))}</div>`;});
-  verificarLegado();
+async function esqueci(){const em=$('lgEmail').value.trim();if(!em)return toast('Digite seu e-mail primeiro');try{await auth.sendPasswordResetEmail(em);toast('E-mail de redefinição enviado');}catch(e){toast(e.message);}}
+function sair(){if(!navigator.onLine&&!confirm('Você está sem internet. Se sair agora, só vai conseguir entrar de novo quando a internet voltar. Sair mesmo assim?'))return;pararScan();auth.signOut();}
+
+/* ================== Estado ================== */
+let eventos=[],selId=localStorage.getItem('insc_sel')||'',inscritos=[],unsubE=null,unsubI=null,unsubQ=null,subId=null,filtro='todos';
+let papel=null,perm={},equipe=[],eventosTodos=[],unsubM=null,unsubO=null,unsubT=null;
+/* ---- Organizador (cliente) ---- */
+const SUPER='godoygpx@gmail.com';          // administrador geral (painel admin/)
+let ORG='',orgInfo={},suporte=false;
+const col=n=>db.collection('organizadores').doc(ORG).collection(n);
+const usuario=()=>(auth.currentUser&&auth.currentUser.email||'').toLowerCase();
+const ehSuper=()=>usuario()===SUPER;
+const ehDono=()=>papel==='dono';
+// O administrador pode reservar para si a criação/exclusão de eventos (organizador só edita)
+const podeCriar=()=>suporte||ehSuper()||orgInfo.podeCriarEventos!==false;
+const podePagar=()=>papel==='dono'||!!perm.podePagar;
+// Ver valores: cadastros antigos continuam vendo; novos só se marcado
+const verValores=()=>papel==='dono'||perm.verValores!==false;
+// Nome de quem está usando o app (gravado junto do check-in/pagamento)
+const meuNome=()=>suporte?'Suporte':papel==='dono'?(orgInfo.donoNome||'Organizador'):(perm.nome||usuario());
+function nomeDe(email,nome){if(nome)return nome;if(!email)return '';const m=equipe.find(x=>x.id===email);return m?m.nome:(email===orgInfo.donoEmail?(orgInfo.donoNome||'Organizador'):email===SUPER?'Administrador':email);}
+const quemCheckin=i=>i.checkin?nomeDe(i.checkinPor,i.checkinPorNome):'';
+let filtroQuem='';
+// Equipe: todosEventos === false => só os eventos da lista perm.eventos
+const restrito=()=>papel==='equipe'&&perm.todosEventos===false;
+function liberado(eid){return !restrito()||(perm.eventos||[]).includes(eid);}
+function aplicarEventos(){
+  eventos=eventosTodos.filter(e=>liberado(e.id));
+  if(!eventos.find(e=>e.id===selId))selId=eventos[0]?eventos[0].id:'';
+  renderSelect();renderEventos();assinarInscritos();renderInscritos();
+}
+/* ---- Histórico (acessos e ações) ---- */
+function aparelho(){const u=navigator.userAgent;return /Android/i.test(u)?'Android':/iPhone|iPad/i.test(u)?'iPhone/iPad':/Windows/i.test(u)?'Windows':/Mac/i.test(u)?'Mac':'Outro';}
+function registrar(acao,texto,extra){
+  if(!ORG)return;
+  const d={em:TS(),email:usuario(),nome:meuNome(),papel:suporte?'suporte':papel,acao,texto:String(texto).slice(0,300),disp:aparelho()};
+  if(extra&&extra.eventoId)d.eventoId=extra.eventoId;if(extra&&extra.inscricaoId)d.inscricaoId=extra.inscricaoId;
+  col('historico').add(d).catch(()=>{});
+}
+const nomeIns=id=>{const i=inscritos.find(x=>x.id===id);return i?`${i.nome} (${i.codigo})`:id;};
+function aviso(titulo,html){
+  $('telaApp').classList.add('hidden');$('avTitulo').textContent=titulo;$('avTexto').innerHTML=html;$('telaAviso').classList.remove('hidden');
+}
+
+// Descobre o organizador e o papel de quem entrou
+async function detectarPapel(){
+  const q=new URLSearchParams(location.search);
+  suporte=false;ORG='';perm={};
+  try{
+    if(ehSuper()&&q.get('org')){ORG=q.get('org');papel='dono';suporte=true;}
+    else{
+      const u=await lerDoc(db.collection('usuarios').doc(usuario()));
+      if(!u.exists){
+        aviso('Conta sem organizador',ehSuper()
+          ?'Você é o administrador geral. Abra o <a href="admin/">painel de administrador</a> para criar os organizadores (inclusive o seu, sem cobrança) ou use <b>?org=identificador</b> no link para entrar como suporte.'
+          :'Este login não está ligado a nenhum organizador. Fale com quem enviou o seu acesso.');
+        return false;
+      }
+      ORG=u.data().orgId;papel=u.data().papel==='equipe'?'equipe':'dono';
+    }
+    const o=await lerDoc(db.collection('organizadores').doc(ORG));
+    if(!o.exists){aviso('Organizador não encontrado','O organizador <b>'+esc(ORG)+'</b> não existe mais. Fale com o administrador do sistema.');return false;}
+    orgInfo=o.data();
+    if(orgInfo.status!=='ativo'&&!suporte){
+      aviso('Acesso suspenso','O acesso de <b>'+esc(orgInfo.nome||ORG)+'</b> está suspenso no momento. Os dados continuam guardados. Fale com o administrador do sistema para reativar.');return false;
+    }
+    if(papel==='dono'&&!suporte&&orgInfo.donoEmail!==usuario()){aviso('Sem acesso','Este login não é o responsável por este organizador.');return false;}
+    if(papel==='equipe'){
+      const m=await lerDoc(col('equipe').doc(usuario()));
+      if(!m.exists||!m.data().ativo){aviso('Acesso desativado','Seu acesso de equipe foi desativado ou removido. Fale com o organizador do evento.');return false;}
+      perm=m.data();
+    }
+  }catch(e){
+    if(e.code==='unavailable'||!navigator.onLine)aviso('Sem internet','Este celular ainda não tem os dados guardados para usar sem internet.<br><br>Conecte-se uma vez, entre no app e toque em <b>📥 Preparar este celular para o evento</b> (aba Leitor).<br><br><button class="btn pri full" onclick="location.reload()">Tentar de novo</button>');
+    else if(e.code==='permission-denied')aviso('Sem acesso','Não foi possível abrir este organizador. O acesso pode estar suspenso ou ter sido removido.');
+    else aviso('Erro','Não foi possível carregar: '+esc(e.message));
+    return false;
+  }
+  if(!suporte)localStorage.setItem('insc_org',ORG);
+  $('orgNome').textContent=orgInfo.nome||'Controle de Inscrições';
+  document.title=(orgInfo.nome||'Controle')+' · Inscrições';
+  document.body.classList.toggle('isEquipe',papel==='equipe');
+  $('papelTag').classList.toggle('hidden',papel!=='equipe');
+  $('suporteTag').classList.toggle('hidden',!suporte);
+  $('btnPainel').classList.toggle('hidden',!ehSuper());
+  document.body.classList.toggle('isSuper',ehSuper());
+  if(ehSuper()&&q.get('aba')==='historico')setTimeout(()=>{const b=document.querySelector('nav.tabs button[data-tab="Historico"]');if(b)b.click();},300);
+  $('telaAviso').classList.add('hidden');$('telaApp').classList.remove('hidden');
+  try{const k='insc_acesso_'+ORG,ult=+localStorage.getItem(k)||0;if(Date.now()-ult>30*60*1000){localStorage.setItem(k,Date.now());registrar('acesso',suporte?'Entrou como suporte':'Entrou no app');}}catch(e){registrar('acesso','Entrou no app');}
+  return true;
+}
+
+async function iniciar(){
+  $('autoCheck').checked=!!localStorage.getItem('insc_auto');
+  if(unsubE||papel==='carregando')return;
+  papel='carregando';
+  if(!(await detectarPapel())){papel=null;return;}
+  if(localStorage.getItem('insc_selorg')!==ORG){selId='';localStorage.setItem('insc_selorg',ORG);}
+  if(ehDono())assinarEquipe();
+  else{
+    // Acompanha o próprio cadastro: mudanças de eventos/permissões valem na hora
+    unsubM=col('equipe').doc(usuario()).onSnapshot(d=>{
+      if(!d.exists||!d.data().ativo){alert('Seu acesso ao controle de inscrições foi removido ou desativado.');auth.signOut();return;}
+      perm=d.data();aplicarEventos();
+    },()=>{});
+  }
+  // Cores e estilo do organizador
+  unsubT=col('publico').doc('tema').onSnapshot(d=>{if(editandoTema)return;TEMA=d.exists?d.data():{};aplicarTema();},()=>{});
+  // Suspensão em tempo real
+  unsubO=db.collection('organizadores').doc(ORG).onSnapshot(d=>{
+    if(!d.exists)return;orgInfo=d.data();$('orgNome').textContent=orgInfo.nome||'Controle de Inscrições';renderEventos();
+    if(orgInfo.status!=='ativo'&&!suporte){pararScan();aviso('Acesso suspenso','O acesso de <b>'+esc(orgInfo.nome||ORG)+'</b> foi suspenso. Os dados continuam guardados. Fale com o administrador do sistema.');}
+  },()=>{});
+  unsubE=col('eventos').orderBy('criadoEm','desc').onSnapshot(s=>{
+    eventosTodos=s.docs.map(d=>({id:d.id,...d.data()}));
+    aplicarEventos();
+  },err=>{
+    if(err.code==='permission-denied'){aviso('Sem acesso','Não foi possível carregar os eventos deste organizador. O acesso pode ter sido suspenso.');}
+    else toast('Erro: '+err.message);
+  });
+}
+function pararTudo(){if(unsubE){unsubE();unsubE=null;}if(unsubI){unsubI();unsubI=null;}if(unsubQ){unsubQ();unsubQ=null;}if(unsubM){unsubM();unsubM=null;}pararHist();hist=[];if(unsubO){unsubO();unsubO=null;}if(unsubT){unsubT();unsubT=null;}TEMA={};aplicarTema();subId=null;eventos=[];eventosTodos=[];inscritos=[];equipe=[];papel=null;perm={};ORG='';orgInfo={};document.body.classList.remove('isEquipe');document.body.classList.remove('isSuper');}
+function eventoSel(){return eventos.find(e=>e.id===selId);}
+
+function renderSelect(){
+  const s=$('selEvento');
+  s.innerHTML=eventos.length?eventos.map(e=>`<option value="${e.id}" ${e.id===selId?'selected':''}>${esc(e.titulo)}${e.data?' — '+esc(fmtData({data:e.data})):''}</option>`).join(''):'<option value="">'+(restrito()?'Nenhum evento liberado para você':'Nenhum evento cadastrado')+'</option>';
+  const ev=eventoSel();$('leitorEvento').textContent=ev?ev.titulo:'—';
+  renderFilaSel();renderOff();
+}
+function selecionarEvento(id){selId=id;localStorage.setItem('insc_sel',id);renderSelect();renderEventos();assinarInscritos();$('resultado').innerHTML='';}
+
+function assinarInscritos(){
+  if(subId===selId)return;
+  if(unsubI){unsubI();unsubI=null;}
+  subId=selId;inscritos=[];renderInscritos();
+  if(!selId)return;
+  unsubI=col('inscricoes').where('eventoId','==',selId).onSnapshot({includeMetadataChanges:true},s=>{
+    inscritos=s.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'}),_pend:d.metadata.hasPendingWrites})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+    pendentes=inscritos.filter(i=>i._pend).length;
+    renderInscritos();renderEventos();renderNet();
+  },err=>{
+    if(err.code==='permission-denied'){alert('Esta conta não tem permissão para acessar o controle. Peça ao organizador para cadastrar seu e-mail na Equipe.');auth.signOut();}
+    else toast('Erro ao carregar inscritos: '+err.message);
+  });
+}
+
+/* ================== Abas ================== */
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  ['Eventos','Leitor','Inscritos','Equipe','Historico'].forEach(t=>$('tab'+t).classList.toggle('hidden',t!==b.dataset.tab));
+  if(b.dataset.tab!=='Leitor')pararScan();
+  if(b.dataset.tab==='Historico')assinarHist();else pararHist();
+  window.scrollTo(0,0);
 });
+document.querySelectorAll('#filtro button').forEach(b=>b.onclick=()=>{filtro=b.dataset.f;document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x===b));renderInscritos();});
 
-/* ================== Lista ================== */
-const S={orgs:[],filtro:'todos'};
-document.querySelectorAll('#filtro button').forEach(b=>b.onclick=()=>{S.filtro=b.dataset.f;document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x===b));render();});
-const vencido=o=>o.status==='ativo'&&o.plano==='mensal'&&o.vencimento&&diasAte(o.vencimento)<0;
-function situacao(o){
-  if(o.status!=='ativo')return '<span class="tag bad">Suspenso</span>';
-  if(o.plano==='proprio')return '<span class="tag neu">Próprio</span>';
-  if(o.plano==='mensal'&&o.vencimento){const d=diasAte(o.vencimento);
-    if(d<0)return `<span class="tag bad">Vencido há ${-d} dia${d===-1?'':'s'}</span>`;
-    if(d<=5)return `<span class="tag warn">Vence em ${d} dia${d===1?'':'s'}</span>`;}
-  return '<span class="tag ok">Ativo</span>';
+/* ================== Eventos ================== */
+/* ================== Mercado Pago (Pix automático) ================== */
+const mpLiberado=()=>!!(orgInfo.mpLiberado||ehSuper());
+const mpConectado=()=>!!(orgInfo.mp&&orgInfo.mp.conectado);
+function renderMP(){
+  const c=$('mpCard');if(!c)return;
+  c.classList.toggle('hidden',!(ehDono()&&mpLiberado()));
+  if(!mpLiberado())return;
+  const pct=Number(orgInfo.comissaoMP||0);
+  c.innerHTML=mpConectado()
+    ?`<div style="display:flex;gap:10px;align-items:center"><div style="font-size:26px">💳</div><div style="flex:1"><b>Mercado Pago conectado</b>${orgInfo.mp.teste?' <span class="tag warn">modo teste</span>':''}
+      <div class="muted">Conta ${esc(orgInfo.mp.userId||'')} · o Pix automático cai direto na sua conta${pct?` · comissão da plataforma ${String(pct).replace('.',',')}%`:''}</div></div></div>
+      <button class="btn sm full" style="margin-top:8px" onclick="mpDesconectar()">Desconectar</button>`
+    :`<div style="display:flex;gap:10px;align-items:center"><div style="font-size:26px">💳</div><div style="flex:1"><b>Pix automático (Mercado Pago)</b>
+      <div class="muted">Conecte sua conta Mercado Pago: o participante paga o Pix e a inscrição é confirmada sozinha, sem conferir comprovante.${pct?` Comissão da plataforma: ${String(pct).replace('.',',')}% por pagamento.`:''}</div></div></div>
+      <button class="btn pri full" style="margin-top:8px" id="btnMP" onclick="mpConectar()">Conectar Mercado Pago</button>`;
 }
-function render(){
-  const ativos=S.orgs.filter(o=>o.status==='ativo');
-  $('kAtivos').textContent=ativos.length;$('kVencidos').textContent=S.orgs.filter(vencido).length;
-  $('kSuspensos').textContent=S.orgs.length-ativos.length;
-  $('kReceita').textContent=brl(ativos.filter(o=>o.plano==='mensal').reduce((s,o)=>s+(o.valor||0),0)).replace(',00','');
-  $('btnMeu').classList.toggle('hidden',S.orgs.some(o=>o.donoEmail===SUPER));
-  const q=$('busca').value.trim().toLowerCase();
-  const l=S.orgs.filter(o=>(S.filtro==='todos'||(S.filtro==='ativos'&&o.status==='ativo')||(S.filtro==='vencidos'&&vencido(o))||(S.filtro==='suspensos'&&o.status!=='ativo'))
-    &&(!q||[o.nome,o.id,o.donoEmail,o.donoNome].join(' ').toLowerCase().includes(q)));
-  $('lista').innerHTML=!l.length?`<div class="empty">${S.orgs.length?'Nenhum organizador neste filtro.':'Nenhum organizador ainda.<br>Toque em <b>+ Novo organizador</b>.'}</div>`:
-    l.map(o=>`<div class="card org" onclick="detalhe('${esc(o.id)}')"><div class="top"><div style="flex:1;min-width:0"><h2>${esc(o.nome)}</h2>
-      <div class="muted small">${esc(o.id)} · ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
-      ${o.plano==='proprio'?'':`<div class="small" style="margin-top:4px">${esc(PLANOS[o.plano]||'')} · ${esc(resumoPlano(o))}${o.calculo&&o.plano!=='mensal'?` · <b>total ${brl(o.calculo.total)}</b>`:''}</div>`}</div>
-      ${situacao(o)}</div></div>`).join('');
+async function mpConectar(){
+  if(!fns)return toast('Não foi possível carregar o módulo de pagamentos');
+  const b=$('btnMP');if(b){b.disabled=true;b.textContent='Abrindo o Mercado Pago…';}
+  try{const r=await fns.httpsCallable('mpIniciarConexao')({org:ORG});location.href=r.data.url;}
+  catch(e){toast('Erro: '+e.message);if(b){b.disabled=false;b.textContent='Conectar Mercado Pago';}}
+}
+async function mpDesconectar(){
+  if(!confirm('Desconectar a conta Mercado Pago? Os eventos com Pix automático deixam de gerar cobranças até você conectar de novo.'))return;
+  try{await fns.httpsCallable('mpDesconectar')({org:ORG});toast('Conta desconectada');}catch(e){toast('Erro: '+e.message);}
+}
+// Volta do Mercado Pago depois de autorizar
+(function(){const q=new URLSearchParams(location.search);const st=q.get('mp');if(!st)return;
+  setTimeout(()=>{if(st==='ok')alert('✅ Conta Mercado Pago conectada!\n\nAgora, em Editar evento → Pagamento via Pix, escolha "Pix automático (Mercado Pago)".');else alert('Não foi possível conectar o Mercado Pago.\n\n'+(q.get('mpmsg')||''));},800);
+  q.delete('mp');q.delete('mpmsg');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:''));})();
+
+function renderEventos(){
+  renderMP();
+  const el=$('listaEventos');
+  if($('btnNovoEv'))$('btnNovoEv').classList.toggle('hidden',!podeCriar());
+  if(!eventos.length){el.innerHTML='<div class="empty">'+(!podeCriar()&&ehDono()?'Nenhum evento liberado ainda.<br>O seu evento é criado pelo administrador do sistema; depois disso você edita e configura tudo por aqui.':'Nenhum evento ainda.<br>Toque em <b>+ Novo evento</b> para começar.')+'</div>';return;}
+  el.innerHTML=eventos.map(e=>{
+    const sel=e.id===selId;
+    const pg=inscritos.filter(i=>i.pago).length;
+    const cont=sel?`<div class="muted" style="margin-top:6px">${inscritos.length} inscrito(s)${cobra(e)?` · ${pg} pago(s)`:''} · ${inscritos.filter(i=>i.checkin).length} presente(s)</div>`:'';
+    return `<div class="card ev" style="${sel?'border-color:var(--pri);border-width:2px':''}">
+      ${e.imagem?`<img class="evimg" src="${e.imagem}" alt="">`:''}
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <div style="flex:1"><h3>${esc(e.titulo)}</h3>
+          <div class="muted">${esc(fmtData(e))}${e.local?' · '+esc(e.local):''}</div></div>
+        <div class="tags"><span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>${termoAtivo(e)?'<span class="tag neu">Termo</span>':''}
+        ${cobra(e)&&verValores()?`<span class="tag neu">Pix ${esc(moeda(e.pix.valor))}${e.pix.meia?' · meia '+esc(moeda(e.pix.valorMeia)):''}</span>`:''}</div>
+      </div>${cont}
+      <div class="row" style="margin-top:10px">
+        ${sel?'':`<button class="btn sm" onclick="selecionarEvento('${e.id}')">Selecionar</button>`}
+        <button class="btn sm" onclick="mostrarLink('${e.id}')">🔗 Link / QR</button>
+        <button class="btn sm donoOnly" onclick="abrirEvento('${e.id}')">Editar</button>
+      </div></div>`;}).join('');
 }
 
-/* ================== Criar login sem sair do painel ================== */
-async function criarLogin(email,senha){
-  const app2=firebase.apps.find(a=>a.name==='cadastro')||firebase.initializeApp(firebaseConfig,'cadastro');
-  const a2=app2.auth();await a2.setPersistence(firebase.auth.Auth.Persistence.NONE);
-  try{await a2.createUserWithEmailAndPassword(email,senha);await a2.signOut();return true;}
-  catch(e){if(e.code==='auth/email-already-in-use')return false;throw e;}
+let imgTemp,camposTemp=[];
+const TIPOS={texto:'Texto curto',textolongo:'Texto longo',numero:'Número',data:'Data',opcoes:'Lista de opções',simnao:'Sim / Não'};
+// Campos personalizados do evento (converte o "campo extra" antigo, se houver)
+function camposDoEvento(e){
+  if(!e)return[];
+  if(Array.isArray(e.camposExtras))return e.camposExtras;
+  if(e.campos&&e.campos.extra&&e.extraLabel)return[{id:'extra',label:e.extraLabel,tipo:'texto',obrigatorio:true,opcoes:[]}];
+  return[];
 }
-
-/* ================== Novo organizador ================== */
-function camposCobranca(o){
-  o=o||{plano:'inscrito',valor:200,minimo:100000,condicao:'50-50',vencimento:maisMeses(hoje(),1)};
-  const A=adic(o);
-  return `<h3>Cobrança combinada</h3>
-    <label>Modelo</label><select id="fPlano" onchange="planoUI()">
-      ${Object.entries(PLANOS).map(([k,v])=>`<option value="${k}" ${o.plano===k?'selected':''}>${v}</option>`).join('')}</select>
-    <div id="fCobr">
-      <div class="row">
-        <div><label id="fValorLbl">Valor (R$)</label><input id="fValor" inputmode="decimal" placeholder="2,00" value="${reais(o.valor)}" oninput="estimar()"></div>
-        <div id="fMinBox"><label>Valor mínimo (R$)</label><input id="fMin" inputmode="decimal" placeholder="1.000,00" value="${reais(o.minimo)}" oninput="estimar()"></div>
-        <div id="fVencBox"><label>Vencimento</label><input id="fVenc" type="date" value="${esc(o.vencimento||'')}"></div>
+function respostaDe(i,f){const r=(i.respostas||{})[f.id];if(r!==undefined&&r!=='')return r;return f.id==='extra'?(i.extra||''):'';}
+const devePagar=i=>!i.pago&&!i.isento;
+const termoAtivo=e=>!!(e&&e.termo&&e.termo.ativo);
+const MODELO_TERMO="Eu, participante inscrito(a) no evento \"{evento}\", declaro que:\n\n1. Estou em boas condições de saúde e apto(a) a participar das atividades do evento.\n2. Participo por livre e espontânea vontade e assumo a responsabilidade pela minha segurança e por danos que eu venha a causar.\n3. Seguirei as orientações da organização, da equipe de apoio e as regras do evento.\n4. Isento a organização de responsabilidade por perda, furto ou dano de objetos pessoais.\n5. Autorizo o uso gratuito da minha imagem em fotos e vídeos do evento para fins de divulgação.\n6. Quando a inscrição incluir menores de idade, eu, como responsável legal, assumo estas declarações em nome deles.\n7. Estou ciente de que meus dados serão usados apenas para a organização e o controle de entrada deste evento.";
+function usarModeloTermo(){if($('trTexto').value.trim()&&!confirm('Substituir o texto atual pelo modelo?'))return;$('trTexto').value=MODELO_TERMO;}
+function valorDe(i,ev){ev=ev||eventos.find(e=>e.id===i.eventoId);if(!cobra(ev)||i.isento)return 0;return i.meia&&ev.pix.meia?Number(ev.pix.valorMeia||0):Number(ev.pix.valor);}
+const somaValor=(l,ev)=>l.reduce((s,x)=>s+valorDe(x,ev),0);
+function idadeTxt(i){if(!i.nascimento)return '';const ev=eventos.find(e=>e.id===i.eventoId)||{};const ref=ev.data?new Date(ev.data+'T12:00:00'):new Date(),n=new Date(i.nascimento+'T12:00:00');let a=ref.getFullYear()-n.getFullYear();if(ref.getMonth()<n.getMonth()||(ref.getMonth()===n.getMonth()&&ref.getDate()<n.getDate()))a--;const[y,m,d]=i.nascimento.split('-');return `${d}/${m}/${y} (${a} ${a===1?'ano':'anos'})`;}
+function membrosGrupo(i){return i&&i.grupo?inscritos.filter(x=>x.grupo===i.grupo):[];}
+function responsavelGrupo(i){const m=membrosGrupo(i);if(!m.length)return null;const ids=i.grupoIds||[];return m.find(x=>x.id===ids[0])||m[0];}
+async function marcarPagoGrupo(grupo,excetoId){
+  const ev=eventoSel();
+  const alvo=inscritos.filter(x=>x.grupo===grupo&&devePagar(x)&&x.id!==excetoId);
+  if(!alvo.length)return 0;
+  const b=db.batch();
+  alvo.forEach(x=>b.update(col('inscricoes').doc(x.id),{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(x,ev)}));
+  await gravar(b.commit());return alvo.length;
+}
+async function pagarGrupo(id){
+  const i=inscritos.find(x=>x.id===id),n=membrosGrupo(i).filter(devePagar).length;
+  if(!confirm(`Confirmar o pagamento de ${n} pessoa(s) do grupo?`))return;
+  try{await marcarPagoGrupo(i.grupo);registrar('pago_grupo',`Confirmou o pagamento do grupo de ${i.nome} (${n} pessoa(s))`,{eventoId:i.eventoId,inscricaoId:id});avisoPago(membrosGrupo(i).map(x=>x.id));}catch(e){toast('Erro: '+e.message);}
+}
+function fmtResposta(v,f){if(v===''||v==null)return '';if(f.tipo==='data'&&/^\d{4}-\d{2}-\d{2}$/.test(v)){const[a,m,d]=v.split('-');return `${d}/${m}/${a}`;}return String(v);}
+function renderCamposEditor(){
+  const el=$('camposEditor');if(!el)return;
+  el.innerHTML=!camposTemp.length?'<div class="muted" style="padding:6px 0">Nenhum campo personalizado.</div>':camposTemp.map((f,k)=>`
+    <div class="card" style="padding:10px;margin:8px 0;background:var(--bg)">
+      <div class="row" style="align-items:center">
+        <input style="flex:3;min-width:140px" placeholder="Nome do campo (ex.: Setor, Tamanho da camiseta)" maxlength="60" value="${esc(f.label)}" oninput="camposTemp[${k}].label=this.value">
+        <select class="f" style="flex:2;min-width:120px" onchange="camposTemp[${k}].tipo=this.value;renderCamposEditor()">
+          ${Object.entries(TIPOS).map(([v,t])=>`<option value="${v}" ${f.tipo===v?'selected':''}>${t}</option>`).join('')}
+        </select>
       </div>
-      <div id="fEvBox">
-        <label>Referente a <span class="muted">(evento combinado)</span></label><input id="fRef" placeholder="Ex.: MTB GPX 2027 — largada 25/04" value="${esc(o.referente||'')}">
-        <label>Inscritos previstos <span class="muted">(para a estimativa)</span></label><input id="fPrev" inputmode="numeric" placeholder="800" value="${o.previstos||''}" oninput="estimar()">
-        <label>Forma de pagamento</label><select id="fCond" onchange="estimar()">${Object.entries(CONDICOES).map(([k,v])=>`<option value="${k}" ${(o.condicao||'50-50')===k?'selected':''}>${v}</option>`).join('')}</select>
-        <h3 style="font-size:14px">Adicionais</h3>
-        <label class="chk" style="display:flex;gap:8px;align-items:center;color:var(--text);margin-top:8px"><input type="checkbox" id="aCk" style="width:20px;height:20px" ${A.checkin.ativo?'checked':''} onchange="estimar()"> Check-in presencial</label>
-        <div class="row"><div><label>Pessoas</label><input id="aCkP" inputmode="numeric" value="${A.checkin.pessoas}" oninput="estimar()"></div>
-          <div><label>Turnos</label><input id="aCkT" inputmode="numeric" value="${A.checkin.turnos}" oninput="estimar()"></div>
-          <div><label>R$ por pessoa/turno</label><input id="aCkV" inputmode="decimal" value="${reais(A.checkin.valor)}" oninput="estimar()"></div></div>
-        <label class="chk" style="display:flex;gap:8px;align-items:center;color:var(--text);margin-top:10px"><input type="checkbox" id="aCf" style="width:20px;height:20px" ${A.conferencia.ativo?'checked':''} onchange="estimar()"> Conferência de pagamentos</label>
-        <div class="row"><div><label>Valor (R$)</label><input id="aCfV" inputmode="decimal" value="${reais(A.conferencia.valor)}" oninput="estimar()"></div></div>
-        <label class="chk" style="display:flex;gap:8px;align-items:center;color:var(--text);margin-top:10px"><input type="checkbox" id="aOu" style="width:20px;height:20px" ${A.outro.ativo?'checked':''} onchange="estimar()"> Outro</label>
-        <div class="row"><div style="flex:2"><label>Descrição</label><input id="aOuD" placeholder="Ex.: cartaz impresso" value="${esc(A.outro.desc)}"></div>
-          <div><label>Valor (R$)</label><input id="aOuV" inputmode="decimal" value="${reais(A.outro.valor)}" oninput="estimar()"></div></div>
-        <div class="card" id="fEst" style="margin-top:12px;background:var(--pri2);border-color:transparent"></div>
+      ${f.tipo==='opcoes'?`<textarea style="margin-top:8px;min-height:60px" placeholder="Uma opção por linha (ex.: P, M, G)" oninput="camposTemp[${k}].opcoes=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)">${esc((f.opcoes||[]).join('\n'))}</textarea>`:''}
+      <div class="row" style="align-items:center;margin-top:4px">
+        <label class="chk" style="flex:1"><input type="checkbox" ${f.obrigatorio?'checked':''} onchange="camposTemp[${k}].obrigatorio=this.checked"> Obrigatório</label>
+        <button class="btn sm" style="flex:0" ${k===0?'disabled':''} onclick="moverCampo(${k},-1)">▲</button>
+        <button class="btn sm" style="flex:0" ${k===camposTemp.length-1?'disabled':''} onclick="moverCampo(${k},1)">▼</button>
+        <button class="btn sm bad" style="flex:0" onclick="removerCampo(${k})">Remover</button>
       </div>
+    </div>`).join('');
+}
+function addCampo(){camposTemp.push({id:'c'+Math.random().toString(36).slice(2,8),label:'',tipo:'texto',obrigatorio:true,opcoes:[]});renderCamposEditor();const ins=$('camposEditor').querySelectorAll('input[placeholder^="Nome"]');ins[ins.length-1].focus();}
+function removerCampo(k){if(camposTemp[k].label&&!confirm(`Remover o campo "${camposTemp[k].label}"? As respostas já enviadas deixam de aparecer.`))return;camposTemp.splice(k,1);renderCamposEditor();}
+function moverCampo(k,d){const t=camposTemp[k];camposTemp[k]=camposTemp[k+d];camposTemp[k+d]=t;renderCamposEditor();}
+function abrirEvento(id){
+  if(!id&&!podeCriar())return toast('Os eventos são criados pelo administrador do sistema');
+  const e=id?eventos.find(x=>x.id===id):{titulo:'',data:'',hora:'',local:'',descricao:'',aberto:true,campos:{cpf:true,telefone:true,email:false,extra:false},extraLabel:''};
+  const c=e.campos||{},p=e.pix||{ativo:false,valor:0,tipo:'cpf',chave:'',nome:'',cidade:'',whats:''};
+  imgTemp=undefined;
+  camposTemp=camposDoEvento(e).map(f=>({...f,opcoes:[...(f.opcoes||[])]}));
+  setTimeout(renderCamposEditor,0);
+  const fl=e.filas||{};filasEdId=id||'';filasTemp=(fl.lista||[]).map(q=>({...q}));
+  setTimeout(renderFilasEditor,0);setTimeout(exTaxa,0);
+  abrirModal(`<h2>${id?'Editar evento':'Novo evento'}</h2>
+    <label>Nome do evento *</label><input id="evTitulo" value="${esc(e.titulo)}" maxlength="100">
+    <div class="row"><div style="flex:1"><label>Data</label><input id="evData" type="date" value="${esc(e.data)}"></div>
+    <div style="flex:1"><label>Horário</label><input id="evHora" type="time" value="${esc(e.hora)}"></div></div>
+    <label>Local</label><input id="evLocal" value="${esc(e.local)}" maxlength="120">
+    <label>Descrição / informações</label><textarea id="evDesc" maxlength="1000">${esc(e.descricao)}</textarea>
+
+    <div class="secao">Imagem do evento</div>
+    <div class="muted">Aparece no formulário, no voucher e aqui no controle. Ela é reduzida automaticamente.</div>
+    <img id="evImgPrev" class="imgprev ${e.imagem?'':'hidden'}" src="${e.imagem||''}" alt="">
+    <div class="row" style="margin-top:6px">
+      <label class="btn file" style="margin:0;color:var(--text)">🖼 ${e.imagem?'Trocar imagem':'Escolher imagem'}<input type="file" accept="image/*" onchange="escolherImagem(this)"></label>
+      <button class="btn bad ${e.imagem?'':'hidden'}" id="evImgRem" onclick="removerImagem()">Remover</button>
     </div>
-    <label>Observações</label><textarea id="fObs" rows="2" placeholder="Telefone, cidade, combinado…">${esc(o.obs||'')}</textarea>`;
+
+    <div class="secao">Cor do evento</div>
+    <label class="chk"><input type="checkbox" id="evCorOn" ${e.cor?'checked':''} onchange="$('evCorBox').classList.toggle('hidden',!this.checked)"> Usar uma cor própria na página de inscrição e no voucher deste evento</label>
+    <div id="evCorBox" class="cores ${e.cor?'':'hidden'}">${CORES_SUGERIDAS.map(c=>`<button class="cor" style="background:${c}" onclick="$('evCor').value='${c}'"></button>`).join('')}<input type="color" id="evCor" value="${esc(e.cor||corPri())}"></div>
+    <div class="muted" style="margin-top:4px">Sem cor própria, o evento usa as cores definidas em 🎨 Cores e estilo.</div>
+
+    <div class="secao">Dados pedidos na inscrição</div>
+    <div class="muted">O nome é sempre pedido.</div>
+    <label class="chk"><input type="checkbox" id="cCpf" ${c.cpf?'checked':''}> CPF <span class="muted">(impede inscrição duplicada)</span></label>
+    <label class="chk"><input type="checkbox" id="cTel" ${c.telefone?'checked':''}> Telefone / WhatsApp</label>
+    <label class="chk"><input type="checkbox" id="cEmail" ${c.email?'checked':''}> E-mail</label>
+    <div class="muted" style="margin-top:8px">Campos personalizados</div>
+    <div id="camposEditor"></div>
+    <button class="btn full" style="margin-top:6px" onclick="addCampo()">+ Adicionar campo</button>
+
+    <div class="secao">Pagamento via Pix</div>
+    <label class="chk"><input type="checkbox" id="pxAtivo" ${p.ativo?'checked':''} onchange="$('pxBox').classList.toggle('hidden',!this.checked)"> Cobrar inscrição via Pix</label>
+    <div id="pxBox" class="${p.ativo?'':'hidden'}">
+      <label>Valor (R$) *</label><input id="pxValor" inputmode="decimal" oninput="exTaxa()" placeholder="25,00" value="${p.valor?esc(Number(p.valor).toFixed(2).replace('.',',')):''}">
+      ${mpLiberado()?`<label>Como receber</label>
+      <select class="f" id="pxModo" onchange="modoPix()">
+        <option value="manual" ${p.modo!=='mp'?'selected':''}>Pix com a minha chave (confirmo o pagamento manualmente)</option>
+        <option value="mp" ${p.modo==='mp'?'selected':''} ${mpConectado()?'':'disabled'}>Pix automático — Mercado Pago${mpConectado()?'':' (conecte a conta na aba Eventos)'}</option>
+      </select>
+      <div id="pxMPInfo" class="muted ${p.modo==='mp'?'':'hidden'}" style="margin-top:6px;background:var(--pri2);color:var(--pri);padding:8px 10px;border-radius:10px">💳 O Pix é gerado pelo Mercado Pago na sua conta e a inscrição é <b>confirmada sozinha</b> quando o participante paga. Taxa do Mercado Pago (cerca de 0,99% no Pix) descontada do valor recebido. O e-mail passa a ser obrigatório na inscrição.</div>
+      ${Number(orgInfo.comissaoMP||0)?`<div id="pxTaxaBox" class="${p.modo==='mp'?'':'hidden'}">
+      <label>Taxa de serviço da plataforma (${String(orgInfo.comissaoMP).replace('.',',')}%)</label>
+      <select class="f" id="pxTaxaQuem" onchange="exTaxa()">
+        <option value="org" ${!p.taxaComprador?'selected':''}>Embutida no valor — o organizador paga</option>
+        <option value="comp" ${p.taxaComprador?'selected':''}>Somada ao valor — o participante paga</option>
+      </select>
+      <div class="muted" id="pxTaxaEx" style="margin-top:4px"></div></div>`:''}`:''}
+      <div id="pxManual" class="${p.modo==='mp'&&mpLiberado()?'hidden':''}">
+      <label>Tipo da chave *</label>
+      <select class="f" id="pxTipo">
+        <option value="cpf" ${p.tipo==='cpf'?'selected':''}>CPF / CNPJ</option>
+        <option value="tel" ${p.tipo==='tel'?'selected':''}>Celular</option>
+        <option value="email" ${p.tipo==='email'?'selected':''}>E-mail</option>
+        <option value="aleatoria" ${p.tipo==='aleatoria'?'selected':''}>Chave aleatória</option>
+      </select>
+      <label>Chave Pix *</label><input id="pxChave" value="${esc(p.chave)}" maxlength="77">
+      <label>Nome de quem recebe *</label><input id="pxNome" value="${esc(p.nome)}" maxlength="25" placeholder="Como aparece no banco">
+      <label>Cidade de quem recebe</label><input id="pxCidade" value="${esc(p.cidade)}" maxlength="15" placeholder="Ex.: Sao Paulo">
+      <label>WhatsApp para receber comprovantes</label><input id="pxWhats" inputmode="tel" value="${esc(p.whats)}" placeholder="(00) 00000-0000">
+      </div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxMeia" ${p.meia?'checked':''} onchange="$('pxMeiaBox').classList.toggle('hidden',!this.checked);if(this.checked&&!$('pxMeiaVal').value&&lerValor($('pxValor').value))$('pxMeiaVal').value=(lerValor($('pxValor').value)/2).toFixed(2).replace('.',',')"> Aceitar meia-entrada</label>
+      <div id="pxMeiaBox" class="${p.meia?'':'hidden'}">
+        <label>Valor da meia (R$) *</label><input id="pxMeiaVal" inputmode="decimal" placeholder="12,50" value="${p.valorMeia?esc(Number(p.valorMeia).toFixed(2).replace('.',',')):''}">
+        <label>Quem tem direito</label><input id="pxMeiaQuem" maxlength="150" value="${esc(p.meiaQuem||'')}" placeholder="Ex.: estudantes, idosos 60+, professores">
+        <div class="muted" style="margin-top:4px">O participante marca "Meia-entrada" e informa o motivo. Na entrada, o leitor avisa para conferir o comprovante.</div>
+      </div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxTrava" ${p.qrAposPagamento!==false?'checked':''}> Liberar o QR code do voucher só depois do pagamento confirmado</label>
+      <div class="muted">Antes da confirmação, o QR aparece embaçado com a tarja <b>⏳ Aguardando pagamento</b>. Quando você confirma o Pix, a tarja sai sozinha na tela do participante.</div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxCri" ${p.criancasGratis?'checked':''} onchange="$('pxCriBox').classList.toggle('hidden',!this.checked)"> Crianças não pagam</label>
+      <div id="pxCriBox" class="${p.criancasGratis?'':'hidden'}">
+        <label>Grátis para crianças de até quantos anos? *</label>
+        <input id="pxIdade" type="number" inputmode="numeric" min="0" max="17" value="${p.idadeMax!=null?esc(p.idadeMax):'5'}">
+        <div class="muted" style="margin-top:4px">A idade é calculada pela data de nascimento na data do evento. A criança recebe o voucher dela normalmente.</div>
+      </div>
+      <div class="muted" style="margin-top:6px">O participante vê o QR code e o Pix copia e cola com o valor já preenchido. Você confirma o pagamento na lista de inscritos ou na hora da leitura do voucher.</div>
+    </div>
+
+    <div class="secao">Termo de responsabilidade</div>
+    <label class="chk"><input type="checkbox" id="trAtivo" ${e.termo&&e.termo.ativo?'checked':''} onchange="$('trBox').classList.toggle('hidden',!this.checked);if(this.checked&&!$('trTexto').value.trim())$('trTexto').value=MODELO_TERMO"> Exigir aceite de termo na inscrição</label>
+    <div id="trBox" class="${e.termo&&e.termo.ativo?'':'hidden'}">
+      <label>Título</label><input id="trTitulo" maxlength="80" value="${esc((e.termo&&e.termo.titulo)||'Termo de Responsabilidade')}">
+      <label>Texto do termo *</label><textarea id="trTexto" maxlength="8000" style="min-height:240px">${esc((e.termo&&e.termo.texto)||'')}</textarea>
+      <div class="row" style="margin-top:6px;align-items:center"><button class="btn sm" style="flex:0 0 auto" onclick="usarModeloTermo()">Usar texto modelo</button>
+        <span class="muted" style="flex:1">Use <b>{evento}</b> para inserir o nome do evento.${e.termo&&e.termo.versao?' Versão atual: '+esc(e.termo.versao)+'.':''}</span></div>
+      <div class="muted" style="margin-top:6px">O modelo é só um ponto de partida: revise o texto com quem for responsável pelo evento. Ao alterar o texto, a versão aumenta e cada inscrição guarda a versão que aceitou.</div>
+    </div>
+
+    <div class="secao">Filas de check-in</div>
+    <label class="chk"><input type="checkbox" id="flAtivo" ${fl.ativo?'checked':''} onchange="$('flBox').classList.toggle('hidden',!this.checked);if(this.checked&&!filasTemp.length)dividirFilas()"> Organizar a entrada em filas (adultos de A a Z pela letra do nome)</label>
+    <div id="flBox" class="${fl.ativo?'':'hidden'}">
+      <div class="row" style="align-items:center;margin-top:4px"><span class="muted" style="flex:1">Quantas filas de adultos?</span>
+        <select class="f" id="flQtd" style="flex:0 0 76px">${[1,2,3,4,5,6,7,8].map(n=>`<option ${n===((fl.lista||[]).length||2)?'selected':''}>${n}</option>`).join('')}</select>
+        <button class="btn sm" style="flex:0 0 auto" onclick="dividirFilas()">↻ Dividir A–Z</button></div>
+      <div class="muted" style="margin-top:4px">A divisão equilibra a quantidade de pessoas em cada fila${id&&id===selId&&inscritos.length?' (pelos inscritos atuais)':' (pelas iniciais de nomes mais comuns)'}. Ajuste as letras e os nomes se quiser.</div>
+      <div id="flEditor"></div>
+      <label class="chk"><input type="checkbox" id="flCri" ${fl.criancas?'checked':''} onchange="renderFilasEditor()"> 🎈 Crianças em uma fila separada</label>
+      ${e.pix&&e.pix.criancasGratis?'':'<div class="muted">As crianças são as inscritas como <b>Criança não paga</b> (em Pagamento via Pix → Crianças não pagam, com a idade máxima).</div>'}
+      <label class="chk"><input type="checkbox" id="flGrupo" ${fl.gruposJuntos?'checked':''} onchange="renderFilasEditor()"> 👥 Grupos entram juntos, na fila de quem fez a inscrição</label>
+      <div class="muted">Depois, na aba <b>Equipe</b>, escolha a fila de cada pessoa do check-in. O leitor avisa quando alguém estiver na fila errada.</div>
+    </div>
+
+    <div class="secao">Situação</div>
+    <label class="chk"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnSalvarEv" onclick="salvarEvento('${id||''}')">Salvar</button></div>
+    ${id&&podeCriar()?`<div style="height:18px"></div><button class="btn bad full" onclick="excluirEvento('${id}')">Excluir evento e inscrições</button>`:''}`);
 }
-function planoUI(){
-  const p=$('fPlano').value;
-  $('fCobr').classList.toggle('hidden',p==='proprio');
-  $('fValorLbl').textContent=ROT_VALOR[p]||'Valor (R$)';
-  $('fMinBox').classList.toggle('hidden',p!=='inscrito');
-  $('fVencBox').classList.toggle('hidden',p!=='mensal');
-  $('fEvBox').classList.toggle('hidden',p==='mensal'||p==='proprio');
-  estimar();
+let filasTemp=[],filasEdId='';
+function eventoFilasTemp(){return{id:filasEdId,filas:{ativo:true,lista:filasTemp,criancas:$('flCri').checked,gruposJuntos:$('flGrupo').checked}};}
+function renderFilasEditor(){
+  const el=$('flEditor');if(!el)return;
+  const conta=filasEdId&&filasEdId===selId&&inscritos.length,evT=eventoFilasTemp();
+  const n=id=>conta?inscritos.filter(i=>filaDe(i,evT)===id).length:null;
+  const opt=v=>LETRAS.map(L=>`<option ${L===v?'selected':''}>${L}</option>`).join('');
+  el.innerHTML=filasTemp.map((q,k)=>`<div class="filaEd">
+      <input placeholder="Adultos ${faixa(q)}" value="${esc(q.nome||'')}" maxlength="40" oninput="filasTemp[${k}].nome=this.value">
+      <select class="f" onchange="mudarLetra(${k},'de',this.value)">${opt(q.de)}</select><span class="muted">a</span>
+      <select class="f" onchange="mudarLetra(${k},'ate',this.value)">${opt(q.ate)}</select>
+      ${conta?`<span class="muted" style="flex:0 0 auto;min-width:34px;text-align:right">${n(q.id)}</span>`:''}</div>`).join('')
+    +($('flCri').checked?`<div class="filaEd"><input value="🎈 Crianças" disabled><span class="muted" style="flex:1"></span>${conta?`<span class="muted" style="flex:0 0 auto;min-width:34px;text-align:right">${n('cri')}</span>`:''}</div>`:'')
+    +(conta?'<div class="muted" style="text-align:right">número = inscritos em cada fila</div>':'');
 }
-function lerCobranca(){
-  const plano=$('fPlano').value,n=id=>Math.max(0,parseInt($(id).value,10)||0);
-  const d={plano,valor:plano==='proprio'?0:cents($('fValor').value),obs:$('fObs').value.trim(),
-    minimo:plano==='inscrito'?cents($('fMin').value):0,vencimento:plano==='mensal'?($('fVenc').value||null):null};
-  if(plano!=='mensal'&&plano!=='proprio'){
-    Object.assign(d,{referente:$('fRef').value.trim(),previstos:n('fPrev'),condicao:$('fCond').value,
-      adicionais:{checkin:{ativo:$('aCk').checked,pessoas:n('aCkP'),turnos:n('aCkT'),valor:cents($('aCkV').value)},
-        conferencia:{ativo:$('aCf').checked,valor:cents($('aCfV').value)},
-        outro:{ativo:$('aOu').checked,desc:$('aOuD').value.trim(),valor:cents($('aOuV').value)}}});
-  }else Object.assign(d,{adicionais:null,condicao:null});
-  return d;
+function mudarLetra(k,campo,v){
+  const q=filasTemp[k];q[campo]=v;
+  if(q.de>q.ate){if(campo==='de')q.ate=v;else q.de=v;}
+  // Mantém a sequência sem buracos: a próxima fila começa na letra seguinte
+  for(let j=k+1;j<filasTemp.length;j++){const prox=LETRAS[Math.min(25,LETRAS.indexOf(filasTemp[j-1].ate)+1)];filasTemp[j].de=prox;if(filasTemp[j].ate<prox)filasTemp[j].ate=prox;}
+  for(let j=k-1;j>=0;j--){const ant=LETRAS[Math.max(0,LETRAS.indexOf(filasTemp[j+1].de)-1)];filasTemp[j].ate=ant;if(filasTemp[j].de>ant)filasTemp[j].de=ant;}
+  renderFilasEditor();
 }
-/* ---- Pix automático (Mercado Pago) com comissão da plataforma ---- */
-function camposMP(o={}){
-  const on=!!o.mpLiberado,pct=o.comissaoMP!=null?o.comissaoMP:5;
-  return `<h3>Pix automático (Mercado Pago)</h3>
-    <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fMp" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px" ${on?'checked':''} onchange="$('fMpBox').classList.toggle('hidden',!this.checked)"> <span>Liberar o <b>Pix automático</b> para este organizador<br><span class="muted small">Ele conecta a conta Mercado Pago dele; o Pix cai direto na conta dele e a sua comissão cai na sua conta, automaticamente.</span></span></label>
-    <div id="fMpBox" class="${on?'':'hidden'}">
-      <label>Comissão da plataforma (% de cada pagamento)</label><input id="fMpPct" inputmode="decimal" value="${String(pct).replace('.',',')}">
-      <div class="muted small" style="margin-top:4px">Ex.: 5% de uma inscrição de R$ 60,00 = R$ 3,00 para você. A taxa do Mercado Pago (cerca de 0,99% no Pix) é descontada do organizador.</div>
+function dividirFilas(){
+  const n=+$('flQtd').value||1;let peso=PESO_LETRA;
+  if(filasEdId&&filasEdId===selId&&inscritos.length){
+    const evT=eventoFilasTemp(),cri=$('flCri').checked;peso={};
+    inscritos.forEach(i=>{let b=i;if(evT.filas.gruposJuntos&&i.grupo){const r=responsavelGrupo(i);if(r)b=r;}if(cri&&b.crianca)return;const L=letraDe(b.nome);if(L!=='#')peso[L]=(peso[L]||0)+1;});
+    if(!Object.keys(peso).length)peso=PESO_LETRA;
+  }
+  const novas=dividirLetras(n,peso);
+  filasTemp=novas.map((q,k)=>({id:(filasTemp[k]&&filasTemp[k].id)||'f'+Math.random().toString(36).slice(2,7),nome:'',de:q.de,ate:q.ate}));
+  renderFilasEditor();
+}
+function lerFilas(){
+  const ativo=$('flAtivo').checked;
+  const lista=filasTemp.map(q=>({id:q.id,nome:(q.nome||'').trim().slice(0,40),de:q.de,ate:q.ate}));
+  if(ativo){
+    if(!lista.length)return{erro:'Crie pelo menos uma fila (toque em Dividir A–Z)'};
+    let esperado='A';
+    for(const q of lista){if(q.de!==esperado||q.ate<q.de)return{erro:'As letras das filas precisam ir de A a Z, em sequência, sem pular nem repetir'};esperado=LETRAS[LETRAS.indexOf(q.ate)+1];}
+    if(lista[lista.length-1].ate!=='Z')return{erro:'A última fila precisa terminar na letra Z'};
+  }
+  return{filas:{ativo,lista,criancas:$('flCri').checked,gruposJuntos:$('flGrupo').checked}};
+}
+function modoPix(){const mp=$('pxModo')&&$('pxModo').value==='mp';$('pxManual').classList.toggle('hidden',mp);$('pxMPInfo').classList.toggle('hidden',!mp);if($('pxTaxaBox'))$('pxTaxaBox').classList.toggle('hidden',!mp);if(mp)$('cEmail').checked=true;exTaxa();}
+// Exemplo ao vivo de quem paga a taxa de serviço
+function exTaxa(){
+  const el=$('pxTaxaEx');if(!el)return;
+  const v=lerValor($('pxValor').value)||60,pct=Number(orgInfo.comissaoMP||0),t=Math.round(v*pct)/100,mpf=x=>Math.round(x*0.99)/100;
+  const R=x=>x.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  el.innerHTML=$('pxTaxaQuem').value==='comp'
+    ?`Inscrição de ${R(v)}: o participante paga <b>${R(v+t)}</b> (${R(v)} + ${R(t)} de taxa de serviço). O organizador recebe cerca de <b>${R(v-mpf(v+t))}</b> e a plataforma ${R(t)}.`
+    :`Inscrição de ${R(v)}: o participante paga <b>${R(v)}</b>. O organizador recebe cerca de <b>${R(v-t-mpf(v))}</b> e a plataforma ${R(t)}.`;
+}
+async function escolherImagem(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  try{
+    toast('Preparando imagem…');
+    imgTemp=await comprimirImagem(f);
+    $('evImgPrev').src=imgTemp;$('evImgPrev').classList.remove('hidden');$('evImgRem').classList.remove('hidden');
+  }catch(e){toast(e.message);}
+  inp.value='';
+}
+function removerImagem(){imgTemp='';$('evImgPrev').classList.add('hidden');$('evImgPrev').src='';$('evImgRem').classList.add('hidden');}
+async function salvarEvento(id){
+  const titulo=$('evTitulo').value.trim();if(!titulo)return toast('Informe o nome do evento');
+  const camposExtras=camposTemp.map(f=>({id:f.id,label:f.label.trim(),tipo:f.tipo,obrigatorio:!!f.obrigatorio,opcoes:f.tipo==='opcoes'?(f.opcoes||[]).slice(0,50):[]}));
+  if(camposExtras.some(f=>!f.label))return toast('Dê um nome para todos os campos personalizados');
+  if(camposExtras.some(f=>f.tipo==='opcoes'&&f.opcoes.length<2))return toast('Listas de opções precisam de pelo menos 2 opções');
+  if(camposExtras.length>20)return toast('Máximo de 20 campos personalizados');
+  const extra=false;
+  const pix={ativo:$('pxAtivo').checked,valor:lerValor($('pxValor').value),tipo:$('pxTipo').value,chave:$('pxChave').value.trim(),
+    nome:$('pxNome').value.trim(),cidade:$('pxCidade').value.trim(),whats:$('pxWhats').value.trim(),
+    meia:$('pxMeia').checked,valorMeia:lerValor($('pxMeiaVal').value),meiaQuem:$('pxMeiaQuem').value.trim(),
+    qrAposPagamento:$('pxTrava').checked,criancasGratis:$('pxCri').checked,modo:$('pxModo')&&$('pxModo').value==='mp'?'mp':'manual',taxaComprador:!!($('pxTaxaQuem')&&$('pxTaxaQuem').value==='comp'),taxaPct:Number(orgInfo.comissaoMP||0),idadeMax:Math.max(0,Math.min(17,parseInt($('pxIdade').value,10)||0))};
+  if(pix.ativo&&pix.meia&&!(pix.valorMeia>0&&pix.valorMeia<pix.valor))return toast('O valor da meia deve ser maior que zero e menor que o valor inteiro');
+  if(pix.ativo&&pix.criancasGratis&&!(parseInt($('pxIdade').value,10)>=0))return toast('Informe a idade máxima das crianças');
+  if(pix.ativo&&pix.modo==='mp'&&!mpConectado())return toast('Conecte a conta Mercado Pago antes (aba Eventos)');
+  if(pix.ativo&&pix.modo==='mp'){if(!(pix.valor>=1))return toast('Para o Pix automático, o valor mínimo é R$ 1,00');$('cEmail').checked=true;}
+  else if(pix.ativo){
+    if(!(pix.valor>0))return toast('Informe o valor da inscrição');
+    if(!pix.chave)return toast('Informe a chave Pix');
+    if(!pix.nome)return toast('Informe o nome de quem recebe');
+    if(pix.tipo==='email'&&!pix.chave.includes('@'))return toast('Chave de e-mail inválida');
+    if(pix.tipo==='cpf'&&![11,14].includes(pix.chave.replace(/\D/g,'').length))return toast('CPF/CNPJ da chave incompleto');
+    if(pix.tipo==='tel'&&pix.chave.replace(/\D/g,'').length<10)return toast('Celular da chave incompleto');
+  }
+  const d={titulo,cor:$('evCorOn').checked&&hexOk($('evCor').value)?$('evCor').value:'',data:$('evData').value,hora:$('evHora').value,local:$('evLocal').value.trim(),descricao:$('evDesc').value.trim(),
+    aberto:$('evAberto').checked,campos:{cpf:$('cCpf').checked,telefone:$('cTel').checked,email:$('cEmail').checked,extra},
+    extraLabel:'',camposExtras,pix,atualizadoEm:TS()};
+  const antigo=id?(eventos.find(x=>x.id===id)||{}).termo||{}:{};
+  const trTexto=$('trTexto').value.trim();
+  if($('trAtivo').checked&&trTexto.length<20)return toast('Escreva o texto do termo (ou use o modelo)');
+  d.termo={ativo:$('trAtivo').checked,titulo:$('trTitulo').value.trim()||'Termo de Responsabilidade',texto:trTexto,
+    versao:antigo.versao?(antigo.texto!==trTexto?antigo.versao+1:antigo.versao):1};
+  if(imgTemp!==undefined)d.imagem=imgTemp;
+  const fr=lerFilas();if(fr.erro)return toast(fr.erro);d.filas=fr.filas;
+  $('btnSalvarEv').disabled=true;
+  try{
+    if(id){await col('eventos').doc(id).update(d);registrar('evento_editado',`Editou o evento "${titulo}"`,{eventoId:id});}
+    else{d.criadoEm=TS();const r=await col('eventos').add(d);selecionarEvento(r.id);registrar('evento_novo',`Criou o evento "${titulo}"`,{eventoId:r.id});}
+    fecharModal();toast('Evento salvo');
+  }catch(e){toast('Erro: '+e.message);$('btnSalvarEv').disabled=false;}
+}
+async function excluirEvento(id){
+  const e=eventos.find(x=>x.id===id);
+  if(!confirm(`Excluir "${e.titulo}" e TODAS as inscrições dele? Isso não pode ser desfeito.`))return;
+  try{
+    const docs=[];
+    (await col('inscricoes').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
+    (await col('bloqueios').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
+    docs.push(col('eventos').doc(id));
+    for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(r=>b.delete(r));await b.commit();}
+    registrar('evento_excluido',`Excluiu o evento "${e.titulo}" e ${docs.length-1} registro(s) de inscrição`,{eventoId:id});
+    fecharModal();toast('Evento excluído');
+  }catch(err){toast('Erro: '+err.message);}
+}
+
+function mostrarLink(id){
+  const e=eventos.find(x=>x.id===id),link=linkInscricao(id);
+  abrirModal(`<h2>${esc(e.titulo)}</h2><div class="muted">Link de inscrição — divulgue por mensagem ou imprima o QR em um cartaz.</div>
+    <div class="qrbox"><div id="qrLink"></div></div>
+    <div class="linkbox">${esc(link)}</div><div style="height:10px"></div>
+    ${e.imagem?`<button class="btn pri full" onclick="compartilharComImagem('${id}')">📤 Compartilhar imagem + link (WhatsApp)</button><div class="muted center" style="margin-top:4px">Envia a imagem do evento com o link na legenda.</div><div style="height:8px"></div>`:''}
+    <div class="row"><button class="btn" onclick="copiar('${link}')">Copiar link</button>
+    <button class="btn" onclick="compartilharWhats('${id}')">${e.imagem?'Só o link':'WhatsApp'}</button></div>
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn" onclick="baixarQRLink('${id}')">⬇ Baixar QR (imagem)</button><button class="btn" onclick="window.open('${link}','_blank')">Abrir</button></div>
+    <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+  new QRCode($('qrLink'),{text:link,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+}
+function copiar(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Link copiado')).catch(()=>prompt('Copie o link:',t));}
+async function baixarQRLink(id){
+  const e=eventos.find(x=>x.id===id),link=linkInscricao(id);
+  let im=null;if(e.imagem){im=new Image();im.src=e.imagem;try{await im.decode();}catch(x){im=null;}}
+  const tmp=document.createElement('div');new QRCode(tmp,{text:link,width:600,height:600,correctLevel:QRCode.CorrectLevel.M});
+  const q=tmp.querySelector('canvas');const W=800,H=1000,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const topoC=e.cor||corTopo();x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle=topoC;x.fillRect(0,0,W,190);
+  if(im&&im.naturalWidth){const k=Math.max(W/im.naturalWidth,190/im.naturalHeight),dw=im.naturalWidth*k,dh=im.naturalHeight*k;x.drawImage(im,(W-dw)/2,(190-dh)/2,dw,dh);x.fillStyle='rgba(20,22,60,.6)';x.fillRect(0,0,W,190);}
+  x.fillStyle=im&&im.naturalWidth?'#fff':txtSobre(topoC);x.textAlign='center';x.font='bold 26px system-ui,sans-serif';x.fillText('INSCRIÇÕES ABERTAS',W/2,52);
+  x.font='bold 38px system-ui,sans-serif';quebra(x,e.titulo,W/2,108,W-60,46,2);
+  x.drawImage(q,100,220,600,600);
+  x.fillStyle='#1c1d29';x.font='28px system-ui,sans-serif';x.fillText('Aponte a câmera do celular para se inscrever',W/2,885);
+  x.fillStyle='#6b6f85';x.font='24px system-ui,sans-serif';x.fillText([fmtData(e),e.local].filter(Boolean).join(' · '),W/2,935);
+  const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='qr-inscricao-'+e.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.png';a.click();
+}
+function quebra(x,t,cx,y,maxW,lh,maxL){const ps=String(t).split(' ');let l='',n=1;for(const p of ps){const tt=l?l+' '+p:p;if(x.measureText(tt).width>maxW&&l){if(n>=maxL){x.fillText(l+'…',cx,y);return y;}x.fillText(l,cx,y);y+=lh;n++;l=p;}else l=tt;}x.fillText(l,cx,y);return y;}
+function textoConvite(e){
+  const meta=[fmtData(e),e.local].filter(Boolean).join(' · ');
+  return `*${e.titulo}*`+(meta?`\n📅 ${meta}`:'')+`\n\n📝 Faça sua inscrição:\n${linkInscricao(e.id)}`;
+}
+function compartilharWhats(id){const e=eventos.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(textoConvite(e)),'_blank');}
+async function compartilharComImagem(id){
+  const e=eventos.find(x=>x.id===id),texto=textoConvite(e);
+  try{
+    const blob=await (await fetch(e.imagem)).blob();
+    const f=new File([blob],'evento-'+e.titulo.normalize('NFD').replace(/[^\w]+/g,'-').toLowerCase().slice(0,40)+'.jpg',{type:'image/jpeg'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){
+      // A legenda vai junto com a imagem; alguns apps só aceitam texto colado, por isso também copiamos
+      try{await navigator.clipboard.writeText(texto);}catch(x){}
+      await navigator.share({files:[f],text:texto,title:e.titulo});
+      return;
+    }
+  }catch(err){if(err&&err.name==='AbortError')return;}
+  toast('Este aparelho não compartilha imagem por aqui. Enviando só o link.');
+  compartilharWhats(id);
+}
+
+/* ================== Leitor ================== */
+let scanner=null,escaneando=false,ocupado=false;
+async function toggleScan(){escaneando?pararScan():iniciarScan();}
+async function iniciarScan(){
+  if(!selId)return toast('Cadastre/selecione um evento primeiro');
+  $('resultado').innerHTML='';
+  try{
+    scanner=scanner||new Html5Qrcode('reader');
+    await scanner.start({facingMode:'environment'},{fps:10,qrbox:(w,h)=>{const m=Math.floor(Math.min(w,h)*.7);return{width:m,height:m};}},lido,()=>{});
+    escaneando=true;$('btnScan').textContent='⏹ Fechar câmera';
+  }catch(e){toast('Não foi possível abrir a câmera. Verifique a permissão.');}
+}
+async function pararScan(){if(scanner&&escaneando){try{await scanner.stop();}catch(e){}}escaneando=false;ocupado=false;if($('btnScan'))$('btnScan').textContent='📷 Abrir câmera';}
+function extrairId(txt){
+  txt=String(txt||'').trim();
+  try{const u=new URL(txt);if(u.searchParams.get('v')){const o=u.searchParams.get('o');if(o&&o!==ORG)return{outroOrg:true};return{id:u.searchParams.get('v')};}if(u.searchParams.get('e'))return{link:true};return{invalido:true};}
+  catch(e){return{id:txt};}
+}
+async function lido(txt){
+  if(ocupado)return;ocupado=true;
+  try{scanner.pause(true);}catch(e){}
+  const r=extrairId(txt);
+  if(r.outroOrg){mostrarResultado({tipo:'warn',titulo:'Voucher de outro organizador',msg:'Este voucher não é de um evento deste organizador.'});return;}
+  if(r.link){mostrarResultado({tipo:'warn',titulo:'Isto é o QR de inscrição',msg:'Este QR leva à página de inscrição do evento, não é um voucher.'});return;}
+  if(r.invalido||!r.id||r.id.includes('/')||r.id.length>40){mostrarResultado({tipo:'bad',titulo:'QR inválido',msg:'Este QR code não é um voucher deste sistema.'});return;}
+  await consultar(r.id);
+}
+function retomar(){$('resultado').innerHTML='';ocupado=false;if(escaneando){try{scanner.resume();}catch(e){}}}
+async function buscarManual(){
+  const txt=$('codManual').value.trim();if(!txt)return;
+  const cod=txt.toUpperCase().replace(/\s/g,'');
+  const local=inscritos.find(i=>(i.codigo||'')===cod);
+  if(local)return consultar(local.id);
+  // Busca por nome (sem acento), CPF ou telefone no evento selecionado
+  const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const q=norm(txt),qd=txt.replace(/\D/g,''),partes=q.split(/\s+/).filter(Boolean);
+  const achados=inscritos.filter(i=>partes.every(p=>norm(i.nome).includes(p))||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
+  if(achados.length===1)return consultar(achados[0].id);
+  if(achados.length>1){
+    $('resultado').innerHTML=`<div class="card" style="margin-top:12px;padding:4px 14px">
+      <div class="muted" style="padding:10px 0 4px">${achados.length} inscritos encontrados — toque para abrir:</div>
+      ${achados.slice(0,30).map(i=>`<div class="item" onclick="consultar('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):''}${filaDe(i)?' · fila '+esc(nomeFila(filaDe(i))):''}</span></div>
+        <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div>`).join('')}
+      <div style="padding:10px 0"><button class="btn full" onclick="$('resultado').innerHTML=''">Fechar</button></div></div>`;
+    return;
+  }
+  if(/^[A-Z0-9]{6}$/.test(cod)){
+    try{const s=await col('inscricoes').where('codigo','==',cod).limit(1).get();if(!s.empty)return consultar(s.docs[0].id);}catch(e){}
+  }
+  mostrarResultado({tipo:'bad',titulo:'Não encontrado',msg:'Nenhuma inscrição neste evento com o código, nome ou CPF "'+esc(txt)+'".'});
+}
+async function consultar(id){
+  try{
+    let i=inscritos.find(x=>x.id===id);   // já está no celular (funciona sem internet)
+    if(!i){
+      const d=await lerDoc(col('inscricoes').doc(id));
+      if(!d.exists){mostrarResultado({tipo:'bad',titulo:'Voucher não encontrado',msg:'Esta inscrição não existe ou foi excluída.'});return;}
+      i={id:d.id,...d.data({serverTimestamps:'estimate'})};
+    }
+    if(i.eventoId!==selId){
+      const ev=eventos.find(e=>e.id===i.eventoId);
+      if(!ev&&restrito()){mostrarResultado({tipo:'warn',titulo:'Voucher de outro evento',msg:'Este voucher não é do evento selecionado nem de um evento liberado para você.'});return;}
+      mostrarResultado({tipo:'warn',titulo:'Voucher de outro evento',msg:'Este voucher é do evento <b>'+esc(ev?ev.titulo:'(excluído)')+'</b>.',insc:i});return;
+    }
+    if(i.checkin){mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Entrada registrada em '+esc(fmtTs(i.checkinLocal||i.checkinEm))+(quemCheckin(i)?' por <b>'+esc(quemCheckin(i))+'</b>':'')+'.',insc:i});return;}
+    const ev=eventoSel();
+    // Filas: avisa quando a pessoa é de outra fila
+    const fl=minhaFila(),fi=filaDe(i,ev),outra=!!(fl&&fi&&fi!==fl);
+    const avFila=outra?`<div class="kv" style="background:var(--warnbg);color:var(--warn);padding:8px;border-radius:8px;margin:6px 0"><b>↪ Esta pessoa é da fila ${esc(nomeFila(fi))}</b><br>Oriente a ir para a fila certa ou confirme a entrada aqui mesmo.</div>`:'';
+    if(cobra(ev)&&devePagar(i)){mostrarResultado({tipo:'warn',titulo:'Pagamento pendente',msg:avFila+'Inscrição válida, mas o pagamento'+(verValores()?' de <b>'+esc(moeda(valorDe(i,ev)))+'</b>':'')+(i.meia?' (meia-entrada)':'')+' ainda não foi confirmado.',insc:i,botaoPagar:true});return;}
+    if(outra){mostrarResultado({tipo:'warn',titulo:'Outra fila: '+nomeFila(fi),msg:avFila,insc:i,botaoCheck:true});return;}
+    if($('autoCheck').checked){await fazerCheckin(i.id,true);return;}
+    mostrarResultado({tipo:'ok',titulo:'Inscrição válida',insc:i,botaoCheck:true});
+  }catch(e){
+    if(e.code==='unavailable'||!navigator.onLine)mostrarResultado({tipo:'bad',titulo:'Não encontrado neste celular',msg:'Sem internet, só dá para conferir os inscritos que já estavam guardados. Pode ser inscrição feita depois da preparação ou de outro evento. Confira pelo nome ou peça para mostrar o comprovante.'});
+    else mostrarResultado({tipo:'bad',titulo:'Erro na consulta',msg:esc(e.message)});
+  }
+}
+function dadosHTML(i){
+  const ev=eventos.find(e=>e.id===i.eventoId)||{};
+  const fi=filaDe(i,ev.id?ev:null);
+  return `<div class="big">${esc(i.nome)}</div>
+    ${fi?`<div style="margin:2px 0 6px"><span class="filaTag">Fila: ${esc(nomeFila(fi,ev))}</span></div>`:''}
+    ${i.cpf?`<div class="kv"><span>CPF:</span> ${esc(fmtCPF(i.cpf))}</div>`:''}
+    ${i.telefone?`<div class="kv"><span>Telefone:</span> ${esc(i.telefone)}</div>`:''}
+    ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
+    ${camposDoEvento(ev).map(f=>{const v=fmtResposta(respostaDe(i,f),f);return v?`<div class="kv"><span>${esc(f.label)}:</span> ${esc(v)}</div>`:'';}).join('')}
+    ${termoAtivo(ev)||i.termoAceito?`<div class="kv"><span>Termo:</span> ${i.termoAceito?'<b style="color:var(--ok)">aceito</b>'+(i.termoAceitoEm?' em '+esc(fmtTs(i.termoAceitoEm)):'')+(i.termoVersao?' · versão '+esc(i.termoVersao):'')+(i.termoAceitoPor&&i.termoAceitoPor!==i.nome?' · por '+esc(i.termoAceitoPor):''):'<b style="color:var(--warn)">não aceito</b> <span>(inscrição feita antes do termo)</span>'}</div>`:''}
+    ${i.meia?`<div class="kv" style="background:var(--warnbg);color:var(--warn);padding:6px 8px;border-radius:8px;margin:6px 0"><b>🎟 MEIA-ENTRADA</b> — conferir comprovante: ${esc(i.meiaMotivo||'—')}</div>`:''}
+    ${i.crianca?`<div class="kv"><span>Criança:</span> <b>${i.isento?'isenta':'sim'}</b>${i.nascimento?' · nasc. '+esc(idadeTxt(i)):''}</div>`:''}
+    ${cobra(ev)&&!i.isento?`<div class="kv"><span>Pagamento:</span> ${i.pago?'<b style="color:var(--ok)">Pago</b>'+(i.pagoEm?' em '+esc(fmtTs(i.pagoEm)):''):'<b style="color:var(--warn)">Pendente</b>'+(verValores()?' ('+esc(moeda(valorDe(i,ev)))+')':'')}</div>`:''}
+    ${i.grupo?(()=>{const m=membrosGrupo(i),r=responsavelGrupo(i);return `<div class="kv"><span>Grupo:</span> ${m.length||(i.grupoIds||[]).length} pessoas${r&&r.id!==i.id?' · inscrito por '+esc(r.nome):r?' · responsável':''}</div>`;})():''}
+    <div class="kv"><span>Código:</span> ${esc(i.codigo)} · <span>Inscrito em:</span> ${esc(fmtTs(i.criadoEm))}</div>`;
+}
+function mostrarResultado(o){
+  beep(o.tipo==='ok');
+  $('resultado').innerHTML=`<div class="result ${o.tipo}"><h2>${o.tipo==='ok'?'✅':o.tipo==='bad'?'⛔':'⚠️'} ${o.titulo}</h2>
+    ${o.msg?`<div>${o.msg}</div>`:''}${o.insc?dadosHTML(o.insc):''}
+    <div style="height:12px"></div>
+    ${o.botaoCheck?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}')">Confirmar entrada</button><div style="height:8px"></div>`:''}
+    ${o.botaoPagar?(podePagar()?(()=>{const g=o.insc.grupo?inscritos.filter(x=>x.grupo===o.insc.grupo&&devePagar(x)):[];return (g.length>1?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true,true)">👥 Recebi o Pix do grupo (${g.length}${verValores()?' · '+esc(moeda(somaValor(g,eventoSel()))):''}) — confirmar entrada</button><div style="height:8px"></div>`:'')+`<button class="btn ${g.length>1?'':'ok'} full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento ${g.length>1?'só desta pessoa':''} — confirmar entrada</button><div style="height:8px"></div>`;})():'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
+      <button class="btn full" onclick="fazerCheckin('${o.insc.id}')">Liberar entrada sem pagamento</button><div style="height:8px"></div>`:''}
+    <button class="btn full" onclick="retomar()">${escaneando?'Ler próximo':'Fechar'}</button></div>`;
+  $('resultado').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function fazerCheckin(id,auto,pagar,grupoTambem){
+  const ev=eventoSel(),loc=inscritos.find(x=>x.id===id);
+  const montar=d=>{const up={checkin:true,checkinEm:TS(),checkinLocal:new Date(),checkinPor:usuario(),checkinPorNome:meuNome()};
+    if(pagar&&!d.pago)Object.assign(up,{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(d,ev)});return up;};
+  let off=semRede(),base=null,up=null;
+  try{
+    if(!off){
+      try{
+        // Com internet: transação garante que duas pessoas não liberem o mesmo voucher
+        await comPrazo(db.runTransaction(async t=>{
+          const r=col('inscricoes').doc(id),s=await t.get(r);
+          if(!s.exists)throw new Error('NAOEXISTE');
+          if(s.data().checkin)throw new Error('JA');
+          base=s.data();up=montar(base);t.update(r,up);
+        }),8000);
+      }catch(e){
+        if(['JA','NAOEXISTE'].includes(e.message)||e.code==='permission-denied')throw e;
+        off=true;redeRuimAte=Date.now()+60000;   // internet fraca: segue offline por 1 minuto
+      }
+    }
+    if(off){
+      // Sem internet: confere pelos dados guardados e grava no celular (envia quando a internet voltar)
+      if(!loc)throw new Error('SEMDADOS');
+      if(loc.checkin)throw new Error('JA');
+      base=loc;up=montar(loc);gravar(col('inscricoes').doc(id).update(up));
+    }
+    const grupo=base.grupo||null;
+    if(pagar&&grupoTambem&&grupo){try{const n=await marcarPagoGrupo(grupo,id);if(n)toast(`Pagamento de mais ${n} pessoa(s) do grupo confirmado`);}catch(e){toast('Erro no pagamento do grupo: '+e.message);}}
+    const i={...base,...up,id,checkinEm:null};
+    const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    registrar('checkin',`Check-in de ${i.nome} (${i.codigo})${pagar?' com pagamento confirmado'+(grupoTambem&&grupo?' do grupo':''):''}${off?' — feito sem internet às '+hora:''}`,{eventoId:i.eventoId,inscricaoId:id});
+    mostrarResultado({tipo:'ok',titulo:off?'Entrada confirmada (sem internet)':'Entrada confirmada',msg:off?'<span class="pend">Guardada no celular. Será enviada sozinha quando a internet voltar.</span>':'',insc:i});
+    if(auto&&escaneando)setTimeout(()=>{if(ocupado)retomar();},2500);
+  }catch(e){
+    if(e.message==='JA')mostrarResultado({tipo:'bad',titulo:'Voucher JÁ UTILIZADO',msg:'Outra pessoa já registrou esta entrada.'});
+    else if(e.message==='SEMDADOS')mostrarResultado({tipo:'bad',titulo:'Sem internet',msg:'Esta inscrição não está guardada neste celular. Tente de novo quando a internet voltar.'});
+    else toast('Erro: '+e.message);
+  }
+}
+
+/* ================== Inscritos ================== */
+function renderInscritos(){
+  const ev=eventoSel(),px=cobra(ev);
+  document.querySelectorAll('.pixOnly').forEach(el=>el.classList.toggle('hidden',!px));
+  document.querySelectorAll('.valOnly').forEach(el=>el.classList.toggle('hidden',!px||!verValores()));
+  if(!px&&filtro==='pend'){filtro='todos';document.querySelectorAll('#filtro button').forEach(x=>x.classList.toggle('on',x.dataset.f==='todos'));}
+  const fl=minhaFila(),base=fl?inscritos.filter(i=>filaDe(i,ev)===fl):inscritos;
+  renderFilasCard(ev);
+  const tot=base.length,pres=base.filter(i=>i.checkin).length,pagos=base.filter(i=>i.pago);
+  $('stTotal').textContent=tot;$('stPres').textContent=pres;$('stAus').textContent=tot-pres;
+  $('stPagos').textContent=pagos.length;
+  $('stValor').textContent=moeda(pagos.reduce((s,i)=>s+Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)),0));
+  const q=$('busca').value.trim().toLowerCase(),qd=q.replace(/\D/g,'');
+  const quems=[...new Set(inscritos.filter(i=>i.checkin).map(quemCheckin).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  if(filtroQuem&&!quems.includes(filtroQuem))filtroQuem='';
+  $('filtroQuem').classList.toggle('hidden',!quems.length);
+  $('filtroQuem').innerHTML='<option value="">Check-in feito por: todos</option>'+quems.map(q=>`<option ${q===filtroQuem?'selected':''}>${esc(q)}</option>`).join('')
+    +(quems.length?`<option disabled>──────────</option>${quems.map(q=>`<option disabled>${esc(q)}: ${inscritos.filter(i=>quemCheckin(i)===q).length} entrada(s)</option>`).join('')}`:'');
+  let l=base.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:filtro==='pend'?devePagar(i):!i.checkin));
+  if(filtroQuem)l=l.filter(i=>quemCheckin(i)===filtroQuem);
+  if(ehDono()&&$('listaEquipe'))renderEquipe();
+  if(q)l=l.filter(i=>(i.nome||'').toLowerCase().includes(q)||(i.codigo||'').toLowerCase()===q||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
+  $('listaInscritos').innerHTML=!selId?'<div class="empty">Selecione um evento.</div>':!l.length?'<div class="empty">Nenhuma inscrição'+(q||filtro!=='todos'?' encontrada':' ainda')+'.</div>':
+    (()=>{let ult='';return l.map(i=>{const L=letraDe(i.nome),div=!q&&L!==ult?`<div class="letra">${L==='#'?'Outros':L}</div>`:'';ult=L;return div+`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}${i.grupo?' · 👥 grupo':''}${!fl&&filaDe(i,ev)?' · fila '+esc(nomeFila(filaDe(i,ev),ev)):''}${i.checkin&&quemCheckin(i)?' · ✓ '+esc(quemCheckin(i)):''}${i._pend?' · <span class="pend">⏳ aguardando envio</span>':''}</span></div>
+      <div class="tags">${i.meia?'<span class="tag warn">Meia</span>':''}${px?(i.isento?'<span class="tag neu">Criança · isenta</span>':`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`):(i.crianca?'<span class="tag neu">Criança</span>':'')}
+      <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div></div>`;}).join('');})();
+}
+function detalhe(id){
+  const i=inscritos.find(x=>x.id===id);if(!i)return;
+  const px=cobra(eventoSel());
+  abrirModal(`<h2>Inscrição</h2>${dadosHTML(i)}
+    <div class="kv" style="margin-top:6px"><span>Situação:</span> ${i.checkin?'<b style="color:var(--ok)">Presente</b> — '+esc(fmtTs(i.checkinLocal||i.checkinEm))+(quemCheckin(i)?' <span>por</span> <b>'+esc(quemCheckin(i))+'</b>':''):'Aguardando entrada'}</div>
+    ${i.pago&&i.pagoPor?`<div class="kv"><span>Pagamento confirmado por</span> <b>${esc(nomeDe(i.pagoPor,i.pagoPorNome))}</b></div>`:''}
+    <div style="height:14px"></div>
+    ${px&&!i.isento?(i.pago?`<button class="btn full donoOnly" onclick="marcarPago('${id}',false)">Desfazer pagamento</button><div class="donoOnly" style="height:8px"></div>`:(podePagar()?`<button class="btn ok full" onclick="marcarPago('${id}',true)">💲 Confirmar pagamento</button><div style="height:8px"></div>`:'')):''}
+    ${px&&podePagar()&&i.grupo&&membrosGrupo(i).filter(devePagar).length>1?(()=>{const n=membrosGrupo(i).filter(devePagar).length;return `<button class="btn ok full" onclick="pagarGrupo('${id}')">👥 Confirmar pagamento do grupo (${n}${verValores()?' · '+esc(moeda(somaValor(membrosGrupo(i).filter(devePagar),eventoSel()))):''})</button><div style="height:8px"></div>`;})():''}
+    ${i.checkin?`<button class="btn full" onclick="desfazerCheckin('${id}')">Desfazer entrada</button>`:`<button class="btn ${px?'':'ok'} full" onclick="fecharModal();fazerCheckinLista('${id}')">Confirmar entrada</button>`}
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn" onclick="window.open('${linkVoucher(id)}','_blank')">Ver voucher</button>
+    <button class="btn" onclick="copiar('${linkVoucher(id)}')">Copiar link do voucher</button></div>
+    ${i.telefone?`<div style="height:8px"></div><button class="btn full" onclick="whatsInscrito('${id}')">💬 Mandar mensagem no WhatsApp</button>`:''}
+    <div style="height:8px"></div>
+    <button class="btn bad full donoOnly" onclick="excluirInscricao('${id}')">Excluir inscrição</button>
+    <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+}
+async function marcarPago(id,sim){
+  if(!sim&&!confirm('Desfazer a confirmação de pagamento?'))return;
+  const ev=eventoSel();
+  try{
+    await gravar(col('inscricoes').doc(id).update(sim?{pago:true,pagoEm:TS(),pagoPor:usuario(),pagoPorNome:meuNome(),valorPago:valorDe(inscritos.find(x=>x.id===id)||{},ev)}:{pago:false,pagoEm:null,pagoPor:null,pagoPorNome:null,valorPago:null}));
+    registrar(sim?'pago':'pago_desfeito',`${sim?'Confirmou':'Desfez'} o pagamento de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});
+    if(sim)avisoPago([id]);else{fecharModal();toast('Pagamento desfeito');}
+  }catch(e){toast('Erro: '+e.message);}
+}
+// Depois de confirmar o Pix: oferece avisar o participante (o QR code dele é liberado na hora)
+function linkVouchers(ids){return ids.length>1?new URL('inscricao.html?o='+encodeURIComponent(ORG)+'&vs='+ids.join(','),location.href.split(/[?#]/)[0]).href:linkVoucher(ids[0]);}
+function avisoPago(ids){
+  const ev=eventoSel(),ls=ids.map(id=>inscritos.find(x=>x.id===id)).filter(Boolean);
+  const resp=ls.find(x=>x.telefone)||ls[0]||{};
+  const trava=cobra(ev)&&ev.pix.qrAposPagamento!==false;
+  abrirModal(`<div class="center"><div style="font-size:46px">✅</div><h2>Pagamento confirmado</h2>
+    <div class="muted">${ls.length>1?ls.length+' pessoas':esc(resp.nome||'')}${trava?' · o QR code já foi liberado no voucher':''}</div></div>
+    <div style="height:14px"></div>
+    ${resp.telefone?`<button class="btn ok full" onclick="avisarWhats(${esc(JSON.stringify(ids))})">💬 Avisar pelo WhatsApp</button><div style="height:8px"></div>`:'<div class="muted center" style="margin-bottom:8px">Sem telefone cadastrado para avisar.</div>'}
+    <button class="btn full" onclick="copiar('${linkVouchers(ids)}')">🔗 Copiar link do voucher</button><div style="height:8px"></div>
+    <button class="btn full" onclick="fecharModal()">Fechar</button>`);
+}
+function avisarWhats(ids){
+  const ev=eventoSel(),ls=ids.map(id=>inscritos.find(x=>x.id===id)).filter(Boolean),r=ls.find(x=>x.telefone)||ls[0];
+  let d=(r.telefone||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
+  const trava=cobra(ev)&&ev.pix.qrAposPagamento!==false;
+  const msg=`Olá, ${r.nome.split(' ')[0]}! ✅ Pagamento confirmado — ${ev.titulo}.\n`+(ls.length>1?ls.map(i=>`• ${i.nome} (código ${i.codigo})`).join('\n')+'\n':'')+
+    `${trava?(ls.length>1?'Os QR codes de entrada já estão liberados':'Seu QR code de entrada já está liberado'):(ls.length>1?'Seus vouchers':'Seu voucher')}:\n${linkVouchers(ids)}\n\nApresente o QR code na entrada. Até lá! 🎉`;
+  window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
+  registrar('pago_aviso',`Avisou ${r.nome} pelo WhatsApp sobre o pagamento confirmado`,{eventoId:selId,inscricaoId:ids[0]});
+}
+function whatsInscrito(id){
+  const i=inscritos.find(x=>x.id===id),ev=eventoSel();let d=(i.telefone||'').replace(/\D/g,'');if(!(d.length>=12&&d.startsWith('55')))d='55'+d;
+  const msg=`Olá, ${i.nome.split(' ')[0]}! Sobre sua inscrição em "${ev.titulo}" (código ${i.codigo}).\nSeu voucher: ${linkVoucher(id)}`;
+  window.open('https://wa.me/'+d+'?text='+encodeURIComponent(msg),'_blank');
+}
+async function fazerCheckinLista(id){try{const off=semRede();await gravar(col('inscricoes').doc(id).update({checkin:true,checkinEm:TS(),checkinLocal:new Date(),checkinPor:usuario(),checkinPorNome:meuNome()}));registrar('checkin',`Check-in (pela lista) de ${nomeIns(id)}${off?' — feito sem internet':''}`,{eventoId:selId,inscricaoId:id});toast(off?'Entrada guardada — envia quando a internet voltar':'Entrada confirmada');}catch(e){toast('Erro: '+e.message);}}
+async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await gravar(col('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinLocal:null,checkinPor:null,checkinPorNome:null}));registrar('checkin_desfeito',`Desfez o check-in de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
+async function excluirInscricao(id){
+  const i=inscritos.find(x=>x.id===id);if(!confirm(`Excluir a inscrição de ${i.nome}?`))return;
+  try{const b=db.batch();b.delete(col('inscricoes').doc(id));if(i.cpf)b.delete(col('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();registrar('inscricao_excluida',`Excluiu a inscrição de ${i.nome} (${i.codigo})`,{eventoId:i.eventoId,inscricaoId:id});fecharModal();toast('Inscrição excluída');}
+  catch(e){toast('Erro: '+e.message);}
+}
+function exportarCSV(){
+  const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
+  const c=ev.campos||{},px=cobra(ev),cx=camposDoEvento(ev);
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em','Check-in por');const fa=filasAtivas(ev);if(fa)cab.push('Fila');const tc=termoAtivo(ev)||inscritos.some(i=>i.termoAceito);if(tc)cab.push('Termo aceito','Termo aceito em','Versão do termo');
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(i.meia?'Sim — '+(i.meiaMotivo||''):'Não',i.crianca?(i.isento?'Sim (isenta)':'Sim'):'Não',idadeTxt(i),rg?rg.nome:'',fmtTs(i.criadoEm));
+    if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm));if(px&&verValores())r.push(i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
+    r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinLocal||i.checkinEm),quemCheckin(i));if(fa)r.push(nomeFila(filaDe(i,ev),ev));if(tc)r.push(i.termoAceito?'Sim':'Não',fmtTs(i.termoAceitoEm),i.termoVersao||'');return r.map(q).join(';');});
+  const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
+  registrar('exportou',`Exportou a planilha de inscritos de "${ev.titulo}" (${inscritos.length} linhas)`,{eventoId:ev.id});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inscritos-'+ev.titulo.replace(/[^\w]+/g,'-').toLowerCase()+'.csv';a.click();
+}
+function imprimirLista(){
+  const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para imprimir');
+  const fl=minhaFila(),fa=filasAtivas(ev),px=cobra(ev);
+  const l=inscritos.filter(i=>!fl||filaDe(i,ev)===fl);
+  const cpfM=c=>{c=String(c||'');return c.length===11?'•••.•••.'+c.slice(6,9)+'-'+c.slice(9):'';};
+  const sit=i=>i.isento?'Criança isenta':!px?'':i.pago?'Pago':'A PAGAR';
+  const col=4+(px?1:0)+(fa&&!fl?1:0);
+  let ult='',linhas='';
+  l.forEach(i=>{const L=letraDe(i.nome);if(L!==ult){linhas+=`<tr class="L"><td colspan="${col+1}">${L==='#'?'Outros':L}</td></tr>`;ult=L;}
+    linhas+=`<tr><td class="cx">${i.checkin?'✔':'☐'}</td><td><b>${esc(i.nome)}</b>${i.meia?' <i>(meia)</i>':''}${i.crianca?' 🎈':''}</td><td>${esc(i.codigo)}</td><td>${esc(cpfM(i.cpf))}</td>${px?`<td>${sit(i)}</td>`:''}${fa&&!fl?`<td>${esc(nomeFila(filaDe(i,ev),ev))}</td>`:''}<td style="width:22%"></td></tr>`;});
+  const w=window.open('','_blank');if(!w)return toast('Permita abrir janelas para imprimir');
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lista - ${esc(ev.titulo)}</title>
+<style>body{font-family:system-ui,sans-serif;margin:14px;font-size:12px;color:#000}h1{font-size:17px;margin:0 0 2px}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{border:1px solid #888;padding:5px 6px;text-align:left;vertical-align:top}th{background:#eee}.L td{background:#d9d9d9;font-weight:800;font-size:14px}.cx{width:18px;text-align:center;font-size:15px}button{font-size:16px;padding:10px 18px;margin:8px 0}@media print{button{display:none}tr{page-break-inside:avoid}}</style></head><body>
+<h1>${esc(ev.titulo)}${fl?' — '+esc(nomeFila(fl,ev)):''}</h1><div>${l.length} pessoa(s) · ${l.filter(i=>i.checkin).length} já presente(s) · gerada em ${new Date().toLocaleString('pt-BR')}</div>
+<button onclick="print()">🖨 Imprimir / salvar PDF</button>
+<table><tr><th class="cx">✓</th><th>Nome</th><th>Código</th><th>CPF</th>${px?'<th>Pagamento</th>':''}${fa&&!fl?'<th>Fila</th>':''}<th>Obs.</th></tr>${linhas}</table></body></html>`);
+  w.document.close();
+  registrar('exportou',`Gerou a lista em papel de "${ev.titulo}"${fl?' (fila '+nomeFila(fl,ev)+')':''} — ${l.length} pessoas`,{eventoId:ev.id});
+}
+function abrirLinkPublico(){if(!selId)return toast('Selecione um evento');window.open(linkInscricao(selId),'_blank');}
+
+/* ================== Equipe (usuários de check-in) ================== */
+function assinarEquipe(){
+  if(unsubQ)return;
+  unsubQ=col('equipe').onSnapshot(s=>{
+    equipe=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+    renderEquipe();renderFilasCard(eventoSel());
+  },err=>{
+    if(err.code==='permission-denied'){alert('Esta conta não tem permissão de administrador nem está cadastrada na Equipe.');auth.signOut();}
+    else toast('Erro ao carregar equipe: '+err.message);
+  });
+}
+function renderEquipe(){
+  $('listaEquipe').innerHTML=!equipe.length?'<div class="empty">Nenhum usuário cadastrado.<br>Toque em <b>+ Cadastrar usuário</b>.</div>':
+    equipe.map(m=>`<div class="item" onclick="detalheMembro('${esc(m.id)}')"><div class="nm"><b>${esc(m.nome||m.email)}</b><span class="muted">${esc(m.email)}</span></div>
+      <div class="tags"><span class="tag ${m.ativo?'ok':'bad'}">${m.ativo?'Ativo':'Desativado'}</span>${(()=>{const n=inscritos.filter(i=>i.checkin&&i.checkinPor===m.id).length;return n?`<span class="tag ok">${n} check-in${n>1?'s':''} neste evento</span>`:'';})()}${m.verValores!==false?'<span class="tag neu">Vê valores</span>':'<span class="tag neu">Só check-in</span>'}${m.podePagar?'<span class="tag neu">Confirma Pix</span>':''}${(m.filas||{})[selId]&&nomeFila(m.filas[selId])?`<span class="tag warn">Fila ${esc(nomeFila(m.filas[selId]))}</span>`:''}<span class="tag neu">${m.todosEventos===false?((m.eventos||[]).length+' evento'+((m.eventos||[]).length===1?'':'s')):'Todos os eventos'}</span></div></div>`).join('');
+}
+function formMembro(){
+  abrirModal(`<h2>Cadastrar usuário de check-in</h2>
+    <label>Nome *</label><input id="mbNome" maxlength="60">
+    <label>E-mail *</label><input id="mbEmail" type="email" autocomplete="off" maxlength="120">
+    <label>Senha inicial * <span class="muted">(mínimo 6 caracteres)</span></label><input id="mbSenha" type="text" autocomplete="off" maxlength="40">
+    <div class="secao" style="margin-top:14px">Permissões</div>
+    <div class="muted">Sempre pode: fazer check-in, ver a lista de inscritos e inscrever pessoas.</div>
+    <label class="chk" style="margin-top:4px"><input type="checkbox" id="mbValores"> Pode ver valores (preços e total arrecadado)</label>
+    <label class="chk"><input type="checkbox" id="mbPagar"> Pode confirmar pagamentos (Pix)</label>
+    ${seletorEventos('mb',{todosEventos:false,eventos:selId?[selId]:[]})}
+    <div class="muted" style="margin-top:6px">A pessoa entra neste mesmo app com esse e-mail e senha. Ela vê só as abas Eventos, Leitor e Inscritos, sem poder criar ou editar eventos nem excluir inscrições.</div>
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnMb" onclick="salvarMembro()">Cadastrar</button></div>`);
+}
+async function salvarMembro(){
+  const nome=$('mbNome').value.trim(),email=$('mbEmail').value.trim().toLowerCase(),senha=$('mbSenha').value,podePagar=$('mbPagar').checked,verValores=$('mbValores').checked,acesso=lerSeletor('mb');
+  if(!acesso.todosEventos&&!acesso.eventos.length)return toast('Escolha pelo menos um evento (ou marque Todos os eventos)');
+  if(!nome)return toast('Informe o nome');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return toast('E-mail inválido');
+  if(email===usuario()||email===orgInfo.donoEmail||email===SUPER)return toast('Esse e-mail é do responsável pelo organizador');
+  if(senha.length<6)return toast('A senha precisa ter pelo menos 6 caracteres');
+  $('btnMb').disabled=true;$('btnMb').textContent='Cadastrando…';
+  let jaExistia=false;
+  try{
+    // Usa uma segunda conexão para criar a conta sem desconectar você
+    const app2=firebase.apps.find(a=>a.name==='cadastro')||firebase.initializeApp(firebaseConfig,'cadastro');
+    const a2=app2.auth();
+    await a2.setPersistence(firebase.auth.Auth.Persistence.NONE);
+    try{await a2.createUserWithEmailAndPassword(email,senha);}
+    catch(e){if(e.code==='auth/email-already-in-use')jaExistia=true;else throw e;}
+    await a2.signOut().catch(()=>{});
+    // Cadastro na equipe + vínculo do login com este organizador
+    const b=db.batch();
+    b.set(col('equipe').doc(email),{nome,email,podePagar,verValores,...acesso,ativo:true,criadoEm:TS()});
+    b.set(db.collection('usuarios').doc(email),{orgId:ORG,papel:'equipe'});
+    try{await b.commit();}
+    catch(e){if(e.code==='permission-denied')throw new Error('Este e-mail já está ligado a outro organizador ou é de um responsável. Use outro e-mail.');throw e;}
+    registrar('equipe_add',`Cadastrou ${nome} (${email}) na equipe`);
+    fecharModal();
+    if(jaExistia)alert('Usuário adicionado à equipe.\n\nEste e-mail já tinha uma conta, então a senha informada NÃO foi aplicada. A pessoa entra com a senha que já usa, ou toca em "Esqueci a senha" na tela de login.');
+    else alert(`Usuário cadastrado!\n\nEnvie para ${nome}:\n• Link: ${location.href.split(/[?#]/)[0]}\n• E-mail: ${email}\n• Senha: ${senha}`);
+  }catch(e){
+    toast('Erro: '+({'auth/weak-password':'senha fraca','auth/invalid-email':'e-mail inválido','auth/operation-not-allowed':'ative o login por E-mail/senha no Firebase'}[e.code]||e.message));
+    $('btnMb').disabled=false;$('btnMb').textContent='Cadastrar';
+  }
+}
+function detalheMembro(id){
+  const m=equipe.find(x=>x.id===id);if(!m)return;
+  abrirModal(`<h2>${esc(m.nome||m.email)}</h2>
+    <div class="kv"><span>E-mail:</span> ${esc(m.email)}</div>
+    <div class="kv"><span>Cadastrado em:</span> ${esc(fmtTs(m.criadoEm))}</div>
+    <label class="chk" style="margin-top:10px"><input type="checkbox" ${m.ativo?'checked':''} onchange="atualizarMembro('${esc(id)}',{ativo:this.checked})"> Acesso ativo</label>
+    <div class="secao" style="margin-top:14px">Permissões</div>
+    <div class="muted">Sempre pode: fazer check-in, ver a lista de inscritos e inscrever pessoas.</div>
+    <label class="chk" style="margin-top:4px"><input type="checkbox" ${m.verValores!==false?'checked':''} onchange="atualizarMembro('${esc(id)}',{verValores:this.checked})"> Pode ver valores (preços e total arrecadado)</label>
+    <label class="chk"><input type="checkbox" ${m.podePagar?'checked':''} onchange="atualizarMembro('${esc(id)}',{podePagar:this.checked})"> Pode confirmar pagamentos (Pix)</label>
+    ${seletorEventos('dm',m)}
+    <button class="btn full" style="margin-top:6px" onclick="salvarAcesso('${esc(id)}')">Salvar eventos liberados</button>
+    ${seletorFilas(m)}
+    <div style="height:12px"></div>
+    <button class="btn full" onclick="resetSenha('${esc(m.email)}')">📧 Enviar e-mail para redefinir a senha</button>
+    <div style="height:8px"></div>
+    <button class="btn full" onclick="enviarAcesso('${esc(id)}')">💬 Enviar link do app pelo WhatsApp</button>
+    <div style="height:8px"></div>
+    <button class="btn bad full" onclick="removerMembro('${esc(id)}')">Remover da equipe</button>
+    <div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+}
+function seletorFilas(m){
+  const evs=eventos.filter(e=>filasAtivas(e)&&(m.todosEventos!==false||(m.eventos||[]).includes(e.id)));
+  if(!evs.length)return '';
+  return `<div class="secao" style="margin-top:14px">Fila no check-in</div>
+    <div class="muted">A pessoa lê os vouchers da fila escolhida. Se alguém de outra fila aparecer, o leitor avisa.</div>
+    ${evs.map(e=>{const v=(m.filas||{})[e.id]||'';return `<label>${esc(e.titulo)}</label><select class="f" onchange="definirFila('${esc(m.id)}','${e.id}',this.value)">
+      <option value="">Livre (a pessoa escolhe no celular)</option>${listaFilas(e).map(q=>`<option value="${q.id}" ${q.id===v?'selected':''}>${q.cri?'🎈':'🔤'} ${esc(q.nome)}</option>`).join('')}</select>`;}).join('')}`;
+}
+async function definirFila(id,eid,v){
+  const m=equipe.find(x=>x.id===id)||{},e=eventos.find(x=>x.id===eid);
+  try{
+    await gravar(col('equipe').doc(id).update({['filas.'+eid]:v||firebase.firestore.FieldValue.delete()}));
+    registrar('equipe_alterada',`Definiu a fila de ${m.nome||id} em "${e?e.titulo:eid}": ${v?nomeFila(v,e):'livre'}`,{eventoId:eid});
+    toast('Fila salva');
+  }catch(err){toast('Erro: '+err.message);}
+}
+function seletorEventos(px,m){
+  const todos=m.todosEventos!==false,sel=m.eventos||[];
+  return `<div class="secao" style="margin-top:14px">Eventos que pode controlar</div>
+    <label class="chk"><input type="checkbox" id="${px}Todos" ${todos?'checked':''} onchange="$('${px}Lista').classList.toggle('hidden',this.checked)"> <b>Todos os eventos</b> <span class="muted">(inclusive os que forem criados depois)</span></label>
+    <div id="${px}Lista" class="${todos?'hidden':''}">
+      ${eventos.length?eventos.map(e=>`<label class="chk"><input type="checkbox" class="${px}Ev" value="${e.id}" ${sel.includes(e.id)?'checked':''}> ${esc(e.titulo)}${e.data?' <span class="muted">'+esc(fmtData({data:e.data}))+'</span>':''}</label>`).join(''):'<div class="muted">Nenhum evento cadastrado ainda.</div>'}
     </div>`;
 }
-function lerMP(){const pct=Math.max(0,Math.min(50,parseFloat(String($('fMpPct').value).replace(',','.'))||0));return{mpLiberado:$('fMp').checked,comissaoMP:Math.round(pct*100)/100};}
-function estimar(){
-  const el=$('fEst');if(!el)return;
-  const o=lerCobranca();
-  if(o.plano==='mensal'||o.plano==='proprio'){el.innerHTML='';return;}
-  const prev=o.previstos||0,base=baseEvento(o,prev),ad=listaAdicionais(o),tot=base+ad.reduce((s,x)=>s+x.valor,0);
-  el.innerHTML=`<b>Estimativa${porInscrito(o)?` para ${prev} inscrito(s) pago(s)`:''}</b>
-    <div class="small" style="margin-top:6px">${esc(PLANOS[o.plano])}: ${brl(base)}${o.plano==='inscrito'&&o.minimo&&prev*o.valor<o.minimo?' (valor mínimo)':''}</div>
-    ${ad.map(x=>`<div class="small">${esc(x.nome)}: ${brl(x.valor)}</div>`).join('')}
-    <div style="margin-top:6px;font-size:18px"><b>Total: ${brl(tot)}</b></div>
-    ${o.condicao==='50-50'?`<div class="small">Entrada (50%): ${brl(Math.round(tot/2))}</div>`:''}`;
+function lerSeletor(px){
+  const todosEventos=$(px+'Todos').checked;
+  return{todosEventos,eventos:todosEventos?[]:[...document.querySelectorAll('.'+px+'Ev:checked')].map(c=>c.value)};
 }
-function novoOrg(){
-  abrir(`<h2>Novo organizador</h2>
-    <label>Nome do organizador *</label><input id="fNome" placeholder="Ex.: Paróquia São José, Clube MTB">
-    <label>Identificador * <span class="muted">(vai nos links)</span></label><input id="fId" autocapitalize="off" placeholder="ex.: paroquia-sao-jose">
-    <h3>Responsável</h3>
-    <label>Nome *</label><input id="fDono">
-    <label>E-mail (será o login) *</label><input id="fEmail" type="email" inputmode="email" autocapitalize="off">
-    <label>Senha inicial * (mín. 6)</label><input id="fSenha" autocomplete="off" value="${Math.random().toString(36).slice(2,8)}">
-    <h3>Permissões</h3>
-    <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fPodeCriar" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px"> <span>O organizador pode <b>criar e excluir</b> eventos<br><span class="muted small">Desmarcado: você cria o evento (em "Entrar como suporte") e ele só edita e configura. Bom para cobrança por evento ou por inscrito.</span></span></label>
-    ${camposMP()}
-    ${camposCobranca()}
-    <div style="height:14px"></div>
-    <div class="row"><button class="btn" onclick="fechar()">Cancelar</button><button class="btn pri" id="fOk" onclick="criarOrg()">Criar organizador e login</button></div>`);
-  planoUI();
-  let mexeu=false;$('fId').oninput=()=>mexeu=true;$('fNome').oninput=()=>{if(!mexeu)$('fId').value=slug($('fNome').value);};
+async function salvarAcesso(id){
+  const a=lerSeletor('dm');
+  if(!a.todosEventos&&!a.eventos.length)return toast('Escolha pelo menos um evento (ou marque Todos os eventos)');
+  await atualizarMembro(id,a);
 }
-async function criarOrg(){
-  const nome=$('fNome').value.trim(),id=$('fId').value.trim(),donoNome=$('fDono').value.trim(),email=$('fEmail').value.trim().toLowerCase(),senha=$('fSenha').value.trim();
-  if(!nome||!donoNome)return toast('Preencha o nome do organizador e do responsável');
-  if(!/^[a-z0-9][a-z0-9-]{2,29}$/.test(id))return toast('Identificador: 3 a 30 caracteres, só a-z, 0-9 e hífen');
-  if(!emailOk(email))return toast('E-mail inválido');
-  if(email===SUPER)return toast('Use o e-mail do responsável, não o seu (para você, use "Meu organizador")');
-  if(senha.length<6)return toast('Senha com pelo menos 6 caracteres');
-  const bt=$('fOk');bt.disabled=true;bt.textContent='Criando…';
-  const volta=m=>{bt.disabled=false;bt.textContent='Criar organizador e login';toast(m);};
-  try{
-    if((await db.collection('organizadores').doc(id).get()).exists)return volta('Já existe um organizador com esse identificador');
-    const u=await db.collection('usuarios').doc(email).get();
-    if(u.exists)return volta(`Este e-mail já está no organizador “${u.data().orgId}”`);
-    const nova=await criarLogin(email,senha);
-    const b=db.batch();
-    b.set(db.collection('organizadores').doc(id),{nome,donoNome,donoEmail:email,status:'ativo',podeCriarEventos:$('fPodeCriar').checked,...lerCobranca(),...lerMP(),criadoEm:TS()});
-    b.set(db.collection('usuarios').doc(email),{orgId:id,papel:'dono'});
-    await b.commit();
-    fechar();toast('Organizador criado!');
-    boasVindas({id,nome,donoNome,donoEmail:email},nova?senha:null);
-  }catch(e){console.error(e);volta(erroMsg(e));}
-}
-function textoAcesso(o,senha){
-  return `Olá, ${o.donoNome}! Seu acesso ao sistema de inscrições de eventos (${o.nome}) está pronto.\n\n`+
-    `📲 Área do organizador: ${links(o.id).controle}\n👤 Login: ${o.donoEmail}\n`+(senha?`🔑 Senha: ${senha}\n`:`🔑 Senha: a mesma que você já usa (ou toque em "Esqueci a senha")\n`)+
-    `\nAbra o link no Chrome do celular e use "Adicionar à tela inicial". Lá você cria os eventos, envia o link de inscrição e faz o check-in pelo QR code.`;
-}
-function boasVindas(o,senha){
-  const t=textoAcesso(o,senha);
-  abrir(`<h2>✅ ${esc(o.nome)}</h2>
-    ${senha?'':'<div class="card" style="background:var(--warnbg);color:var(--warn)">Este e-mail já tinha uma conta: a senha digitada não foi aplicada.</div>'}
-    <div class="muted">Mensagem de boas-vindas para o responsável:</div>
-    <div class="log" style="margin-top:6px">${esc(t)}</div>
-    <div style="height:10px"></div>
-    <div class="row"><button class="btn" onclick="copiar(${esc(JSON.stringify(t))})">Copiar</button>
-      <button class="btn pri" onclick="window.open('https://wa.me/?text='+encodeURIComponent(${esc(JSON.stringify(t))}),'_blank')">WhatsApp</button></div>
-    <div style="height:8px"></div><button class="btn full" onclick="fechar()">Fechar</button>`);
+const DESC_PERM={ativo:v=>v?'reativou o acesso':'desativou o acesso',podePagar:v=>v?'permitiu confirmar pagamentos':'tirou a permissão de confirmar pagamentos',verValores:v=>v?'permitiu ver valores':'escondeu os valores',todosEventos:v=>v?'liberou todos os eventos':'restringiu os eventos'};
+async function atualizarMembro(id,dados){try{await col('equipe').doc(id).update(dados);const m=equipe.find(x=>x.id===id)||{};
+  const o=Object.entries(dados).filter(([k])=>DESC_PERM[k]).map(([k,v])=>DESC_PERM[k](v));
+  if(dados.eventos&&dados.todosEventos===false){o.pop();o.push('liberou '+dados.eventos.length+' evento(s): '+dados.eventos.map(e=>(eventosTodos.find(x=>x.id===e)||{}).titulo||e).join(', '));}
+  registrar('equipe_alterada',`Alterou ${m.nome||id}: ${o.join('; ')||'dados atualizados'}`);toast('Atualizado');}catch(e){toast('Erro: '+e.message);}}
+async function resetSenha(email){try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado');}catch(e){toast('Erro: '+e.message);}}
+function enviarAcesso(id){const m=equipe.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(`Olá, ${m.nome}! Acesse o controle de check-in:\n${location.href.split(/[?#]/)[0]}\nEntre com o e-mail ${m.email}.`),'_blank');}
+async function removerMembro(id){
+  const m=equipe.find(x=>x.id===id);
+  if(!confirm(`Remover ${m.nome||m.email} da equipe? A pessoa perde o acesso na hora.`))return;
+  try{const b=db.batch();b.delete(col('equipe').doc(id));b.delete(db.collection('usuarios').doc(id));await b.commit();registrar('equipe_removida',`Removeu ${m.nome||m.email} da equipe`);fecharModal();toast('Removido da equipe');}catch(e){toast('Erro: '+e.message);}
 }
 
-/* ================== Meu organizador (sem cobrança) ================== */
-function meuOrg(){
-  abrir(`<h2>Meu organizador</h2>
-    <p class="muted">Fica no plano Próprio (sem cobrança). Você entra no app de controle com o seu login (${esc(SUPER)}).</p>
-    <label>Nome</label><input id="mNome" value="Meus eventos">
-    <label>Identificador (vai nos links)</label><input id="mId" autocapitalize="off" value="gpx">
-    <div style="height:14px"></div>
-    <div class="row"><button class="btn" onclick="fechar()">Cancelar</button><button class="btn pri" id="mOk" onclick="criarMeu()">Criar</button></div>`);
+/* ================== Editor de cores e estilo ================== */
+const TOPOS_SUGERIDOS=['#111827','#1e1b4b','#0f172a','#1f2937','#14532d','#7f1d1d','#3f2d1f','#ffffff'];
+function abrirTema(){
+  temaAntes={...TEMA};
+  const t=temaAtual();
+  abrirModal(`<h2>🎨 Cores e estilo</h2>
+    <div class="muted">Vale para este app, a página de inscrição e os vouchers de todos os seus eventos. A mudança aparece na hora; toque em <b>Salvar</b> para manter.</div>
+    <label>Cor principal</label>
+    <div class="cores" id="tmCores">${CORES_SUGERIDAS.map(c=>`<button class="cor ${c===t.cor?'on':''}" style="background:${c}" data-c="${c}" onclick="temaSet('cor','${c}')"></button>`).join('')}
+      <input type="color" id="tmCor" value="${t.cor}" oninput="temaSet('cor',this.value)"></div>
+    <label>Cor do topo</label>
+    <label class="chk"><input type="checkbox" id="tmTopoIgual" ${t.topo?'':'checked'} onchange="$('tmTopoBox').classList.toggle('hidden',this.checked);temaSet('topo',this.checked?'':$('tmTopo').value)"> Igual à cor principal</label>
+    <div id="tmTopoBox" class="cores ${t.topo?'':'hidden'}">${TOPOS_SUGERIDOS.map(c=>`<button class="cor ${c===t.topo?'on':''}" style="background:${c}" data-c="${c}" onclick="temaSet('topo','${c}')"></button>`).join('')}
+      <input type="color" id="tmTopo" value="${t.topo||t.cor}" oninput="temaSet('topo',this.value)"></div>
+    <label>Fonte</label>
+    <select class="f" id="tmFonte" onchange="temaSet('fonte',this.value)">${Object.entries(FONTES).map(([k,f])=>`<option value="${k}" ${t.fonte===k?'selected':''}>${f.nome}</option>`).join('')}</select>
+    <label>Cantos</label>
+    <div class="seg" id="tmCantos">${Object.entries(CANTOS).map(([k,c])=>`<button data-k="${k}" class="${t.cantos===k?'on':''}" onclick="temaSet('cantos','${k}')">${c.nome}</button>`).join('')}</div>
+    <label>Modo claro / escuro</label>
+    <select class="f" id="tmModo" onchange="temaSet('modo',this.value)">${Object.entries(MODOS).map(([k,n])=>`<option value="${k}" ${t.modo===k?'selected':''}>${n}</option>`).join('')}</select>
+    <div class="prev"><div class="muted" style="margin-bottom:8px">Prévia</div>
+      <button class="btn pri full">Botão principal</button>
+      <div style="margin-top:8px"><span class="tag neu">Etiqueta</span> <span class="tag ok">Pago</span> <b style="color:var(--pri)">Texto em destaque</b></div></div>
+    <div style="height:12px"></div>
+    <button class="btn full" onclick="temaPadrao()">Restaurar padrão</button>
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="tmSalvar" onclick="salvarTema()">Salvar</button></div>`);
+  editandoTema=true;
 }
-async function criarMeu(){
-  const nome=$('mNome').value.trim()||'Meus eventos',id=$('mId').value.trim();
-  if(!/^[a-z0-9][a-z0-9-]{2,29}$/.test(id))return toast('Identificador: 3 a 30 caracteres, só a-z, 0-9 e hífen');
-  const bt=$('mOk');bt.disabled=true;
-  try{
-    if((await db.collection('organizadores').doc(id).get()).exists){bt.disabled=false;return toast('Já existe um organizador com esse identificador');}
-    const u=await db.collection('usuarios').doc(SUPER).get();
-    if(u.exists){bt.disabled=false;return toast(`Seu login já está no organizador “${u.data().orgId}”`);}
-    const b=db.batch();
-    b.set(db.collection('organizadores').doc(id),{nome,donoNome:'Administrador',donoEmail:SUPER,status:'ativo',plano:'proprio',valor:0,vencimento:null,obs:'Organizador do administrador',criadoEm:TS()});
-    b.set(db.collection('usuarios').doc(SUPER),{orgId:id,papel:'dono'});
-    await b.commit();fechar();toast('Organizador criado!');
-  }catch(e){bt.disabled=false;toast(erroMsg(e));}
+function temaSet(k,v){
+  TEMA={...TEMA,[k]:v};aplicarTema();
+  if(k==='cor'){$('tmCor').value=v;document.querySelectorAll('#tmCores .cor').forEach(b=>b.classList.toggle('on',b.dataset.c===v));}
+  if(k==='topo'&&v){$('tmTopo').value=v;document.querySelectorAll('#tmTopoBox .cor').forEach(b=>b.classList.toggle('on',b.dataset.c===v));}
+  if(k==='cantos')document.querySelectorAll('#tmCantos button').forEach(b=>b.classList.toggle('on',b.dataset.k===v));
+}
+function temaPadrao(){
+  TEMA={...TEMA_PADRAO};aplicarTema();
+  const t=temaAtual();$('tmCor').value=t.cor;$('tmTopoIgual').checked=true;$('tmTopoBox').classList.add('hidden');
+  $('tmFonte').value=t.fonte;$('tmModo').value=t.modo;
+  document.querySelectorAll('#tmCores .cor').forEach(b=>b.classList.toggle('on',b.dataset.c===t.cor));
+  document.querySelectorAll('#tmCantos button').forEach(b=>b.classList.toggle('on',b.dataset.k===t.cantos));
+}
+async function salvarTema(){
+  const t=temaAtual(),dados={cor:t.cor,topo:t.topo||'',fonte:t.fonte,cantos:t.cantos,modo:t.modo,atualizadoEm:TS()};
+  $('tmSalvar').disabled=true;
+  try{await col('publico').doc('tema').set(dados);registrar('config','Alterou as cores e o estilo');editandoTema=false;fecharModal();toast('Cores e estilo salvos');}
+  catch(e){$('tmSalvar').disabled=false;toast('Erro: '+(e.code==='permission-denied'?'publique as regras novas do Firestore':e.message));}
 }
 
-/* ================== Detalhes ================== */
-async function detalhe(id){
-  const o=S.orgs.find(x=>x.id===id);if(!o)return;
-  const L=links(id),proprio=o.plano==='proprio';
-  abrir(`<h2>${esc(o.nome)}</h2>
-    <div>${situacao(o)} <span class="tag neu">${esc(PLANOS[o.plano]||o.plano||'')}</span></div>
-    <div class="kv" style="margin-top:10px"><span>Identificador:</span> ${esc(o.id)}</div>
-    <div class="kv"><span>Responsável:</span> ${esc(o.donoNome||'')} · ${esc(o.donoEmail||'')}</div>
-    <div class="kv"><span>Eventos:</span> ${o.podeCriarEventos===false?'<b>criados só por você</b> (o organizador edita e configura)':'o organizador cria os próprios eventos'}</div>
-    ${o.obs?`<div class="kv"><span>Obs.:</span> ${esc(o.obs)}</div>`:''}
-    <div class="kv"><span>Pix automático:</span> ${o.mpLiberado?(o.mp&&o.mp.conectado?`<b style="color:var(--ok)">Mercado Pago conectado</b>${o.mp.teste?' (teste)':''} · comissão ${String(o.comissaoMP||0).replace('.',',')}%`:`liberado (${String(o.comissaoMP||0).replace('.',',')}%) · <b>aguardando o organizador conectar a conta</b>`):'não liberado'}</div>
-    ${o.mpLiberado&&!(o.mp&&o.mp.conectado)?`<button class="btn full" style="margin-top:6px" id="btnLinkMP" onclick="linkConexaoMP('${esc(id)}')">📲 Enviar link para o organizador conectar o Mercado Pago</button>`:''}
-    <div class="kv" id="dUso"><span>Uso:</span> carregando…</div>
-    ${proprio?'':secaoCobranca(o)}
-    <h3>Links</h3>
-    <div class="muted small" style="margin-top:6px">Área do organizador (o responsável entra com o login dele)</div><div class="linkbox">${esc(L.controle)}</div>
-    <div class="row" style="margin-top:8px"><button class="btn" onclick="window.open('${L.suporte}','_blank')">${o.podeCriarEventos===false?'📅 Criar/gerenciar eventos (suporte)':'🛠 Entrar como suporte'}</button>
-      <button class="btn" onclick="enviarAcesso('${esc(id)}')">💬 Enviar acesso</button></div>
-    <button class="btn full" style="margin-top:8px" onclick="window.open('${L.suporte}&aba=historico','_blank')">📜 Ver histórico de acessos e ações</button>
-    <h3>Ações</h3>
-    <div style="height:8px"></div>
-    <div class="row"><button class="btn" onclick="editar('${esc(id)}')">Editar${proprio?'':' / cobrança'}</button>
-      <button class="btn" onclick="resetSenha('${esc(o.donoEmail||'')}')">📧 Redefinir senha</button></div>
-    <div style="height:8px"></div>
-    <button class="btn full ${o.status==='ativo'?'bad':''}" onclick="alternar('${esc(id)}')">${o.status==='ativo'?'⏸ Suspender acesso':'▶ Reativar acesso'}</button>
-    <div style="height:8px"></div>
-    <button class="btn bad full" onclick="excluir('${esc(id)}')">Excluir organizador e todos os dados</button>
-    <div style="height:8px"></div><button class="btn full" onclick="fechar()">Fechar</button>`);
-  try{
-    const r=db.collection('organizadores').doc(id);
-    // (as inscrições só são lidas no botão "Calcular", para economizar leituras)
-    const [ev,eq]=await Promise.all([r.collection('eventos').get(),r.collection('equipe').get()]);
-    if($('dUso'))$('dUso').innerHTML=`<span>Uso:</span> ${ev.size} evento(s) · ${eq.size} na equipe`;
-  }catch(e){if($('dUso'))$('dUso').innerHTML='<span>Uso:</span> não foi possível contar';}
+/* ================== Histórico ================== */
+let hist=[],unsubH=null,histLimite=150;
+const GRUPO_HIST=a=>(a==='acesso'||a==='offline')?'acesso':a.startsWith('checkin')?'checkin':a.startsWith('pago')?'pago':a.startsWith('evento')?'evento':(a==='inscricao_excluida'||a==='exportou')?'inscricao':a.startsWith('equipe')?'equipe':'config';
+const ICONE_HIST={acesso:'🔑',checkin:'✅',pago:'💲',evento:'📅',inscricao:'🗂',equipe:'🛡',config:'⚙'};
+function assinarHist(){
+  if(unsubH)return;
+  unsubH=col('historico').orderBy('em','desc').limit(histLimite).onSnapshot(s=>{
+    hist=s.docs.map(d=>({id:d.id,...d.data()}));
+    $('hMais').classList.toggle('hidden',s.size<histLimite);renderHist();
+  },e=>{$('listaHist').innerHTML=`<div class="empty">${e.code==='permission-denied'?'Publique as regras novas do Firestore para ver o histórico.':esc(e.message)}</div>`;});
 }
-// Link de autorização do Mercado Pago para o organizador abrir no celular dele (vale 7 dias)
-async function linkConexaoMP(id){
-  const o=S.orgs.find(x=>x.id===id),b=$('btnLinkMP');
-  if(!fns)return toast('Módulo de pagamentos indisponível');
-  if(b){b.disabled=true;b.textContent='Gerando link…';}
-  try{
-    const r=await fns.httpsCallable('mpIniciarConexao')({org:id,longo:true});
-    const txt=`Olá, ${o.donoNome||''}! Para receber as inscrições por Pix automático (direto na sua conta Mercado Pago), toque no link abaixo, entre na sua conta Mercado Pago e toque em *Permitir*:\n\n${r.data.url}\n\nO link vale por 7 dias. Depois disso, as inscrições pagas por Pix são confirmadas sozinhas.`;
-    registrarAdm(id,'config','Gerou link de conexão do Mercado Pago para o organizador');
-    window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
-  }catch(e){toast('Erro: '+(e.message||e));}
-  if(b){b.disabled=false;b.textContent='📲 Enviar link para o organizador conectar o Mercado Pago';}
+function pararHist(){if(unsubH){unsubH();unsubH=null;}}
+function maisHist(){histLimite+=150;pararHist();assinarHist();}
+function filtrarHist(){
+  const t=$('hTipo').value,p=$('hPessoa').value,so=$('hSoEvento').checked;
+  return hist.filter(h=>(!t||GRUPO_HIST(h.acao)===t)&&(!p||h.email===p)&&(!so||h.eventoId===selId));
 }
-function enviarAcesso(id){const o=S.orgs.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(textoAcesso(o,null)),'_blank');}
-async function resetSenha(email){if(!email)return;try{await auth.sendPasswordResetEmail(email);toast('E-mail de redefinição enviado para '+email);}catch(e){toast(erroMsg(e));}}
-function secaoCobranca(o){
-  const id=esc(o.id),ad=listaAdicionais(o),rec=recebido(o),c=o.calculo;
-  const pags=(o.pagamentos||[]).slice().reverse();
-  return `<h3>Cobrança combinada</h3>
-    <div class="kv" style="margin-top:8px"><span>Modelo:</span> <b>${esc(PLANOS[o.plano]||o.plano)}</b> — ${esc(resumoPlano(o))}</div>
-    ${o.referente?`<div class="kv"><span>Referente a:</span> ${esc(o.referente)}</div>`:''}
-    ${ad.length?`<div class="kv"><span>Adicionais:</span></div>${ad.map(x=>`<div class="small" style="margin-left:10px">• ${esc(x.nome)}: <b>${brl(x.valor)}</b></div>`).join('')}`:''}
-    ${o.condicao?`<div class="kv"><span>Pagamento:</span> ${esc(CONDICOES[o.condicao]||'')}</div>`:''}
-    ${o.plano!=='mensal'&&o.previstos?`<div class="kv"><span>Estimativa (${o.previstos} previstos):</span> ${brl(baseEvento(o,o.previstos)+totalAdicionais(o))}</div>`:''}
-    ${c?`<div class="card" style="margin:10px 0 0;background:var(--pri2);border-color:transparent">
-      <div class="small muted">Último cálculo em ${fmtDia(c.data)}</div>
-      ${(c.eventos||[]).map(e=>`<div class="small">• ${esc(e.titulo)}: ${porInscrito(o)?e.pagos+' pago(s) → ':''}<b>${brl(e.valor)}</b></div>`).join('')}
-      ${c.adicionais?`<div class="small">• Adicionais: <b>${brl(c.adicionais)}</b></div>`:''}
-      ${c.mp&&c.mp.pagamentos?`<div class="small" style="margin-top:4px">💳 Mercado Pago: ${c.mp.pagamentos} Pix automático(s) · ${brl(c.mp.total)} pagos · <b>sua comissão já recebida: ${brl(c.mp.comissao)}</b></div>`:''}
-      <div style="font-size:18px;margin-top:6px"><b>Total: ${brl(c.total)}</b></div></div>`:''}
-    <div class="kv" style="margin-top:8px"><span>Recebido:</span> <b style="color:var(--ok)">${brl(rec)}</b>${c&&o.plano!=='mensal'?` · <span>Saldo:</span> <b style="color:${c.total-rec>0?'var(--bad)':'var(--ok)'}">${brl(Math.max(0,c.total-rec))}</b>`:''}</div>
-    ${o.plano==='mensal'&&o.vencimento?`<div class="kv"><span>Vencimento:</span> ${fmtDia(o.vencimento)}</div>`:''}
-    ${pags.length?`<div class="small muted" style="margin-top:4px">${pags.slice(0,5).map(p=>`${fmtDia(p.data)}: ${brl(p.valor)}${p.obs?' — '+esc(p.obs):''}`).join('<br>')}</div>`:''}
-    <div style="height:8px"></div>
-    ${o.plano!=='mensal'?`<button class="btn full" onclick="calcular('${id}')">🧮 Calcular pelos inscritos pagos</button><div style="height:8px"></div>`:''}
-    <div class="row"><button class="btn ok" onclick="pagar('${id}')">✓ Registrar ${o.plano==='mensal'?'pagamento (+1 mês)':'recebimento'}</button>
-      <button class="btn" onclick="enviarResumo('${id}')">💬 Enviar resumo</button></div>`;
+function renderHist(){
+  if(!$('listaHist'))return;
+  const pessoas={};hist.forEach(h=>pessoas[h.email]=h.nome||h.email);
+  const sel=$('hPessoa').value;
+  $('hPessoa').innerHTML='<option value="">Todas as pessoas</option>'+Object.entries(pessoas).sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([e,n])=>`<option value="${esc(e)}" ${e===sel?'selected':''}>${esc(n)}</option>`).join('');
+  const l=filtrarHist();let dia='';
+  $('listaHist').innerHTML=!l.length?'<div class="empty">Nenhum registro'+(hist.length?' neste filtro':' ainda')+'.</div>':l.map(h=>{
+    const d=h.em&&h.em.toDate?h.em.toDate():new Date(),dd=d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
+    const cab=dd!==dia?`<div class="muted" style="padding:10px 0 2px;font-weight:700">${esc(dd)}</div>`:'';dia=dd;
+    const g=GRUPO_HIST(h.acao);
+    return cab+`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+      <div style="font-size:18px;line-height:1.2">${ICONE_HIST[g]||'•'}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:15px">${esc(h.texto)}</div>
+      <div class="muted" style="font-size:12.5px">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · <b>${esc(h.nome||h.email)}</b>${h.papel==='equipe'?' (equipe)':h.papel==='suporte'?' (suporte)':h.papel==='admin'?' (administrador)':''} · ${esc(h.disp||'')}</div></div></div>`;
+  }).join('');
 }
-async function calcular(id){
-  const o=S.orgs.find(x=>x.id===id);
-  toast('Calculando…');
-  try{
-    const r=db.collection('organizadores').doc(id);
-    const [evs,pg,cb]=await Promise.all([r.collection('eventos').get(),r.collection('inscricoes').where('pago','==',true).get(),r.collection('cobrancas').where('status','==','approved').get().catch(()=>({docs:[]}))]);
-    const mp={pagamentos:cb.docs.length,total:Math.round(cb.docs.reduce((s,d)=>s+Number(d.data().total||0),0)*100),comissao:Math.round(cb.docs.reduce((s,d)=>s+Number(d.data().taxaRecebida||d.data().taxa||0),0)*100)};
-    const cont={};pg.docs.forEach(d=>{const x=d.data();if(x.isento)return;cont[x.eventoId]=(cont[x.eventoId]||0)+1;});
-    let eventos=evs.docs.map(d=>({id:d.id,titulo:d.data().titulo||'Evento',pagos:cont[d.id]||0}));
-    // Por inscrito: conta só eventos com inscritos pagos; valor fixo: todos os eventos
-    if(porInscrito(o))eventos=eventos.filter(e=>e.pagos>0);
-    eventos.forEach(e=>e.valor=baseEvento(o,e.pagos));
-    const adicionais=totalAdicionais(o),total=eventos.reduce((s,e)=>s+e.valor,0)+adicionais;
-    await r.update({calculo:{data:hoje(),eventos,adicionais,total,mp}});registrarAdm(id,'cobranca',`Cobrança calculada: ${brl(total)}`);
-    toast('Cálculo atualizado');detalhe(id);
-  }catch(e){toast(erroMsg(e));}
+function exportarHist(){
+  const l=filtrarHist();if(!l.length)return toast('Nada para exportar');
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const linhas=[['Data','Hora','Pessoa','E-mail','Papel','Tipo','O que foi feito','Aparelho'].map(q).join(';')].concat(l.map(h=>{const d=h.em&&h.em.toDate?h.em.toDate():new Date();
+    return[d.toLocaleDateString('pt-BR'),d.toLocaleTimeString('pt-BR'),h.nome,h.email,h.papel,GRUPO_HIST(h.acao),h.texto,h.disp].map(q).join(';');}));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+linhas.join('\r\n')],{type:'text/csv;charset=utf-8'}));a.download='historico-'+ORG+'.csv';a.click();
 }
-function pagar(id){
-  const o=S.orgs.find(x=>x.id===id),rec=recebido(o);
-  let sug=o.valor||0;
-  if(o.plano!=='mensal'){
-    const total=o.calculo?o.calculo.total:(baseEvento(o,o.previstos||0)+totalAdicionais(o));
-    sug=Math.max(0,total-rec);if(o.condicao==='50-50'&&!rec)sug=Math.round(total/2);
-  }
-  abrir(`<h2>Registrar ${o.plano==='mensal'?'pagamento':'recebimento'}</h2>
-    <div class="muted">${esc(o.nome)} — ${esc(resumoPlano(o))}</div>
-    <div class="row"><div><label>Valor recebido (R$)</label><input id="pValor" inputmode="decimal" value="${reais(sug)}"></div>
-      <div><label>Data</label><input id="pData" type="date" value="${hoje()}"></div></div>
-    <label>Observação</label><input id="pObs" placeholder="${o.condicao==='50-50'&&!rec?'Entrada 50%':'Ex.: saldo final'}">
-    ${o.plano==='mensal'?`<div class="muted small" style="margin-top:6px">O vencimento avança 1 mês.</div>`:''}
-    <div style="height:14px"></div>
-    <div class="row"><button class="btn" onclick="detalhe('${esc(id)}')">Voltar</button><button class="btn ok" onclick="salvarPagamento('${esc(id)}')">Registrar</button></div>`);
-}
-async function salvarPagamento(id){
-  const o=S.orgs.find(x=>x.id===id),valor=cents($('pValor').value),data=$('pData').value||hoje(),obs=$('pObs').value.trim();
-  if(!(valor>0))return toast('Informe o valor');
-  const up={ultimoPagamento:data,pagamentos:firebase.firestore.FieldValue.arrayUnion({data,valor,obs,em:Date.now()})};
-  if(o.plano==='mensal'){const base=o.vencimento&&diasAte(o.vencimento)>-60?o.vencimento:hoje();up.vencimento=maisMeses(base,1);}
-  if(o.status!=='ativo'&&!confirm('Reativar o acesso deste organizador também?'))delete up.status;else if(o.status!=='ativo')up.status='ativo';
-  try{await db.collection('organizadores').doc(id).update(up);registrarAdm(id,'cobranca',`Registrou recebimento de ${brl(valor)}${obs?' ('+obs+')':''}`);toast('Recebimento registrado');detalhe(id);}catch(e){toast(erroMsg(e));}
-}
-function textoResumo(o){
-  const ad=listaAdicionais(o),c=o.calculo,rec=recebido(o);
-  let t=`Olá, ${o.donoNome}! Segue o resumo do acordo do sistema de inscrições (${o.nome}):\n\n`;
-  if(o.referente)t+=`📅 Referente a: ${o.referente}\n`;
-  t+=`💳 Cobrança: ${resumoPlano(o)}\n`;
-  if(o.plano==='taxa')t+=`   (a taxa entra no valor da inscrição; o repasse é feito pelo relatório de inscritos pagos)\n`;
-  if(ad.length)t+=`➕ Adicionais:\n`+ad.map(x=>`   • ${x.nome}: ${brl(x.valor)}`).join('\n')+'\n';
-  if(o.plano!=='mensal'&&o.previstos)t+=`📊 Estimativa para ${o.previstos} inscritos: ${brl(baseEvento(o,o.previstos)+totalAdicionais(o))}\n`;
-  if(c&&o.plano!=='mensal')t+=`🧮 Valor apurado (${fmtDia(c.data)}): ${brl(c.total)}\n`;
-  if(o.condicao)t+=`🗓 Pagamento: ${CONDICOES[o.condicao]}\n`;
-  if(rec)t+=`✅ Já recebido: ${brl(rec)}\n`;
-  if(c&&o.plano!=='mensal'&&c.total-rec>0)t+=`💰 Saldo: ${brl(c.total-rec)}\n`;
-  t+=`\nIncluso: configuração do evento, página de inscrição com Pix direto na sua conta, vouchers com QR Code, equipe de check-in e planilha de inscritos.`;
-  return t;
-}
-function enviarResumo(id){const o=S.orgs.find(x=>x.id===id);window.open('https://wa.me/?text='+encodeURIComponent(textoResumo(o)),'_blank');}
-async function alternar(id){
-  const o=S.orgs.find(x=>x.id===id),suspender=o.status==='ativo';
-  if(suspender&&!confirm(`Suspender ${o.nome}?\n\nO responsável e a equipe perdem o acesso e o link de inscrição deixa de funcionar. Os dados ficam guardados.`))return;
-  try{await db.collection('organizadores').doc(id).update({status:suspender?'suspenso':'ativo'});registrarAdm(id,'cobranca',suspender?'Acesso do organizador suspenso':'Acesso do organizador reativado');toast(suspender?'Acesso suspenso':'Acesso reativado');detalhe(id);}catch(e){toast(erroMsg(e));}
-}
-function editar(id){
-  const o=S.orgs.find(x=>x.id===id);
-  abrir(`<h2>Editar ${esc(o.nome)}</h2>
-    <label>Nome do organizador</label><input id="fNome" value="${esc(o.nome)}">
-    <label>Nome do responsável</label><input id="fDono" value="${esc(o.donoNome||'')}">
-    <div class="muted small" style="margin-top:6px">Login do responsável: ${esc(o.donoEmail)} (para trocar, crie um novo organizador ou fale comigo no suporte).</div>
-    <h3>Permissões</h3>
-    <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fPodeCriar" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px" ${o.podeCriarEventos!==false?'checked':''}> <span>O organizador pode <b>criar e excluir</b> eventos<br><span class="muted small">Desmarcado: você cria o evento (em "Entrar como suporte") e ele só edita e configura.</span></span></label>
-    ${camposMP(o)}
-    ${camposCobranca(o)}
-    <div style="height:14px"></div>
-    <div class="row"><button class="btn" onclick="detalhe('${esc(id)}')">Voltar</button><button class="btn pri" onclick="salvarEdicao('${esc(id)}')">Salvar</button></div>`);
-  planoUI();
-}
-async function salvarEdicao(id){
-  const o0=S.orgs.find(x=>x.id===id)||{};
-  const nome=$('fNome').value.trim(),donoNome=$('fDono').value.trim();
-  if(!nome)return toast('Informe o nome');
-  try{const c=lerCobranca(),pc=$('fPodeCriar').checked,m=lerMP();await db.collection('organizadores').doc(id).update({nome,donoNome,podeCriarEventos:pc,...c,...m});
-    if(m.mpLiberado!==!!o0.mpLiberado||m.comissaoMP!==o0.comissaoMP)registrarAdm(id,'config',m.mpLiberado?`Pix automático (Mercado Pago) liberado — comissão ${String(m.comissaoMP).replace('.',',')}%`:'Pix automático (Mercado Pago) desativado');if(pc!==(o0.podeCriarEventos!==false))registrarAdm(id,'config',pc?'Organizador liberado para criar e excluir eventos':'Criação e exclusão de eventos reservadas ao administrador');registrarAdm(id,'cobranca',`Cobrança atualizada: ${PLANOS[c.plano]} — ${resumoPlano(c)}`);toast('Salvo');detalhe(id);}catch(e){toast(erroMsg(e));}
-}
-async function apagarColecao(ref,log){
-  let total=0;
-  for(;;){
-    const s=await ref.limit(400).get();if(s.empty)break;
-    const b=db.batch();s.docs.forEach(d=>b.delete(d.ref));await b.commit();total+=s.size;if(log)log(total);
-  }
-  return total;
-}
-async function excluir(id){
-  const o=S.orgs.find(x=>x.id===id);
-  const conf=prompt(`Isto apaga ${o.nome} com TODOS os eventos, inscrições e equipe. Não tem volta.\n\nDigite o identificador (${id}) para confirmar:`);
-  if(conf!==id)return conf===null?null:toast('Identificador não confere');
-  abrir(`<h2>Excluindo ${esc(o.nome)}…</h2><div class="log" id="xLog">Iniciando…</div>`);
-  const log=t=>{$('xLog').textContent+='\n'+t;};
-  try{
-    const r=db.collection('organizadores').doc(id);
-    const eq=await r.collection('equipe').get();
-    const b=db.batch();eq.docs.forEach(d=>b.delete(db.collection('usuarios').doc(d.id)));
-    if(o.donoEmail)b.delete(db.collection('usuarios').doc(o.donoEmail));
-    await b.commit();log('Logins desvinculados: '+(eq.size+1));
-    for(const n of ['inscricoes','bloqueios','eventos','equipe','historico','publico']){const t=await apagarColecao(r.collection(n));log(n+': '+t+' apagado(s)');}
-    await r.delete();log('Organizador excluído.');
-    log('\nObs.: as contas de login continuam existindo no Firebase (Authentication), mas sem acesso a nada.');
-    $('sheet').insertAdjacentHTML('beforeend','<div style="height:10px"></div><button class="btn full" onclick="fechar()">Fechar</button>');
-  }catch(e){log('ERRO: '+erroMsg(e));$('sheet').insertAdjacentHTML('beforeend','<div style="height:10px"></div><button class="btn full" onclick="fechar()">Fechar</button>');}
-}
-
-/* ================== Migração da versão antiga ================== */
-async function verificarLegado(){
-  try{const s=await db.collection('eventos').limit(1).get();$('btnMigrar').classList.toggle('hidden',s.empty);}catch(e){$('btnMigrar').classList.add('hidden');}
-}
-async function migrar(){
-  if(!S.orgs.length)return toast('Crie primeiro o organizador de destino (ex.: Meu organizador)');
-  const meu=S.orgs.find(o=>o.donoEmail===SUPER);
-  abrir(`<h2>Migrar dados da versão antiga</h2>
-    <p class="muted">Copia eventos, inscrições, bloqueios de CPF e equipe da versão de um só organizador para o organizador escolhido. Os IDs são mantidos, então <b>links e vouchers já enviados continuam funcionando</b>.</p>
-    <label>Organizador de destino</label>
-    <select id="gDest">${S.orgs.map(o=>`<option value="${esc(o.id)}" ${meu&&meu.id===o.id?'selected':''}>${esc(o.nome)} (${esc(o.id)})</option>`).join('')}</select>
-    <div class="log" id="gLog" style="margin-top:10px">Contando dados antigos…</div>
-    <div style="height:10px"></div>
-    <button class="btn pri full" id="gOk" onclick="executarMigracao()" disabled>Copiar para o organizador</button>
-    <div style="height:8px"></div>
-    <button class="btn bad full hidden" id="gApagar" onclick="apagarLegado()">Apagar dados antigos (depois de conferir)</button>
-    <div style="height:8px"></div><button class="btn full" onclick="fechar()">Fechar</button>`);
-  try{
-    const c={};for(const n of ['eventos','inscricoes','bloqueios','equipe'])c[n]=(await db.collection(n).get()).size;
-    $('gLog').textContent=`Encontrado na versão antiga:\n• ${c.eventos} evento(s)\n• ${c.inscricoes} inscrição(ões)\n• ${c.bloqueios} bloqueio(s) de CPF\n• ${c.equipe} pessoa(s) na equipe`;
-    $('gOk').disabled=false;
-  }catch(e){$('gLog').textContent='Erro: '+erroMsg(e);}
-}
-async function executarMigracao(){
-  const dest=$('gDest').value,r=db.collection('organizadores').doc(dest);
-  if(!confirm(`Copiar os dados antigos para "${dest}"?`))return;
-  $('gOk').disabled=true;const log=t=>{$('gLog').textContent+='\n'+t;$('gLog').scrollTop=1e9;};
-  $('gLog').textContent='Migrando…';
-  try{
-    const copia=async(n,filtro)=>{
-      const s=await db.collection(n).get();let docs=s.docs;if(filtro)docs=docs.filter(filtro);
-      for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(d=>b.set(r.collection(n).doc(d.id),d.data()));await b.commit();}
-      log(`${n}: ${docs.length} copiado(s)`);return docs;
-    };
-    await copia('eventos');
-    const ins=await copia('inscricoes');const ids=new Set(ins.map(d=>d.id));
-    await copia('bloqueios',d=>ids.has(d.data().inscricaoId));
-    const eq=await copia('equipe',d=>d.id!==SUPER);
-    // Vincula os logins da equipe a este organizador
-    let vinc=0,pul=0;
-    for(const d of eq){
-      const u=await db.collection('usuarios').doc(d.id).get();
-      if(u.exists&&u.data().orgId!==dest){pul++;log(`• ${d.id} já está em outro organizador (${u.data().orgId}) — não vinculado`);continue;}
-      await db.collection('usuarios').doc(d.id).set({orgId:dest,papel:'equipe'});vinc++;
-    }
-    log(`Logins da equipe vinculados: ${vinc}${pul?' ('+pul+' pulado(s))':''}`);
-    // Links antigos (sem ?o=) passam a abrir neste organizador
-    await db.collection('config').doc('legado').set({orgId:dest,migradoEm:TS()});
-    log('Links antigos agora apontam para "'+dest+'".');
-    log('\n✅ Migração concluída. Abra o app de controle e confira os eventos e inscritos antes de apagar os dados antigos.');
-    $('gApagar').classList.remove('hidden');
-  }catch(e){log('ERRO: '+erroMsg(e)+'\nNada foi apagado. Você pode tentar de novo (a cópia sobrescreve com os mesmos dados).');$('gOk').disabled=false;}
-}
-async function apagarLegado(){
-  if(!confirm('Apagar os dados da versão antiga?\n\nConfira antes no app de controle se os eventos e inscritos aparecem no organizador novo.'))return;
-  const log=t=>{$('gLog').textContent+='\n'+t;$('gLog').scrollTop=1e9;};
-  $('gApagar').disabled=true;
-  try{for(const n of ['inscricoes','bloqueios','eventos','equipe']){const t=await apagarColecao(db.collection(n));log(`Antigo ${n}: ${t} apagado(s)`);}
-    log('Dados antigos apagados.');verificarLegado();}
-  catch(e){log('ERRO: '+erroMsg(e));$('gApagar').disabled=false;}
-}
+aplicarTema();
 </script>
 </body>
 </html>
