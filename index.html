@@ -53,6 +53,12 @@ nav.tabs svg{width:24px;height:24px}
 .item:last-child{border-bottom:0}
 .item .nm{flex:1;min-width:0}
 .item .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.taxaOps{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.taxaOp{text-align:left;border:2px solid var(--line);background:var(--card);color:var(--text);padding:10px;border-radius:12px;font:inherit;font-size:13px;cursor:pointer;line-height:1.35}
+.taxaOp b{display:block;font-size:14px;margin-bottom:4px}
+.taxaOp span{display:block;color:var(--muted)}
+.taxaOp.on{border-color:var(--pri);background:var(--pri2)}
+.taxaOp.on span{color:var(--text)}
 .seg{display:flex;background:var(--pri2);border-radius:10px;padding:3px;margin:10px 0}
 .seg button{flex:1;border:0;background:none;padding:8px;border-radius:8px;color:var(--pri);font-size:14px}
 .seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
@@ -867,12 +873,13 @@ function abrirEvento(id){
       </select>
       <div id="pxMPInfo" class="muted ${p.modo==='mp'?'':'hidden'}" style="margin-top:6px;background:var(--pri2);color:var(--pri);padding:8px 10px;border-radius:10px">💳 O Pix é gerado pelo Mercado Pago na sua conta e a inscrição é <b>confirmada sozinha</b> quando o participante paga. Taxa do Mercado Pago (cerca de 0,99% no Pix) descontada do valor recebido. O e-mail passa a ser obrigatório na inscrição.</div>
       ${Number(orgInfo.comissaoMP||0)?`<div id="pxTaxaBox" class="${p.modo==='mp'?'':'hidden'}">
-      <label>Taxa de serviço da plataforma (${String(orgInfo.comissaoMP).replace('.',',')}%)</label>
-      <select class="f" id="pxTaxaQuem" onchange="exTaxa()">
-        <option value="org" ${!p.taxaComprador?'selected':''}>Embutida no valor — o organizador paga</option>
-        <option value="comp" ${p.taxaComprador?'selected':''}>Somada ao valor — o participante paga</option>
-      </select>
-      <div class="muted" id="pxTaxaEx" style="margin-top:4px"></div></div>`:''}`:''}
+      <label>Quem paga a taxa de serviço (${String(orgInfo.comissaoMP).replace('.',',')}%)?</label>
+      <select class="hidden" id="pxTaxaQuem"><option value="org" ${!p.taxaComprador?'selected':''}>org</option><option value="comp" ${p.taxaComprador?'selected':''}>comp</option></select>
+      <div class="taxaOps">
+        <button type="button" class="taxaOp" id="txComp" onclick="escolherTaxa('comp')"><b>👤 O participante paga</b><span id="txCompEx"></span></button>
+        <button type="button" class="taxaOp" id="txOrg" onclick="escolherTaxa('org')"><b>🏢 O organizador paga</b><span id="txOrgEx"></span></button>
+      </div>
+      <div class="muted" id="pxTaxaEx" style="margin-top:6px"></div></div>`:''}`:''}
       <div id="pxManual" class="${p.modo==='mp'&&mpLiberado()?'hidden':''}">
       <label>Tipo da chave *</label>
       <select class="f" id="pxTipo">
@@ -886,9 +893,9 @@ function abrirEvento(id){
       <label>Cidade de quem recebe</label><input id="pxCidade" value="${esc(p.cidade)}" maxlength="15" placeholder="Ex.: Sao Paulo">
       <label>WhatsApp para receber comprovantes</label><input id="pxWhats" inputmode="tel" value="${esc(p.whats)}" placeholder="(00) 00000-0000">
       </div>
-      <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxMeia" ${p.meia?'checked':''} onchange="$('pxMeiaBox').classList.toggle('hidden',!this.checked);if(this.checked&&!$('pxMeiaVal').value&&lerValor($('pxValor').value))$('pxMeiaVal').value=(lerValor($('pxValor').value)/2).toFixed(2).replace('.',',')"> Aceitar meia-entrada</label>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="pxMeia" ${p.meia?'checked':''} onchange="setTimeout(exTaxa,0);$('pxMeiaBox').classList.toggle('hidden',!this.checked);if(this.checked&&!$('pxMeiaVal').value&&lerValor($('pxValor').value))$('pxMeiaVal').value=(lerValor($('pxValor').value)/2).toFixed(2).replace('.',',')"> Aceitar meia-entrada</label>
       <div id="pxMeiaBox" class="${p.meia?'':'hidden'}">
-        <label>Valor da meia (R$) *</label><input id="pxMeiaVal" inputmode="decimal" placeholder="12,50" value="${p.valorMeia?esc(Number(p.valorMeia).toFixed(2).replace('.',',')):''}">
+        <label>Valor da meia (R$) *</label><input id="pxMeiaVal" inputmode="decimal" oninput="exTaxa()" placeholder="12,50" value="${p.valorMeia?esc(Number(p.valorMeia).toFixed(2).replace('.',',')):''}">
         <label>Quem tem direito</label><input id="pxMeiaQuem" maxlength="150" value="${esc(p.meiaQuem||'')}" placeholder="Ex.: estudantes, idosos 60+, professores">
         <div class="muted" style="margin-top:4px">O participante marca "Meia-entrada" e informa o motivo. Na entrada, o leitor avisa para conferir o comprovante.</div>
       </div>
@@ -932,6 +939,7 @@ function abrirEvento(id){
     <div style="height:12px"></div>
     <div class="row"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn pri" id="btnSalvarEv" onclick="salvarEvento('${id||''}')">Salvar</button></div>
     ${id&&podeCriar()?`<div style="height:18px"></div><button class="btn bad full" onclick="excluirEvento('${id}')">Excluir evento e inscrições</button>`:''}`);
+  exTaxa();
 }
 let filasTemp=[],filasEdId='';
 function eventoFilasTemp(){return{id:filasEdId,filas:{ativo:true,lista:filasTemp,criancas:$('flCri').checked,gruposJuntos:$('flGrupo').checked}};}
@@ -980,13 +988,21 @@ function lerFilas(){
 }
 function modoPix(){const mp=$('pxModo')&&$('pxModo').value==='mp';$('pxManual').classList.toggle('hidden',mp);$('pxMPInfo').classList.toggle('hidden',!mp);if($('pxTaxaBox'))$('pxTaxaBox').classList.toggle('hidden',!mp);if(mp)$('cEmail').checked=true;exTaxa();}
 // Exemplo ao vivo de quem paga a taxa de serviço
+function escolherTaxa(q){const sel=$('pxTaxaQuem');if(!sel)return;sel.value=q;exTaxa();}
 function exTaxa(){
   const el=$('pxTaxaEx');if(!el)return;
-  const v=lerValor($('pxValor').value)||60,pct=Number(orgInfo.comissaoMP||0),t=Math.round(v*pct)/100,mpf=x=>Math.round(x*0.99)/100;
+  const quem=$('pxTaxaQuem').value,pct=Number(orgInfo.comissaoMP||0);
   const R=x=>x.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  el.innerHTML=$('pxTaxaQuem').value==='comp'
-    ?`Inscrição de ${R(v)}: o participante paga <b>${R(v+t)}</b> (${R(v)} + ${R(t)} de taxa de serviço). O organizador recebe cerca de <b>${R(v-mpf(v+t))}</b> e a plataforma ${R(t)}.`
-    :`Inscrição de ${R(v)}: o participante paga <b>${R(v)}</b>. O organizador recebe cerca de <b>${R(v-t-mpf(v))}</b> e a plataforma ${R(t)}.`;
+  const tx=v=>Math.round(v*pct)/100,mpf=x=>Math.round(x*0.99)/100;
+  const v=lerValor($('pxValor').value)||0;
+  const meia=$('pxMeia')&&$('pxMeia').checked?lerValor(($('pxMeiaVal')||{}).value):0;
+  const linhaComp=x=>`Participante paga <b>${R(x+tx(x))}</b><br>Você recebe ≈ <b>${R(x-mpf(x+tx(x)))}</b>`;
+  const linhaOrg=x=>`Participante paga <b>${R(x)}</b><br>Você recebe ≈ <b>${R(x-tx(x)-mpf(x))}</b>`;
+  $('txComp').classList.toggle('on',quem==='comp');$('txOrg').classList.toggle('on',quem!=='comp');
+  if(!v){$('txCompEx').textContent='A taxa é somada ao valor da inscrição';$('txOrgEx').textContent='A taxa sai do valor que você recebe';el.textContent='Informe o valor para ver a conta.';return;}
+  $('txCompEx').innerHTML=linhaComp(v);$('txOrgEx').innerHTML=linhaOrg(v);
+  const f=quem==='comp'?linhaComp:linhaOrg;
+  el.innerHTML=`Taxa de serviço: <b>${R(tx(v))}</b> por inscrição de ${R(v)}`+(meia>0?` · meia-entrada (${R(meia)}): ${f(meia).replace('<br>',' · ')}`:'')+'. Valores aproximados, já descontada a tarifa do Mercado Pago (~0,99%).';
 }
 async function escolherImagem(inp){
   const f=inp.files&&inp.files[0];if(!f)return;
