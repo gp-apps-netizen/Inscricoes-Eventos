@@ -923,7 +923,7 @@ function abrirEvento(id){
   camposTemp=camposDoEvento(e).map(f=>({...f,opcoes:[...(f.opcoes||[])]}));
   setTimeout(renderCamposEditor,0);
   const fl=e.filas||{};filasEdId=id||'';filasTemp=(fl.lista||[]).map(q=>({...q}));
-  setTimeout(renderFilasEditor,0);setTimeout(exTaxa,0);
+  setTimeout(renderFilasEditor,0);setTimeout(exTaxa,0);imgAtual=e.imagem||'';setTimeout(renderCoresImg,0);
   abrirModal(`<h2>${id?'Editar evento':'Novo evento'}</h2>
     <label>Nome do evento *</label><input id="evTitulo" value="${esc(e.titulo)}" maxlength="100">
     <div class="row"><div style="flex:1"><label>Data</label><input id="evData" type="date" value="${esc(e.data)}"></div>
@@ -940,8 +940,11 @@ function abrirEvento(id){
     </div>
 
     <div class="secao">Cor do evento</div>
-    <label class="chk"><input type="checkbox" id="evCorOn" ${e.cor?'checked':''} onchange="$('evCorBox').classList.toggle('hidden',!this.checked)"> Usar uma cor própria na página de inscrição e no voucher deste evento</label>
-    <div id="evCorBox" class="cores ${e.cor?'':'hidden'}">${CORES_SUGERIDAS.map(c=>`<button class="cor" style="background:${c}" onclick="$('evCor').value='${c}'"></button>`).join('')}<input type="color" id="evCor" value="${esc(e.cor||corPri())}"></div>
+    <label class="chk"><input type="checkbox" id="evCorOn" ${e.cor?'checked':''} onchange="$('evCorBox').classList.toggle('hidden',!this.checked);renderCoresImg()"> Usar uma cor própria na página de inscrição e no voucher deste evento</label>
+    <div id="evCorBox" class="${e.cor?'':'hidden'}">
+      <div id="evCoresImg" style="margin-bottom:8px"></div>
+      <div class="cores">${CORES_SUGERIDAS.map(c=>`<button class="cor" style="background:${c}" onclick="$('evCor').value='${c}'"></button>`).join('')}<input type="color" id="evCor" value="${esc(e.cor||corPri())}"></div>
+    </div>
     <div class="muted" style="margin-top:4px">Sem cor própria, o evento usa as cores definidas em 🎨 Cores e estilo.</div>
 
     <div class="secao">Dados pedidos na inscrição</div>
@@ -1105,10 +1108,51 @@ async function escolherImagem(inp){
     toast('Preparando imagem…');
     imgTemp=await comprimirImagem(f);
     $('evImgPrev').src=imgTemp;$('evImgPrev').classList.remove('hidden');$('evImgRem').classList.remove('hidden');
+    renderCoresImg();
   }catch(e){toast(e.message);}
   inp.value='';
 }
-function removerImagem(){imgTemp='';$('evImgPrev').classList.add('hidden');$('evImgPrev').src='';$('evImgRem').classList.add('hidden');}
+function removerImagem(){imgTemp='';$('evImgPrev').classList.add('hidden');$('evImgPrev').src='';$('evImgRem').classList.add('hidden');renderCoresImg();}
+/* ---- Cores da imagem: sugere a cor do evento a partir da imagem ---- */
+let imgAtual='';
+function coresDaImagem(src){
+  return new Promise(res=>{
+    const im=new Image();im.onload=()=>{
+      const N=72,c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d');x.drawImage(im,0,0,N,N);
+      let px;try{px=x.getImageData(0,0,N,N).data;}catch(e){return res([]);}
+      const bal={};
+      for(let i=0;i<px.length;i+=4){
+        const r=px[i],g=px[i+1],b=px[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx?(mx-mn)/mx:0;
+        if(mx<70||sat<.35)continue;                       // ignora cinzas, tons escuros, preto e branco
+        const k=(r>>5)+','+(g>>5)+','+(b>>5),q=bal[k]||(bal[k]={n:0,r:0,g:0,b:0,s:0});
+        const w=sat*sat*(mx/255);q.n+=w;q.r+=r*w;q.g+=g*w;q.b+=b*w;q.s+=sat*w;
+      }
+      const grupos=Object.values(bal).map(q=>({r:q.r/q.n,g:q.g/q.n,b:q.b/q.n,peso:q.n})).sort((a,b)=>b.peso-a.peso);
+      const out=[];
+      for(const g of grupos){
+        if(out.some(o=>Math.hypot(o.r-g.r,o.g-g.g,o.b-g.b)<95))continue;
+        out.push(g);if(out.length>=6)break;
+      }
+      // cor de fundo do topo com texto branco: escurece as muito claras
+      res(out.map(g=>{let hx='#'+[g.r,g.g,g.b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+        let t=0;while(lum(hx)>.4&&t<8){hx=mix(hx,'#000000',.12);t++;}return hx;}));
+    };
+    im.onerror=()=>res([]);im.src=src;
+  });
+}
+async function renderCoresImg(){
+  const box=$('evCoresImg');if(!box)return;
+  const src=imgTemp!==undefined?imgTemp:imgAtual;
+  if(!src){box.innerHTML='<div class="muted">Coloque uma imagem no evento para sugerir cores combinando com ela.</div>';return;}
+  box.innerHTML='<div class="muted">Lendo as cores da imagem…</div>';
+  const cs=await coresDaImagem(src);
+  if(!$('evCoresImg'))return;
+  if(!cs.length){box.innerHTML='<div class="muted">Não deu para tirar cores desta imagem.</div>';return;}
+  box.innerHTML=`<div class="muted" style="margin-bottom:6px">🎨 <b>Cores da imagem</b> (toque para usar)</div>
+    <div class="cores">${cs.map(c=>`<button class="cor" style="background:${c};width:42px;height:42px" title="${c}" onclick="usarCorImg('${c}')"></button>`).join('')}
+    <button class="btn sm" style="width:auto" onclick="usarCorImg('${cs[0]}')">Usar a principal</button></div>`;
+}
+function usarCorImg(c){$('evCorOn').checked=true;$('evCorBox').classList.remove('hidden');$('evCor').value=c;toast('Cor aplicada: '+c+' — toque em Salvar');}
 async function salvarEvento(id){
   const titulo=$('evTitulo').value.trim();if(!titulo)return toast('Informe o nome do evento');
   const camposExtras=camposTemp.map(f=>({id:f.id,label:f.label.trim(),tipo:f.tipo,obrigatorio:!!f.obrigatorio,opcoes:f.tipo==='opcoes'?(f.opcoes||[]).slice(0,50):[]}));
