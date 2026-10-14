@@ -545,7 +545,8 @@ function secaoCobranca(o){
 /* ================== Fechamento do evento ================== */
 // Separa as inscrições em: pagas pelo Pix automático, pagas por fora, entraram sem pagar, cortesias.
 const FX={};   // dados carregados do evento aberto
-function valorIns(i,ev){if(!(ev.pix&&ev.pix.ativo)||i.isento)return 0;return Math.round(Number(i.meia&&ev.pix.meia?ev.pix.valorMeia:ev.pix.valor||0)*100);}
+function valorBase(i,ev){if(!(ev.pix&&ev.pix.ativo))return 0;return Math.round(Number(i.meia&&ev.pix.meia?ev.pix.valorMeia:ev.pix.valor||0)*100);}
+function valorIns(i,ev){return i.isento?0:valorBase(i,ev);}
 async function abrirFechamento(id){
   const o=S.orgs.find(x=>x.id===id);
   abrir(`<h2>🧾 Fechamento do evento</h2><div class="muted">${esc(o.nome)} — escolha o evento</div><div id="fxLista" style="margin-top:10px"><div class="empty">Carregando eventos…</div></div>
@@ -569,7 +570,8 @@ async function fecharEvento(id,evId){
     if(!evS.exists)return toast('Evento não encontrado');
     Object.assign(FX,{id,evId,ev:{id:evId,...evS.data()},ins:ins.docs.map(d=>({id:d.id,...d.data()})),cobs:cob.docs.map(d=>d.data()),pix:cfg&&cfg.exists?(cfg.data().pix||''):''});FX.pix0=FX.pix;
     const o=S.orgs.find(x=>x.id===id),f=(o.fechamentos||{})[evId]||{},jaAdic=listaFech(o).some(x=>x.adic&&x.id!==evId);
-    FX.p={cortesias:f.cortesias||0,previstos:f.previstos!=null?f.previstos:(o.previstos||0),pisoPct:f.pisoPct!=null?f.pisoPct:(o.pisoPct!=null?o.pisoPct:80),adic:f.adic!=null?f.adic:(!jaAdic&&totalAdicionais(o)>0)};
+    const lim=(o.cortesias||{})[evId];
+    FX.p={cortesias:lim!=null?Number(lim):(f.cortesias||0),previstos:f.previstos!=null?f.previstos:(o.previstos||0),pisoPct:f.pisoPct!=null?f.pisoPct:(o.pisoPct!=null?o.pisoPct:80),adic:f.adic!=null?f.adic:(!jaAdic&&totalAdicionais(o)>0)};
     renderFechamento();
   }catch(e){console.error(e);abrir(`<h2>🧾 Fechamento</h2><div class="card" style="color:var(--bad)">${esc(erroMsg(e))}</div><button class="btn full" onclick="detalhe('${esc(id)}')">Voltar</button>`);}
 }
@@ -581,20 +583,24 @@ function calcFechamento(o,ev,ins,cobs,p){
   const plat=ins.filter(i=>i.pago&&i.pagoPor==='mercadopago');
   const fora=ins.filter(i=>i.pago&&i.pagoPor!=='mercadopago'&&pagante(i));
   const semPag=ins.filter(i=>!i.pago&&i.checkin&&pagante(i)).sort((a,b)=>unit(b)-unit(a));
-  const cort=Math.min(p.cortesias||0,semPag.length),semCob=semPag.slice(cort);
-  const isentos=ins.filter(i=>i.isento),faltou=ins.filter(i=>!i.pago&&!i.checkin&&pagante(i));
+  // Cortesias: as marcadas no app usam primeiro o limite combinado; o que sobrar do limite cobre quem entrou sem pagamento
+  const unitC=i=>porPessoa?(o.valor||0):Math.round(valorBase(i,ev)*pct/100);
+  const cortM=ins.filter(i=>i.cortesia).sort((a,b)=>unitC(a)-unitC(b)),lim=p.cortesias||0;
+  const cortOk=cortM.slice(0,lim),cortExc=cortM.slice(lim),vCortExc=cortExc.reduce((s,i)=>s+unitC(i),0);
+  const cort=Math.min(Math.max(0,lim-cortOk.length),semPag.length),semCob=semPag.slice(cort);
+  const isentos=ins.filter(i=>i.isento&&!i.cortesia),faltou=ins.filter(i=>!i.pago&&!i.checkin&&pagante(i));
   const recebidoAuto=Math.round(cobs.reduce((s,c)=>s+Number(c.taxaRecebida||c.taxa||0),0)*100);
   const soma=l=>l.reduce((s,i)=>s+unit(i),0);
   const vPlat=porPessoa?plat.length*(o.valor||0):(cobs.length?recebidoAuto:soma(plat));
   const vFora=soma(fora),vSem=soma(semCob);
-  const pagantes=plat.length+fora.length+semCob.length;
+  const pagantes=plat.length+fora.length+semCob.length+cortExc.length;
   const pisoQtd=p.previstos&&p.pisoPct?Math.ceil(p.previstos*p.pisoPct/100):0;
   const faltam=Math.max(0,pisoQtd-pagantes),vPiso=faltam*unitCheio;
-  let total=fixo?(o.valor||0):vPlat+vFora+vSem+vPiso,vMin=0;
+  let total=fixo?(o.valor||0):vPlat+vFora+vSem+vCortExc+vPiso,vMin=0;
   if(o.plano==='inscrito'&&o.minimo&&total<o.minimo){vMin=o.minimo-total;total=o.minimo;}
   const vAdic=p.adic?totalAdicionais(o):0;total+=vAdic;
   const aCobrar=Math.max(0,total-(fixo?0:Math.min(recebidoAuto,total)));
-  return {pct,porPessoa,fixo,unitCheio,plat,fora,semPag,cort,semCob,isentos,faltou,recebidoAuto,vPlat,vFora,vSem,pagantes,pisoQtd,faltam,vPiso,vMin,vAdic,total,aCobrar};
+  return {pct,porPessoa,fixo,unitCheio,plat,fora,semPag,cort,semCob,cortM,cortOk,cortExc,vCortExc,lim,isentos,faltou,recebidoAuto,vPlat,vFora,vSem,pagantes,pisoQtd,faltam,vPiso,vMin,vAdic,total,aCobrar};
 }
 function renderFechamento(){
   const o=S.orgs.find(x=>x.id===FX.id),ev=FX.ev,p=FX.p,c=calcFechamento(o,ev,FX.ins,FX.cobs,p);FX.c=c;
@@ -613,14 +619,15 @@ function renderFechamento(){
     ${c.fixo?`<div class="card">Modelo de <b>valor fixo por evento</b>: ${brl(o.valor)}.</div>`:`<div class="card">
       ${linha('✅',`${c.plat.length} pago(s) pelo Pix automático`,brl(c.vPlat),`<div class="muted small" style="margin:-2px 0 6px 24px">${c.porPessoa?'':'comissão que já caiu sozinha na sua conta'}</div>`)}
       ${linha('💵',`${c.fora.length} pago(s) por fora (Pix direto/dinheiro)`,brl(c.vFora),nomes(c.fora,i=>'confirmado por '+(i.pagoPorNome||i.pagoPor||'?')))}
-      ${linha('🚪',`${sp} entraram sem pagamento${c.cort?` − ${c.cort} cortesia(s)`:''}`,brl(c.vSem),nomes(c.semPag,i=>'liberado por '+(i.checkinPorNome||i.checkinPor||'?')))}
+      ${linha('🎁',`${c.cortM.length} cortesia(s) marcada(s) · combinadas: ${c.lim}${c.cortExc.length?` · ${c.cortExc.length} acima do limite`:''}`,c.cortExc.length?brl(c.vCortExc):'grátis',nomes(c.cortM,i=>'por '+(i.cortesiaPorNome||i.cortesiaPor||'?')+(i.checkin?' · entrou':'')))}
+      ${linha('🚪',`${sp} entraram sem pagamento${c.cort?` − ${c.cort} dentro das cortesias`:''}`,brl(c.vSem),nomes(c.semPag,i=>'liberado por '+(i.checkinPorNome||i.checkinPor||'?')))}
       ${c.pisoQtd?linha('📏',`Garantia mínima: ${c.pisoQtd} pagantes (${p.pisoPct}% de ${p.previstos}) · houve ${c.pagantes}`,c.faltam?'+ '+brl(c.vPiso):'atingida',c.faltam?`<div class="muted small" style="margin:-2px 0 6px 24px">faltaram ${c.faltam} × ${brl(c.unitCheio)}</div>`:''):''}
       ${c.vMin?linha('📌','Complemento até o mínimo por evento','+ '+brl(c.vMin)):''}
       ${c.vAdic?linha('➕','Adicionais combinados','+ '+brl(c.vAdic)):''}
-      ${c.isentos.length?`<div class="muted small">${c.isentos.length} isento(s) (crianças/cortesia do sistema) não entram na conta.</div>`:''}
+      ${c.isentos.length?`<div class="muted small">${c.isentos.length} criança(s) isenta(s) não entram na conta.</div>`:''}
     </div>`}
     <div class="row">
-      <div><label>Cortesias</label><input id="xCort" inputmode="numeric" value="${p.cortesias}" oninput="fxSet()"></div>
+      <div><label>Cortesias</label><input id="xCort" inputmode="numeric" value="${p.cortesias}" oninput="fxSet();salvarLimiteCort()"></div>
       <div><label>Previstos</label><input id="xPrev" inputmode="numeric" value="${p.previstos||''}" placeholder="0" oninput="fxSet()"></div>
       <div><label>Garantia %</label><input id="xPiso" inputmode="numeric" value="${p.pisoPct}" oninput="fxSet()"></div>
     </div>
@@ -644,10 +651,14 @@ function fxSet(){
   FX.pix=pix;renderFechamento();
   if(foco&&$(foco)){$(foco).focus();try{$(foco).setSelectionRange(pos,pos);}catch(e){}}
 }
+function salvarLimiteCort(){
+  clearTimeout(salvarLimiteCort.t);
+  salvarLimiteCort.t=setTimeout(async()=>{const n=FX.p.cortesias||0;try{await db.collection('organizadores').doc(FX.id).update({['cortesias.'+FX.evId]:n});registrarAdm(FX.id,'config',`Cortesias combinadas para "${FX.ev.titulo||'evento'}": ${n}`);toast('Cortesias combinadas: '+n);}catch(e){toast(erroMsg(e));}},900);
+}
 function dadosFechamento(){
   const c=FX.c,p=FX.p;
   return {titulo:FX.ev.titulo||'Evento',eventoData:FX.ev.data||'',data:hoje(),plat:c.plat.length,fora:c.fora.length,semPag:c.semPag.length,
-    cortesias:p.cortesias,previstos:p.previstos,pisoPct:p.pisoPct,pisoQtd:c.pisoQtd,faltam:c.faltam,adic:p.adic,
+    cortesias:p.cortesias,cortMarcadas:c.cortM.length,previstos:p.previstos,pisoPct:p.pisoPct,pisoQtd:c.pisoQtd,faltam:c.faltam,adic:p.adic,
     recebidoAuto:c.fixo?0:Math.min(c.recebidoAuto,c.total),total:c.total,aCobrar:c.aCobrar};
 }
 async function salvarPix(){const v=$('xPix').value.trim();if(v===FX.pix0)return;FX.pix0=v;try{await db.collection('config').doc('cobranca').set({pix:v},{merge:true});}catch(e){}}
@@ -668,7 +679,8 @@ function textoFechamento(){
   else{
     t+=`✅ Pagos pelo Pix automático: ${c.plat.length}${c.recebidoAuto?` (taxa de ${brl(Math.min(c.recebidoAuto,c.total))} já descontada automaticamente)`:''}\n`;
     t+=`💵 Pagos por fora (Pix direto/dinheiro): ${c.fora.length} → ${brl(c.vFora)}\n`;
-    t+=`🚪 Entraram sem pagamento registrado: ${c.semPag.length}${c.cort?` (${c.cort} cortesia(s) combinada(s) não cobradas)`:''} → ${brl(c.vSem)}\n`;
+    t+=`🎁 Cortesias: ${c.cortM.length} marcada(s) de ${c.lim} combinada(s)${c.cortExc.length?` → ${c.cortExc.length} acima do limite = ${brl(c.vCortExc)}`:''}\n`;
+    t+=`🚪 Entraram sem pagamento registrado: ${c.semPag.length}${c.cort?` (${c.cort} dentro das cortesias combinadas)`:''} → ${brl(c.vSem)}\n`;
     if(c.pisoQtd)t+=c.faltam?`📏 Garantia mínima de ${p.pisoPct}% de ${p.previstos} previstos = ${c.pisoQtd} pagantes; houve ${c.pagantes} → complemento de ${c.faltam} × ${brl(c.unitCheio)} = ${brl(c.vPiso)}\n`:`📏 Garantia mínima de ${p.pisoPct}% dos pagantes previstos: atingida 👍\n`;
     if(c.vMin)t+=`📌 Complemento até o mínimo por evento: ${brl(c.vMin)}\n`;
     t+=`\nTaxa de serviço: ${un}, também sobre as inscrições pagas fora da plataforma.\n`;
