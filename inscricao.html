@@ -56,6 +56,7 @@ input.err,select.err,textarea.err{border-color:var(--bad)}
 .chkp input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--pri)}
 .priv{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.4}
 .banner{display:block;width:calc(100% + 36px);margin:-18px -18px 16px;max-height:260px;object-fit:cover;border-radius:15px 15px 0 0}
+.card.soimg{padding:0;overflow:hidden}.card.soimg .banner{margin:0;width:100%;border-radius:0}
 .preco{display:flex;justify-content:space-between;align-items:center;background:var(--pri2);color:var(--pri);border-radius:10px;padding:10px 12px;margin:10px 0 4px;font-size:15px}
 .preco b{font-size:18px}
 .pix h3{margin:0 0 4px;font-size:18px}
@@ -308,11 +309,12 @@ async function abrirFormulario(eid){
   if(EQUIPE&&P.get('ver'))return telaEquipe();
   if(!evento.aberto){tela(`<div class="card">${banner(evento)}${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}<div class="msg bad">As inscrições para este evento estão encerradas.</div>${aviso}</div>`);return;}
   seqP=0;TIPOS_ON=usaTipos(evento);FORM_ON=!TIPOS_ON;QTD={int:1,meia:0,cri:0};
-  tela(`<div class="card">
-    ${banner(evento)}
-    ${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
+  const corpo=`${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
     ${TIPOS_ON?'':cobra(evento)?`${precoLinha('Valor por pessoa',Number(evento.pix.valor),evento)}${temMeia(evento)?precoLinha('Meia-entrada'+(evento.pix.meiaQuem?' <small>('+esc(evento.pix.meiaQuem)+')</small>':''),Number(evento.pix.valorMeia),evento):''}<div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
-  </div>
+`;
+  // Só a imagem no quadro: a imagem ocupa o quadro todo (sem sobrar espaço embaixo)
+  const soImg=!corpo.trim()&&!!evento.imagem;
+  tela(`${corpo.trim()||evento.imagem?`<div class="card${soImg?' soimg':''}">${banner(evento)}${corpo}</div>`:''}
   ${evento.equipes?cartaoEquipe(eqErro):''}
   ${TIPOS_ON?'<div class="card" id="selTipos"></div>':''}
   <form id="form" novalidate class="${FORM_ON?'':'hidden'}">
