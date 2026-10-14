@@ -156,6 +156,21 @@ const firebaseConfig = {
   </div>
 </div>
 
+<div id="telaContrato" class="hidden" style="max-width:640px;margin:0 auto;padding:16px">
+  <h1 style="font-size:21px;margin:8px 0 4px">📝 Termos de uso da plataforma</h1>
+  <div class="muted">Leia e aceite para começar a usar. É rápido: são só os combinados entre você e a GPX Apps.</div>
+  <div class="card" style="margin-top:12px"><div id="ctTexto" style="white-space:pre-wrap;font-size:14.5px;line-height:1.5;max-height:52vh;overflow:auto;padding:4px 2px"></div></div>
+  <div class="card">
+    <label>Seu nome completo *</label><input class="f" id="ctNome" maxlength="120" autocomplete="name">
+    <label>CPF ou CNPJ *</label><input class="f" id="ctCpf" inputmode="numeric" maxlength="18" placeholder="Somente números">
+    <label class="chk" style="margin-top:12px"><input type="checkbox" id="ctOk"> Li e aceito os termos acima</label>
+    <div id="ctErro" class="muted" style="color:var(--bad);margin-top:6px"></div>
+    <button class="btn pri full" id="ctBtn" style="margin-top:10px" onclick="aceitarContrato()">Aceitar e continuar</button>
+    <button class="btn full" style="margin-top:8px" onclick="sair()">Sair</button>
+    <div class="muted" style="margin-top:8px;font-size:12px">O aceite fica registrado com seu login, data e hora. Você pode pedir uma cópia a qualquer momento.</div>
+  </div>
+</div>
+
 <div id="telaApp" class="hidden">
   <header>
     <div class="hrow">
@@ -597,6 +612,56 @@ function registrar(acao,texto,extra){
   col('historico').add(d).catch(()=>{});
 }
 const nomeIns=id=>{const i=inscritos.find(x=>x.id===id);return i?`${i.nome} (${i.codigo})`:id;};
+/* ================== Contrato online (termos de uso aceitos no primeiro acesso) ================== */
+const brlC=c=>(Number(c||0)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function textoContrato(o,email){
+  const pct=String(Number(o.comissaoMP||0)).replace('.',','),porInsc=o.plano==='inscrito'||o.plano==='taxa',fixo=o.plano==='evento';
+  const piso=Number(o.pisoPct!=null?o.pisoPct:80),prev=Number(o.previstos||0);
+  const taxa=fixo?`valor fixo de ${brlC(o.valor)} por evento`
+    :porInsc?`${brlC(o.valor)} por inscrição paga${o.minimo?`, com mínimo de ${brlC(o.minimo)} por evento`:''}`
+    :`${pct}% sobre o valor de cada inscrição paga`;
+  const L=[
+`TERMOS DE USO — GPX APPS · INSCRIÇÕES DE EVENTOS (versão ${Number(o.contratoVersao||1)})`,
+`Organizador: ${o.nome||''}
+Responsável: ${o.donoNome||''} (${email})`,
+`1. O QUE ESTÁ INCLUÍDO
+Página de inscrição, cobrança por Pix, vouchers com QR code, inscrição em grupo e por equipes, termo de responsabilidade online, check-in pelo celular, painel de inscritos, planilha e suporte pelo WhatsApp. Não há mensalidade nem fidelidade.`,
+`2. TAXA DE SERVIÇO
+${taxa}.${!fixo&&!porInsc?' No Pix automático (Mercado Pago), a taxa é separada automaticamente a cada pagamento e pode ser paga pelo participante, somada ao valor da inscrição. A tarifa do Mercado Pago (cerca de 0,99% no Pix) é cobrada pelo próprio Mercado Pago.':''}`,
+`3. INSCRIÇÕES FORA DA PLATAFORMA
+Inscrições pagas por fora (dinheiro, Pix direto ou outro meio) e pessoas que entrarem sem pagamento registrado também pagam a taxa, exceto as cortesias combinadas antes do evento.`,
+...(piso&&!fixo?[`4. GARANTIA MÍNIMA
+Antes de cada evento, o organizador informa a quantidade prevista de inscrições pagas${prev?` (previsão atual: ${prev})`:''}. A taxa do evento é calculada sobre, no mínimo, ${piso}% dessa previsão${prev?` (${Math.ceil(prev*piso/100)} inscrições)`:''}. Se o evento for cancelado, vale apenas a taxa sobre as inscrições pagas que não forem devolvidas.`]:[]),
+`${piso&&!fixo?5:4}. FECHAMENTO E PAGAMENTO
+Após o evento, a GPX Apps envia o fechamento com os números da plataforma. O valor é pago por Pix em até 5 dias. Em caso de atraso, o acesso pode ser suspenso até o pagamento.`,
+`${piso&&!fixo?6:5}. RESPONSABILIDADES
+O organizador responde pelo evento perante os participantes: informações, realização, cancelamento, meia-entrada e devoluções ou estornos de valores. A GPX Apps não recebe nem guarda o dinheiro das inscrições e não responde por falhas de internet, de aparelhos ou de serviços de terceiros (Mercado Pago, bancos, Google, WhatsApp).`,
+`${piso&&!fixo?7:6}. DADOS DOS PARTICIPANTES (LGPD)
+Os dados são usados somente para a organização e o controle de entrada do evento. O organizador é o responsável por eles e pode pedir a exclusão após o evento.`,
+`${piso&&!fixo?8:7}. ACEITE
+Ao aceitar, o organizador concorda com estes termos. O aceite é registrado com o login, o nome, o CPF/CNPJ, a data e a hora.`];
+  return L.join('\n\n');
+}
+function mostrarContrato(){
+  $('telaApp').classList.add('hidden');$('telaAviso').classList.add('hidden');
+  $('ctTexto').textContent=textoContrato(orgInfo,usuario());
+  if(!$('ctNome').value)$('ctNome').value=orgInfo.donoNome||'';
+  $('telaContrato').classList.remove('hidden');window.scrollTo(0,0);
+}
+async function aceitarContrato(){
+  const nome=$('ctNome').value.trim().replace(/\s+/g,' '),doc=$('ctCpf').value.replace(/\D/g,''),err=m=>{$('ctErro').textContent=m;};
+  if(nome.length<5||!nome.includes(' '))return err('Informe o seu nome completo.');
+  if(![11,14].includes(doc.length))return err('Informe um CPF (11 números) ou CNPJ (14 números).');
+  if(!$('ctOk').checked)return err('Marque "Li e aceito os termos acima".');
+  err('');const b=$('ctBtn');b.disabled=true;b.textContent='Registrando…';
+  const v=Number(orgInfo.contratoVersao);
+  try{
+    await col('contrato').doc('v'+v).set({versao:v,nome,cpf:doc,email:usuario(),em:TS(),texto:textoContrato(orgInfo,usuario()).slice(0,6000),disp:aparelho()});
+    registrar('config',`Aceitou os termos de uso (versão ${v}) — ${nome}`);
+    $('telaContrato').classList.add('hidden');b.disabled=false;b.textContent='Aceitar e continuar';
+    papel=null;iniciar();
+  }catch(e){b.disabled=false;b.textContent='Aceitar e continuar';err('Não foi possível registrar: '+(e.code==='permission-denied'?'sem permissão (avise o administrador).':e.message));}
+}
 function aviso(titulo,html){
   $('telaApp').classList.add('hidden');$('avTitulo').textContent=titulo;$('avTexto').innerHTML=html;$('telaAviso').classList.remove('hidden');
 }
@@ -635,6 +700,13 @@ async function detectarPapel(){
     else aviso('Erro','Não foi possível carregar: '+esc(e.message));
     return false;
   }
+  // Contrato online: o responsável precisa aceitar a versão atual antes de usar
+  if(papel==='dono'&&!suporte&&!ehSuper()&&Number(orgInfo.contratoVersao||0)>0){
+    let aceito=true;
+    try{aceito=(await col('contrato').doc('v'+Number(orgInfo.contratoVersao)).get()).exists;}catch(e){aceito=true;}   // sem internet ou regras antigas: não bloqueia o uso
+    if(!aceito){mostrarContrato();return false;}
+  }
+  $('telaContrato').classList.add('hidden');
   if(!suporte)localStorage.setItem('insc_org',ORG);
   $('orgNome').textContent=orgInfo.nome||'Controle de Inscrições';
   document.title=(orgInfo.nome||'Controle')+' · Inscrições';
