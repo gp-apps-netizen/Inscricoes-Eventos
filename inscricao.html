@@ -67,6 +67,15 @@ input.err,select.err,textarea.err{border-color:var(--bad)}
 .kvp{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line);text-align:left}
 .kvp span{color:var(--muted)}
 .kvp b{word-break:break-all;text-align:right}
+.tipo{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.tipo .nm{flex:1;min-width:0}.tipo .nm b{display:block;font-size:16px}.tipo .nm small{color:var(--muted);font-size:13px;display:block}
+.tipo .pr{color:var(--pri);font-weight:700;font-size:15px;margin-top:2px}
+.qtd{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.qtd button{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--pri);background:var(--card);color:var(--pri);font-size:22px;line-height:1;cursor:pointer;padding:0}
+.qtd button:disabled{opacity:.3;cursor:default}
+.qtd span{min-width:24px;text-align:center;font-weight:800;font-size:19px}
+.selRes{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.selRes .btn{width:auto;margin:0;padding:8px 14px;font-size:14px}
 </style>
 </head>
 <body>
@@ -280,17 +289,18 @@ async function abrirFormulario(eid){
   const ja=meus().filter(v=>v.eventoId===eid);
   const aviso=ja.length?`<div class="msg ok">Já existe inscrição feita neste aparelho para este evento. <a href="${qo()}vs=${esc(ja.map(v=>v.id).join(','))}"><b>Ver voucher${ja.length>1?'s':''}</b></a></div>`:'';
   if(!evento.aberto){tela(`<div class="card">${banner(evento)}${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}<div class="msg bad">As inscrições para este evento estão encerradas.</div>${aviso}</div>`);return;}
-  seqP=0;
+  seqP=0;TIPOS_ON=usaTipos(evento);FORM_ON=!TIPOS_ON;QTD={int:1,meia:0,cri:0};
   tela(`<div class="card">
     ${banner(evento)}
     ${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
-    ${cobra(evento)?`${precoLinha('Valor por pessoa',Number(evento.pix.valor),evento)}${temMeia(evento)?precoLinha('Meia-entrada'+(evento.pix.meiaQuem?' <small>('+esc(evento.pix.meiaQuem)+')</small>':''),Number(evento.pix.valorMeia),evento):''}<div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
+    ${TIPOS_ON?'':cobra(evento)?`${precoLinha('Valor por pessoa',Number(evento.pix.valor),evento)}${temMeia(evento)?precoLinha('Meia-entrada'+(evento.pix.meiaQuem?' <small>('+esc(evento.pix.meiaQuem)+')</small>':''),Number(evento.pix.valorMeia),evento):''}<div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
   </div>
-  <form id="form" novalidate>
+  ${TIPOS_ON?'<div class="card" id="selTipos"></div>':''}
+  <form id="form" novalidate class="${FORM_ON?'':'hidden'}">
     <div id="pessoas"></div>
     <div class="card">
-      <button class="btn" type="button" id="btnAddP" onclick="addPessoa()">👥 + Inscrever mais uma pessoa</button>
-      <div class="muted center" style="margin-top:8px">Você pode inscrever até ${MAX_GRUPO} pessoas de uma vez. Cada uma recebe o seu próprio voucher.</div>
+      <button class="btn ${TIPOS_ON?'hidden':''}" type="button" id="btnAddP" onclick="addPessoa()">👥 + Inscrever mais uma pessoa</button>
+      <div class="muted center ${TIPOS_ON?'hidden':''}" style="margin-top:8px">Você pode inscrever até ${MAX_GRUPO} pessoas de uma vez. Cada uma recebe o seu próprio voucher.</div>
       ${termoAtivo(evento)?`<div class="termo"><b>${esc(tituloTermo(evento))}</b>
         <div class="termoTxt">${esc(textoTermo(evento))}</div>
         <label class="chkp" id="aceiteLbl"><input type="checkbox" id="aceiteTermo"> <span>Li e aceito o ${esc(tituloTermo(evento).toLowerCase())}<span id="termoGrupo"></span>.</span></label></div>`:''}
@@ -300,11 +310,62 @@ async function abrirFormulario(eid){
       <p class="priv">Os dados serão usados somente para a organização e o controle de entrada deste evento.</p>
     </div>
   </form>`);
-  addPessoa(true);
+  if(TIPOS_ON)renderSel(true);else addPessoa(true);
   $('form').onsubmit=e=>{e.preventDefault();enviar();};
 }
-function pessoaHTML(n,primeira){
+/* ---- Etapa 1: tipo e quantidade de inscrições (eventos pagos com meia-entrada e/ou criança grátis) ---- */
+let TIPOS_ON=false,FORM_ON=true,QTD={int:1,meia:0,cri:0};
+function usaTipos(ev){return cobra(ev)&&(temMeia(ev)||criancasGratis(ev));}
+function listaTipos(){
+  const pix=evento.pix,l=[{k:'int',nome:'Inteira',sub:'Adulto',valor:Number(pix.valor)}];
+  if(temMeia(evento))l.push({k:'meia',nome:'Meia-entrada',sub:pix.meiaQuem||'Com comprovante no dia',valor:Number(pix.valorMeia)});
+  if(criancasGratis(evento))l.push({k:'cri',nome:'Gratuita',sub:`Criança de até ${pix.idadeMax} anos`,valor:0});
+  return l;
+}
+const rotTipo=k=>({int:'Inteira',meia:'Meia-entrada',cri:'Gratuita'}[k]||'');
+const totQtd=()=>QTD.int+QTD.meia+QTD.cri;
+function totalSel(){const base=QTD.int*Number(evento.pix.valor)+QTD.meia*(temMeia(evento)?Number(evento.pix.valorMeia):0);return base+taxaServ(evento,base);}
+function renderSel(aberto){
+  const box=$('selTipos');if(!box)return;
+  const tot=totQtd(),cheio=tot>=MAX_GRUPO;
+  if(!aberto){
+    const partes=listaTipos().filter(t=>QTD[t.k]).map(t=>QTD[t.k]+' '+t.nome.toLowerCase());
+    box.innerHTML=`<div class="selRes"><div><b>🎟 ${esc(partes.join(' · '))}</b><div class="muted">Total: <b>${esc(moeda(totalSel()))}</b></div></div><button class="btn" type="button" onclick="renderSel(true)">Alterar</button></div>`;
+    return;
+  }
+  box.innerHTML=`<b style="font-size:17px">Quais inscrições você quer fazer?</b>
+    <div class="muted" style="margin-top:2px">Escolha o tipo e a quantidade. Depois você preenche os dados de cada pessoa.</div>
+    ${listaTipos().map(t=>{const tx=taxaServ(evento,t.valor);return `<div class="tipo"><div class="nm"><b>${esc(t.nome)}</b><small>${esc(t.sub)}</small>
+      <div class="pr">${t.valor?esc(moeda(t.valor+tx))+(tx?' <small style="display:inline;font-weight:400">(com taxa de serviço)</small>':''):'Grátis'}</div></div>
+      <div class="qtd"><button type="button" aria-label="Menos" onclick="mudaQtd('${t.k}',-1)" ${QTD[t.k]?'':'disabled'}>−</button><span>${QTD[t.k]}</span><button type="button" aria-label="Mais" onclick="mudaQtd('${t.k}',1)" ${cheio?'disabled':''}>+</button></div></div>`;}).join('')}
+    <div class="preco" style="margin-top:14px"><span>${tot} inscriç${tot===1?'ão':'ões'}</span><b>${esc(moeda(totalSel()))}</b></div>
+    ${cheio?`<div class="muted">Máximo de ${MAX_GRUPO} pessoas por vez.</div>`:''}
+    <div class="muted" style="margin-top:6px">O pagamento é feito por Pix logo após a inscrição.</div>
+    <button class="btn pri" type="button" onclick="continuarSel()" ${tot?'':'disabled'}>${FORM_ON?'Pronto':'Continuar'} →</button>`;
+}
+function mudaQtd(k,d){
+  const n=QTD[k]+d;if(n<0||(d>0&&totQtd()>=MAX_GRUPO))return;
+  QTD[k]=n;renderSel(true);if(FORM_ON&&totQtd())montarPessoas();
+}
+function continuarSel(){
+  if(!totQtd())return;
+  const primeiraVez=!FORM_ON;FORM_ON=true;$('form').classList.remove('hidden');montarPessoas();renderSel(false);
+  if(primeiraVez){const b=blocos()[0];if(b){b.scrollIntoView({behavior:'smooth',block:'start'});const n=b.querySelector('input[id$="_nome"]');if(n)n.focus({preventScroll:true});}}
+}
+// Monta um bloco por pessoa, na ordem inteira → meia → gratuita, mantendo o que já foi digitado
+function montarPessoas(){
+  const salvos={int:[],meia:[],cri:[]};
+  blocos().forEach(el=>{const v={};el.querySelectorAll('input,select,textarea').forEach(i=>{const k=i.id.replace(/^p\d+_/,'');if(k!=='cri'&&k!=='meia')v[k]=i.value;});(salvos[el.dataset.tipo]||[]).push(v);});
+  $('pessoas').innerHTML='';seqP=0;let primeira=true;
+  ['int','meia','cri'].forEach(t=>{for(let j=0;j<QTD[t];j++){
+    const n=++seqP;$('pessoas').insertAdjacentHTML('beforeend',pessoaHTML(n,primeira,t));primeira=false;
+    const v=salvos[t][j];if(v)Object.entries(v).forEach(([k,val])=>{const i=$('p'+n+'_'+k);if(i)i.value=val;});
+  }});
+  atualizarPessoas();
+}
+function pessoaHTML(n,primeira,tipo){
   const c=evento.campos||{},p='p'+n+'_';
+  if(tipo)return pessoaTipoHTML(n,primeira,tipo);
   return `<div class="card pessoa" data-p="${n}">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
       <b class="ptit">Pessoa 1</b>
@@ -324,6 +385,22 @@ function pessoaHTML(n,primeira){
     ${camposDoEvento(evento).map((f,k)=>campoHTML(f,k).replace(/id="fx(\d+)"/,`id="${p}fx$1"`).replace(/for="fx(\d+)"/,`for="${p}fx$1"`)).join('')}
   </div>`;
 }
+// Bloco de uma pessoa com o tipo já escolhido na etapa 1
+function pessoaTipoHTML(n,primeira,tipo){
+  const c=evento.campos||{},p='p'+n+'_';
+  return `<div class="card pessoa" data-p="${n}" data-tipo="${tipo}">
+    <div style="margin-bottom:2px"><b class="ptit">Pessoa 1</b></div>
+    <label>Nome completo *</label><input id="${p}nome" autocomplete="${primeira?'name':'off'}" maxlength="120">
+    ${tipo==='cri'?`<input type="checkbox" id="${p}cri" checked class="hidden"><label>Data de nascimento * <span class="muted">(até ${esc(evento.pix.idadeMax)} anos no dia do evento)</span></label><input id="${p}nasc" type="date">`:''}
+    ${tipo==='meia'?`<input type="checkbox" id="${p}meia" checked class="hidden">
+      <div class="muted" style="margin-top:8px">${evento.pix.meiaQuem?'Têm direito: '+esc(evento.pix.meiaQuem)+'. ':''}Leve o comprovante no dia.</div>
+      <label>Motivo da meia-entrada *</label><input id="${p}meiaMot" maxlength="80" placeholder="Ex.: estudante, idoso, criança de 7 anos">`:''}
+    ${c.cpf?`<label id="${p}cpfLbl">${tipo==='cri'?'CPF <span class="muted">(opcional para criança)</span>':'CPF *'}</label><input id="${p}cpf" inputmode="numeric" placeholder="000.000.000-00" oninput="mascaraCPF(this)">`:''}
+    ${c.telefone?`<label>Telefone / WhatsApp ${primeira?'*':'<span class="muted">(se vazio, usa o da pessoa 1)</span>'}</label><input id="${p}tel" inputmode="tel" ${primeira?'autocomplete="tel"':''} placeholder="(00) 00000-0000" oninput="mascaraTel(this)">`:''}
+    ${c.email?`<label>E-mail ${primeira?'*':'<span class="muted">(se vazio, usa o da pessoa 1)</span>'}</label><input id="${p}email" type="email" ${primeira?'autocomplete="email"':''} maxlength="120">`:''}
+    ${camposDoEvento(evento).map((f,k)=>campoHTML(f,k).replace(/id="fx(\d+)"/,`id="${p}fx$1"`).replace(/for="fx(\d+)"/,`for="${p}fx$1"`)).join('')}
+  </div>`;
+}
 function toggleMeia(n){const p='p'+n+'_';$(p+'meiaBox').classList.toggle('hidden',!$(p+'meia').checked);atualizarPessoas();}
 function ehMeia(el){const c=el.querySelector('input[id$="_meia"]');return !!(c&&c.checked)&&!ehCrianca(el);}
 function toggleCrianca(n){const p='p'+n+'_',on=$(p+'cri').checked;if($(p+'meiaLbl')){$(p+'meiaLbl').classList.toggle('hidden',on);$(p+'meiaBox').classList.toggle('hidden',on||!$(p+'meia').checked);}$(p+'criBox').classList.toggle('hidden',!on);if($(p+'cpfLbl'))$(p+'cpfLbl').innerHTML=on?'CPF <span class="muted">(opcional para criança)</span>':'CPF *';atualizarPessoas();}
@@ -338,8 +415,8 @@ function addPessoa(primeira){
 function remPessoa(n){const el=document.querySelector(`.pessoa[data-p="${n}"]`);if(el)el.remove();atualizarPessoas();}
 function atualizarPessoas(){
   const b=blocos();
-  b.forEach((el,k)=>el.querySelector('.ptit').textContent=b.length>1?'Pessoa '+(k+1):'Seus dados');
-  $('btnAddP').classList.toggle('hidden',b.length>=MAX_GRUPO);
+  b.forEach((el,k)=>el.querySelector('.ptit').textContent=(b.length>1?'Pessoa '+(k+1):'Seus dados')+(el.dataset.tipo?' · '+rotTipo(el.dataset.tipo):''));
+  $('btnAddP').classList.toggle('hidden',TIPOS_ON||b.length>=MAX_GRUPO);
   if($('termoGrupo'))$('termoGrupo').textContent=b.length>1?' em nome de todas as pessoas desta inscrição':'';
   $('btnEnviar').textContent=b.length>1?`Confirmar ${b.length} inscrições`:'Confirmar inscrição';
   const cri=b.filter(ehCrianca).length,meia=b.filter(ehMeia).length,int=b.length-cri-meia;
