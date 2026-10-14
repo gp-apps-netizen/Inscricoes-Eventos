@@ -738,7 +738,7 @@ async function excluir(id){
     const b=db.batch();eq.docs.forEach(d=>b.delete(db.collection('usuarios').doc(d.id)));
     if(o.donoEmail)b.delete(db.collection('usuarios').doc(o.donoEmail));
     await b.commit();log('Logins desvinculados: '+(eq.size+1));
-    for(const n of ['inscricoes','bloqueios','eventos','equipe','historico','publico']){const t=await apagarColecao(r.collection(n));log(n+': '+t+' apagado(s)');}
+    for(const n of ['inscricoes','bloqueios','equipesInsc','eventos','equipe','historico','publico']){const t=await apagarColecao(r.collection(n));log(n+': '+t+' apagado(s)');}
     await r.delete();log('Organizador excluído.');
     log('\nObs.: as contas de login continuam existindo no Firebase (Authentication), mas sem acesso a nada.');
     $('sheet').insertAdjacentHTML('beforeend','<div style="height:10px"></div><button class="btn full" onclick="fechar()">Fechar</button>');
