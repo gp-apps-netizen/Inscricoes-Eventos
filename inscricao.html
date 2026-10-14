@@ -620,10 +620,10 @@ function acompanhar(todos){
       const novo={id:d.id,...d.data()};
       const g=(ultO.grupoTodo||atual.lista),pos=g.findIndex(x=>x.id===novo.id);
       const ant=pos>=0?g[pos]:null;
-      if(!ant||(!!ant.pago===!!novo.pago&&!!ant.checkin===!!novo.checkin))return;
+      if(!ant||(!!ant.pago===!!novo.pago&&!!ant.checkin===!!novo.checkin&&!!ant.isento===!!novo.isento))return;
       if(pos>=0)g[pos]=novo;
       const li=atual.lista.findIndex(x=>x.id===novo.id);if(li>=0)atual.lista[li]=novo;
-      const liberou=!ant.pago&&novo.pago&&travaQR(atual.ev)?[novo.id]:[];
+      const liberou=((!ant.pago&&novo.pago)||(!ant.isento&&novo.isento))&&travaQR(atual.ev)?[novo.id]:[];
       clearTimeout(acompanhar.t);
       acompanhar.lib=[...(acompanhar.lib||[]),...liberou];
       acompanhar.t=setTimeout(()=>{const l=acompanhar.lib;acompanhar.lib=[];
@@ -637,7 +637,7 @@ function cartaoVoucher(i,ev,k,varios){
   return `<div class="card voucher">
     ${k===0||varios?banner(ev):''}
     ${i.checkin?'<div class="msg bad" style="margin-top:0">Este voucher já foi utilizado na entrada.</div>':''}
-    ${i.isento?'<div style="margin-top:4px"><span class="st ok">🎈 Criança — inscrição gratuita</span></div>':px?`<div style="margin-top:4px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span>${i.meia?' <span class="st pend">🎟 Meia-entrada</span>':''}</div>`:''}
+    ${i.isento?`<div style="margin-top:4px"><span class="st ok">${i.cortesia?'🎁 Cortesia':'🎈 Criança — inscrição gratuita'}</span></div>`:px?`<div style="margin-top:4px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span>${i.meia?' <span class="st pend">🎟 Meia-entrada</span>':''}</div>`:''}
     <div class="muted" style="margin-top:12px">${varios?'Participante '+(k+1):'Participante'}</div>
     <div class="nome">${esc(i.nome)}</div>
     ${i.eqNome?`<div class="muted">👥 Equipe ${esc(i.eqNome)}</div>`:''}

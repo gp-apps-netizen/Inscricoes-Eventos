@@ -853,6 +853,24 @@ function camposDoEvento(e){
 }
 function respostaDe(i,f){const r=(i.respostas||{})[f.id];if(r!==undefined&&r!=='')return r;return f.id==='extra'?(i.extra||''):'';}
 const devePagar=i=>!i.pago&&!i.isento;
+/* ---- Cortesias: o administrador define quantas por evento; o organizador marca quem é ---- */
+const limiteCort=()=>Number(((orgInfo&&orgInfo.cortesias)||{})[selId]||0);
+const cortUsadas=()=>inscritos.filter(i=>i.cortesia).length;
+const cortRestam=()=>Math.max(0,limiteCort()-cortUsadas());
+async function marcarCortesia(id,sim,entrar){
+  const i=inscritos.find(x=>x.id===id);if(!i)return;
+  if(sim){
+    if(!ehSuper()&&cortRestam()<=0){alert(limiteCort()?`O limite de cortesias combinado para este evento (${limiteCort()}) já foi usado.\n\nPara liberar mais, fale com o administrador do sistema.`:'Nenhuma cortesia foi combinada para este evento.\n\nFale com o administrador do sistema para definir a quantidade.');return;}
+    if(!confirm(`Marcar ${i.nome} como CORTESIA?\n\nA inscrição fica sem pagamento e o voucher é liberado.${limiteCort()?`\nCortesias: ${cortUsadas()+1} de ${limiteCort()}.`:''}`))return;
+  }else if(!confirm(`Tirar a cortesia de ${i.nome}? A inscrição volta a ficar "a pagar".`))return;
+  const up=sim?{cortesia:true,isento:true,cortesiaPor:usuario(),cortesiaPorNome:meuNome(),cortesiaEm:TS()}:{cortesia:false,isento:false,cortesiaPor:null,cortesiaPorNome:null,cortesiaEm:null};
+  try{
+    await gravar(col('inscricoes').doc(id).update(up));
+    registrar('pago',sim?`Marcou ${i.nome} (${i.codigo}) como cortesia`:`Tirou a cortesia de ${i.nome} (${i.codigo})`,{eventoId:i.eventoId,inscricaoId:id});
+    fecharModal();toast(sim?'🎁 Cortesia registrada':'Cortesia removida');
+    if(sim&&entrar){Object.assign(i,up);await fazerCheckin(id);}
+  }catch(e){toast('Erro: '+e.message);}
+}
 const termoAtivo=e=>!!(e&&e.termo&&e.termo.ativo);
 const MODELO_TERMO="Eu, participante inscrito(a) no evento \"{evento}\", declaro que:\n\n1. Estou em boas condições de saúde e apto(a) a participar das atividades do evento.\n2. Participo por livre e espontânea vontade e assumo a responsabilidade pela minha segurança e por danos que eu venha a causar.\n3. Seguirei as orientações da organização, da equipe de apoio e as regras do evento.\n4. Isento a organização de responsabilidade por perda, furto ou dano de objetos pessoais.\n5. Autorizo o uso gratuito da minha imagem em fotos e vídeos do evento para fins de divulgação.\n6. Quando a inscrição incluir menores de idade, eu, como responsável legal, assumo estas declarações em nome deles.\n7. Estou ciente de que meus dados serão usados apenas para a organização e o controle de entrada deste evento.";
 function usarModeloTermo(){if($('trTexto').value.trim()&&!confirm('Substituir o texto atual pelo modelo?'))return;$('trTexto').value=MODELO_TERMO;}
@@ -1280,6 +1298,7 @@ function dadosHTML(i){
   return `<div class="big">${esc(i.nome)}</div>
     ${fi?`<div style="margin:2px 0 6px"><span class="filaTag">Fila: ${esc(nomeFila(fi,ev))}</span></div>`:''}
     ${i.eqNome?`<div class="kv"><span>Equipe:</span> <b>👥 ${esc(i.eqNome)}</b></div>`:''}
+    ${i.cortesia?`<div class="kv"><span>Inscrição:</span> <b>🎁 Cortesia</b>${i.cortesiaPorNome||i.cortesiaPor?' · por '+esc(nomeDe(i.cortesiaPor,i.cortesiaPorNome)):''}</div>`:''}
     ${i.cpf?`<div class="kv"><span>CPF:</span> ${esc(fmtCPF(i.cpf))}</div>`:''}
     ${i.telefone?`<div class="kv"><span>Telefone:</span> ${esc(i.telefone)}</div>`:''}
     ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
@@ -1298,6 +1317,7 @@ function mostrarResultado(o){
     <div style="height:12px"></div>
     ${o.botaoCheck?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}')">Confirmar entrada</button><div style="height:8px"></div>`:''}
     ${o.botaoPagar?(podePagar()?(()=>{const g=o.insc.grupo?inscritos.filter(x=>x.grupo===o.insc.grupo&&devePagar(x)):[];return (g.length>1?`<button class="btn ok full" onclick="fazerCheckin('${o.insc.id}',false,true,true)">👥 Recebi o Pix do grupo (${g.length}${verValores()?' · '+esc(moeda(somaValor(g,eventoSel()))):''}) — confirmar entrada</button><div style="height:8px"></div>`:'')+`<button class="btn ${g.length>1?'':'ok'} full" onclick="fazerCheckin('${o.insc.id}',false,true)">Recebi o pagamento ${g.length>1?'só desta pessoa':''} — confirmar entrada</button><div style="height:8px"></div>`;})():'<div class="muted" style="margin-bottom:8px">Você não pode confirmar pagamentos. Chame a organização ou libere a entrada abaixo.</div>')+`
+      ${ehDono()&&(cortRestam()>0||ehSuper())?`<button class="btn full" onclick="marcarCortesia('${o.insc.id}',true,true)">🎁 Liberar como cortesia (${cortRestam()} restante${cortRestam()===1?'':'s'})</button><div style="height:8px"></div>`:''}
       <button class="btn full" onclick="fazerCheckin('${o.insc.id}')">Liberar entrada sem pagamento</button><div style="height:8px"></div>`:''}
     <button class="btn full" onclick="retomar()">${escaneando?'Ler próximo':'Fechar'}</button></div>`;
   $('resultado').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -1372,7 +1392,7 @@ function renderInscritos(){
   if(q)l=l.filter(i=>(i.nome||'').toLowerCase().includes(q)||(i.codigo||'').toLowerCase()===q||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
   $('listaInscritos').innerHTML=!selId?'<div class="empty">Selecione um evento.</div>':!l.length?'<div class="empty">Nenhuma inscrição'+(q||filtro!=='todos'?' encontrada':' ainda')+'.</div>':
     (()=>{let ult='';return l.map(i=>{const L=letraDe(i.nome),div=!q&&L!==ult?`<div class="letra">${L==='#'?'Outros':L}</div>`:'';ult=L;return div+`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}${i.eqNome?' · 👥 '+esc(i.eqNome):i.grupo?' · 👥 grupo':''}${!fl&&filaDe(i,ev)?' · fila '+esc(nomeFila(filaDe(i,ev),ev)):''}${i.checkin&&quemCheckin(i)?' · ✓ '+esc(quemCheckin(i)):''}${i._pend?' · <span class="pend">⏳ aguardando envio</span>':''}</span></div>
-      <div class="tags">${i.meia?'<span class="tag warn">Meia</span>':''}${px?(i.isento?'<span class="tag neu">Criança · isenta</span>':`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`):(i.crianca?'<span class="tag neu">Criança</span>':'')}
+      <div class="tags">${i.meia?'<span class="tag warn">Meia</span>':''}${px?(i.cortesia?'<span class="tag neu">🎁 Cortesia</span>':i.isento?'<span class="tag neu">Criança · isenta</span>':`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`):(i.crianca?'<span class="tag neu">Criança</span>':'')}
       <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div></div>`;}).join('');})();
 }
 /* ================== Equipes (inscrição por equipes) ================== */
@@ -1457,6 +1477,8 @@ function detalhe(id){
     <div class="kv" style="margin-top:6px"><span>Situação:</span> ${i.checkin?'<b style="color:var(--ok)">Presente</b> — '+esc(fmtTs(i.checkinLocal||i.checkinEm))+(quemCheckin(i)?' <span>por</span> <b>'+esc(quemCheckin(i))+'</b>':''):'Aguardando entrada'}</div>
     ${i.pago&&i.pagoPor?`<div class="kv"><span>Pagamento confirmado por</span> <b>${esc(nomeDe(i.pagoPor,i.pagoPorNome))}</b></div>`:''}
     <div style="height:14px"></div>
+    ${px&&!i.pago&&!i.isento&&ehDono()?`<button class="btn full" onclick="marcarCortesia('${id}',true)">🎁 Marcar como cortesia${limiteCort()?` <span class="muted">(${cortRestam()} de ${limiteCort()} restantes)</span>`:''}</button><div style="height:8px"></div>`:''}
+    ${i.cortesia&&ehDono()?`<button class="btn full" onclick="marcarCortesia('${id}',false)">Tirar a cortesia</button><div style="height:8px"></div>`:''}
     ${px&&!i.isento?(i.pago?`<button class="btn full donoOnly" onclick="marcarPago('${id}',false)">Desfazer pagamento</button><div class="donoOnly" style="height:8px"></div>`:(podePagar()?`<button class="btn ok full" onclick="marcarPago('${id}',true)">💲 Confirmar pagamento</button><div style="height:8px"></div>`:'')):''}
     ${px&&podePagar()&&i.grupo&&membrosGrupo(i).filter(devePagar).length>1?(()=>{const n=membrosGrupo(i).filter(devePagar).length;return `<button class="btn ok full" onclick="pagarGrupo('${id}')">👥 Confirmar pagamento do grupo (${n}${verValores()?' · '+esc(moeda(somaValor(membrosGrupo(i).filter(devePagar),eventoSel()))):''})</button><div style="height:8px"></div>`;})():''}
     ${i.checkin?`<button class="btn full" onclick="desfazerCheckin('${id}')">Desfazer entrada</button>`:`<button class="btn ${px?'':'ok'} full" onclick="fecharModal();fazerCheckinLista('${id}')">Confirmar entrada</button>`}
@@ -1517,7 +1539,7 @@ function exportarCSV(){
   const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Equipe','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em','Check-in por');const fa=filasAtivas(ev);if(fa)cab.push('Fila');const tc=termoAtivo(ev)||inscritos.some(i=>i.termoAceito);if(tc)cab.push('Termo aceito','Termo aceito em','Versão do termo');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(i.meia?'Sim — '+(i.meiaMotivo||''):'Não',i.crianca?(i.isento?'Sim (isenta)':'Sim'):'Não',idadeTxt(i),rg?rg.nome:'',i.eqNome||'',fmtTs(i.criadoEm));
-    if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm));if(px&&verValores())r.push(i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
+    if(px)r.push(i.cortesia?'Cortesia':i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm));if(px&&verValores())r.push(i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
     r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinLocal||i.checkinEm),quemCheckin(i));if(fa)r.push(nomeFila(filaDe(i,ev),ev));if(tc)r.push(i.termoAceito?'Sim':'Não',fmtTs(i.termoAceitoEm),i.termoVersao||'');return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
   registrar('exportou',`Exportou a planilha de inscritos de "${ev.titulo}" (${inscritos.length} linhas)`,{eventoId:ev.id});
@@ -1529,7 +1551,7 @@ function imprimirLista(){
   const l=inscritos.filter(i=>(!fl||filaDe(i,ev)===fl)&&(!filtroEq||(filtroEq==='_sem'?!i.eqId:i.eqId===filtroEq)));
   const nomeEq=filtroEq?(filtroEq==='_sem'?'Sem equipe':'Equipe '+((inscritos.find(i=>i.eqId===filtroEq)||{}).eqNome||'')):'';
   const cpfM=c=>{c=String(c||'');return c.length===11?'•••.•••.'+c.slice(6,9)+'-'+c.slice(9):'';};
-  const sit=i=>i.isento?'Criança isenta':!px?'':i.pago?'Pago':'A PAGAR';
+  const sit=i=>i.cortesia?'Cortesia':i.isento?'Criança isenta':!px?'':i.pago?'Pago':'A PAGAR';
   const col=4+(px?1:0)+(fa&&!fl?1:0);
   let ult='',linhas='';
   l.forEach(i=>{const L=letraDe(i.nome);if(L!==ult){linhas+=`<tr class="L"><td colspan="${col+1}">${L==='#'?'Outros':L}</td></tr>`;ult=L;}
