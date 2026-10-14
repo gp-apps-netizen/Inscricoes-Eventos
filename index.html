@@ -220,6 +220,7 @@ const firebaseConfig = {
       <div class="filaBox hidden" style="margin-bottom:8px"><select class="f selFila" onchange="escolherFila(this.value)"></select></div>
       <input id="busca" placeholder="Buscar por nome, CPF, telefone ou código" oninput="renderInscritos()">
       <select class="f hidden" id="filtroQuem" style="margin-top:8px" onchange="filtroQuem=this.value;renderInscritos()"></select>
+      <div class="row hidden" id="eqBarra" style="margin-top:8px"><select class="f" id="filtroEq" style="flex:1" onchange="filtroEq=this.value;renderInscritos()"></select><button class="btn" style="flex:0 0 auto" onclick="resumoEquipes()">👥 Equipes</button></div>
       <div class="seg" id="filtro">
         <button class="on" data-f="todos">Todos</button>
         <button data-f="pend" class="pixOnly">A pagar</button>
@@ -578,7 +579,7 @@ const verValores=()=>papel==='dono'||perm.verValores!==false;
 const meuNome=()=>suporte?'Suporte':papel==='dono'?(orgInfo.donoNome||'Organizador'):(perm.nome||usuario());
 function nomeDe(email,nome){if(nome)return nome;if(!email)return '';const m=equipe.find(x=>x.id===email);return m?m.nome:(email===orgInfo.donoEmail?(orgInfo.donoNome||'Organizador'):email===SUPER?'Administrador':email);}
 const quemCheckin=i=>i.checkin?nomeDe(i.checkinPor,i.checkinPorNome):'';
-let filtroQuem='';
+let filtroQuem='',filtroEq='';
 // Equipe: todosEventos === false => só os eventos da lista perm.eventos
 const restrito=()=>papel==='equipe'&&perm.todosEventos===false;
 function liberado(eid){return !restrito()||(perm.eventos||[]).includes(eid);}
@@ -934,6 +935,10 @@ function abrirEvento(id){
       <div class="muted">Depois, na aba <b>Equipe</b>, escolha a fila de cada pessoa do check-in. O leitor avisa quando alguém estiver na fila errada.</div>
     </div>
 
+    <div class="secao">Inscrição por equipes</div>
+    <label class="chk"><input type="checkbox" id="evEquipes" ${e.equipes?'checked':''}> 👥 Permitir inscrição por equipes</label>
+    <div class="muted">O líder de cada equipe cria a equipe na página de inscrição e manda o link no grupo. Cada integrante se inscreve com os próprios dados e paga o seu Pix, já dentro da equipe. Na aba Inscritos dá para filtrar e ver o resumo por equipe.</div>
+
     <div class="secao">Situação</div>
     <label class="chk"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
     <div style="height:12px"></div>
@@ -1039,7 +1044,7 @@ async function salvarEvento(id){
   }
   const d={titulo,cor:$('evCorOn').checked&&hexOk($('evCor').value)?$('evCor').value:'',data:$('evData').value,hora:$('evHora').value,local:$('evLocal').value.trim(),descricao:$('evDesc').value.trim(),
     aberto:$('evAberto').checked,campos:{cpf:$('cCpf').checked,telefone:$('cTel').checked,email:$('cEmail').checked,extra},
-    extraLabel:'',camposExtras,pix,atualizadoEm:TS()};
+    extraLabel:'',camposExtras,pix,equipes:$('evEquipes').checked,atualizadoEm:TS()};
   const antigo=id?(eventos.find(x=>x.id===id)||{}).termo||{}:{};
   const trTexto=$('trTexto').value.trim();
   if($('trAtivo').checked&&trTexto.length<20)return toast('Escreva o texto do termo (ou use o modelo)');
@@ -1061,6 +1066,7 @@ async function excluirEvento(id){
     const docs=[];
     (await col('inscricoes').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
     (await col('bloqueios').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));
+    try{(await col('equipesInsc').where('eventoId','==',id).get()).forEach(d=>docs.push(d.ref));}catch(x){}
     docs.push(col('eventos').doc(id));
     for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(r=>b.delete(r));await b.commit();}
     registrar('evento_excluido',`Excluiu o evento "${e.titulo}" e ${docs.length-1} registro(s) de inscrição`,{eventoId:id});
@@ -1201,6 +1207,7 @@ function dadosHTML(i){
   const fi=filaDe(i,ev.id?ev:null);
   return `<div class="big">${esc(i.nome)}</div>
     ${fi?`<div style="margin:2px 0 6px"><span class="filaTag">Fila: ${esc(nomeFila(fi,ev))}</span></div>`:''}
+    ${i.eqNome?`<div class="kv"><span>Equipe:</span> <b>👥 ${esc(i.eqNome)}</b></div>`:''}
     ${i.cpf?`<div class="kv"><span>CPF:</span> ${esc(fmtCPF(i.cpf))}</div>`:''}
     ${i.telefone?`<div class="kv"><span>Telefone:</span> ${esc(i.telefone)}</div>`:''}
     ${i.email?`<div class="kv"><span>E-mail:</span> ${esc(i.email)}</div>`:''}
@@ -1283,12 +1290,42 @@ function renderInscritos(){
     +(quems.length?`<option disabled>──────────</option>${quems.map(q=>`<option disabled>${esc(q)}: ${inscritos.filter(i=>quemCheckin(i)===q).length} entrada(s)</option>`).join('')}`:'');
   let l=base.filter(i=>filtro==='todos'||(filtro==='pres'?i.checkin:filtro==='pend'?devePagar(i):!i.checkin));
   if(filtroQuem)l=l.filter(i=>quemCheckin(i)===filtroQuem);
+  // Equipes (inscrição por equipes)
+  const eqs=equipesDoEvento();
+  $('eqBarra').classList.toggle('hidden',!(ev&&(ev.equipes||eqs.length)));
+  if(filtroEq&&filtroEq!=='_sem'&&!eqs.some(q=>q.id===filtroEq))filtroEq='';
+  $('filtroEq').innerHTML=`<option value="">Equipe: todas</option><option value="_sem" ${filtroEq==='_sem'?'selected':''}>Sem equipe (${inscritos.filter(i=>!i.eqId).length})</option>`+eqs.map(q=>`<option value="${esc(q.id)}" ${filtroEq===q.id?'selected':''}>${esc(q.nome)} (${q.n})</option>`).join('');
+  if(filtroEq)l=l.filter(i=>filtroEq==='_sem'?!i.eqId:i.eqId===filtroEq);
   if(ehDono()&&$('listaEquipe'))renderEquipe();
   if(q)l=l.filter(i=>(i.nome||'').toLowerCase().includes(q)||(i.codigo||'').toLowerCase()===q||(qd.length>=3&&((i.cpf||'').includes(qd)||(i.telefone||'').replace(/\D/g,'').includes(qd))));
   $('listaInscritos').innerHTML=!selId?'<div class="empty">Selecione um evento.</div>':!l.length?'<div class="empty">Nenhuma inscrição'+(q||filtro!=='todos'?' encontrada':' ainda')+'.</div>':
-    (()=>{let ult='';return l.map(i=>{const L=letraDe(i.nome),div=!q&&L!==ult?`<div class="letra">${L==='#'?'Outros':L}</div>`:'';ult=L;return div+`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}${i.grupo?' · 👥 grupo':''}${!fl&&filaDe(i,ev)?' · fila '+esc(nomeFila(filaDe(i,ev),ev)):''}${i.checkin&&quemCheckin(i)?' · ✓ '+esc(quemCheckin(i)):''}${i._pend?' · <span class="pend">⏳ aguardando envio</span>':''}</span></div>
+    (()=>{let ult='';return l.map(i=>{const L=letraDe(i.nome),div=!q&&L!==ult?`<div class="letra">${L==='#'?'Outros':L}</div>`:'';ult=L;return div+`<div class="item" onclick="detalhe('${i.id}')"><div class="nm"><b>${esc(i.nome)}</b><span class="muted">${esc(i.codigo)}${i.cpf?' · '+esc(fmtCPF(i.cpf)):i.telefone?' · '+esc(i.telefone):''}${i.eqNome?' · 👥 '+esc(i.eqNome):i.grupo?' · 👥 grupo':''}${!fl&&filaDe(i,ev)?' · fila '+esc(nomeFila(filaDe(i,ev),ev)):''}${i.checkin&&quemCheckin(i)?' · ✓ '+esc(quemCheckin(i)):''}${i._pend?' · <span class="pend">⏳ aguardando envio</span>':''}</span></div>
       <div class="tags">${i.meia?'<span class="tag warn">Meia</span>':''}${px?(i.isento?'<span class="tag neu">Criança · isenta</span>':`<span class="tag ${i.pago?'ok':'warn'}">${i.pago?'Pago':'A pagar'}</span>`):(i.crianca?'<span class="tag neu">Criança</span>':'')}
       <span class="tag ${i.checkin?'ok':'neu'}">${i.checkin?'Presente':'Inscrito'}</span></div></div>`;}).join('');})();
+}
+/* ================== Equipes (inscrição por equipes) ================== */
+function equipesDoEvento(){
+  const m={};inscritos.forEach(i=>{if(!i.eqId)return;const q=m[i.eqId]||(m[i.eqId]={id:i.eqId,nome:i.eqNome||i.eqId,n:0});q.n++;});
+  return Object.values(m).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+}
+async function resumoEquipes(){
+  const ev=eventoSel();if(!ev)return;
+  abrirModal(`<h2>👥 Equipes</h2><div class="muted">${esc(ev.titulo)}</div><div id="eqRes" style="margin-top:10px"><div class="empty">Carregando…</div></div><div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+  let docs=[];try{docs=(await col('equipesInsc').where('eventoId','==',ev.id).get()).docs.map(d=>({id:d.id,...d.data()}));}catch(e){}
+  const px=cobra(ev),m={};
+  docs.forEach(d=>m[d.id]={...d,l:[]});
+  inscritos.forEach(i=>{if(!i.eqId)return;(m[i.eqId]||(m[i.eqId]={id:i.eqId,nome:i.eqNome,l:[]})).l.push(i);});
+  const l=Object.values(m).sort((a,b)=>b.l.length-a.l.length||String(a.nome).localeCompare(String(b.nome),'pt-BR'));
+  const sem=inscritos.filter(i=>!i.eqId).length;
+  if(!$('eqRes'))return;
+  $('eqRes').innerHTML=(l.length?`<div class="muted" style="margin-bottom:8px">${l.length} equipe(s) · ${inscritos.length-sem} inscrito(s) em equipes · ${sem} sem equipe</div>`:'<div class="empty">Nenhuma equipe criada ainda.<br>O líder cria a equipe na página de inscrição do evento.</div>')+
+    l.map(q=>{const pg=q.l.filter(i=>i.pago).length,dev=q.l.filter(devePagar).length,pr=q.l.filter(i=>i.checkin).length,tel=String(q.liderTel||'').replace(/\D/g,'');
+      return `<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:16px">${esc(q.nome)}</b>
+        <div class="muted">${q.liderNome?'Líder: '+esc(q.liderNome)+' · ':''}código ${esc(q.id)}</div></div><span class="tag neu">${q.l.length}</span></div>
+        <div class="muted" style="margin-top:4px">${px?`${pg} pago(s)${dev?' · <b style="color:var(--warn)">'+dev+' a pagar</b>':''} · `:''}${pr} presente(s)</div>
+        <div class="row" style="margin-top:6px"><button class="btn" onclick="filtroEq='${esc(q.id)}';fecharModal();renderInscritos()">Ver inscritos</button>
+          <button class="btn" onclick="copiar('${linkInscricao(ev.id)}&eq=${esc(q.id)}')">🔗 Link</button>
+          ${tel?`<button class="btn" onclick="window.open('https://wa.me/55${tel}','_blank')">💬 Líder</button>`:''}</div></div>`;}).join('');
 }
 function detalhe(id){
   const i=inscritos.find(x=>x.id===id);if(!i)return;
@@ -1354,9 +1391,9 @@ async function excluirInscricao(id){
 function exportarCSV(){
   const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para exportar');
   const c=ev.campos||{},px=cobra(ev),cx=camposDoEvento(ev);
-  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em','Check-in por');const fa=filasAtivas(ev);if(fa)cab.push('Fila');const tc=termoAtivo(ev)||inscritos.some(i=>i.termoAceito);if(tc)cab.push('Termo aceito','Termo aceito em','Versão do termo');
+  const cab=['Código','Nome'];if(c.cpf)cab.push('CPF');if(c.telefone)cab.push('Telefone');if(c.email)cab.push('E-mail');cx.forEach(f=>cab.push(f.label));cab.push('Meia-entrada','Criança','Nascimento (idade)','Grupo (inscrito por)','Equipe','Inscrito em');if(px)cab.push('Pago','Pago em');if(px&&verValores())cab.push('Valor pago');cab.push('Presente','Entrada em','Check-in por');const fa=filasAtivas(ev);if(fa)cab.push('Fila');const tc=termoAtivo(ev)||inscritos.some(i=>i.termoAceito);if(tc)cab.push('Termo aceito','Termo aceito em','Versão do termo');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
-  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(i.meia?'Sim — '+(i.meiaMotivo||''):'Não',i.crianca?(i.isento?'Sim (isenta)':'Sim'):'Não',idadeTxt(i),rg?rg.nome:'',fmtTs(i.criadoEm));
+  const linhas=inscritos.map(i=>{const r=[i.codigo,i.nome];if(c.cpf)r.push(fmtCPF(i.cpf));if(c.telefone)r.push(i.telefone);if(c.email)r.push(i.email);cx.forEach(f=>r.push(fmtResposta(respostaDe(i,f),f)));const rg=responsavelGrupo(i);r.push(i.meia?'Sim — '+(i.meiaMotivo||''):'Não',i.crianca?(i.isento?'Sim (isenta)':'Sim'):'Não',idadeTxt(i),rg?rg.nome:'',i.eqNome||'',fmtTs(i.criadoEm));
     if(px)r.push(i.isento?'Isento':i.pago?'Sim':'Não',fmtTs(i.pagoEm));if(px&&verValores())r.push(i.pago?Number(i.valorPago!=null?i.valorPago:valorDe(i,ev)).toFixed(2).replace('.',','):'');
     r.push(i.checkin?'Sim':'Não',fmtTs(i.checkinLocal||i.checkinEm),quemCheckin(i));if(fa)r.push(nomeFila(filaDe(i,ev),ev));if(tc)r.push(i.termoAceito?'Sim':'Não',fmtTs(i.termoAceitoEm),i.termoVersao||'');return r.map(q).join(';');});
   const blob=new Blob(['﻿'+[cab.map(q).join(';'),...linhas].join('\r\n')],{type:'text/csv;charset=utf-8'});
@@ -1366,17 +1403,18 @@ function exportarCSV(){
 function imprimirLista(){
   const ev=eventoSel();if(!ev||!inscritos.length)return toast('Nada para imprimir');
   const fl=minhaFila(),fa=filasAtivas(ev),px=cobra(ev);
-  const l=inscritos.filter(i=>!fl||filaDe(i,ev)===fl);
+  const l=inscritos.filter(i=>(!fl||filaDe(i,ev)===fl)&&(!filtroEq||(filtroEq==='_sem'?!i.eqId:i.eqId===filtroEq)));
+  const nomeEq=filtroEq?(filtroEq==='_sem'?'Sem equipe':'Equipe '+((inscritos.find(i=>i.eqId===filtroEq)||{}).eqNome||'')):'';
   const cpfM=c=>{c=String(c||'');return c.length===11?'•••.•••.'+c.slice(6,9)+'-'+c.slice(9):'';};
   const sit=i=>i.isento?'Criança isenta':!px?'':i.pago?'Pago':'A PAGAR';
   const col=4+(px?1:0)+(fa&&!fl?1:0);
   let ult='',linhas='';
   l.forEach(i=>{const L=letraDe(i.nome);if(L!==ult){linhas+=`<tr class="L"><td colspan="${col+1}">${L==='#'?'Outros':L}</td></tr>`;ult=L;}
-    linhas+=`<tr><td class="cx">${i.checkin?'✔':'☐'}</td><td><b>${esc(i.nome)}</b>${i.meia?' <i>(meia)</i>':''}${i.crianca?' 🎈':''}</td><td>${esc(i.codigo)}</td><td>${esc(cpfM(i.cpf))}</td>${px?`<td>${sit(i)}</td>`:''}${fa&&!fl?`<td>${esc(nomeFila(filaDe(i,ev),ev))}</td>`:''}<td style="width:22%"></td></tr>`;});
+    linhas+=`<tr><td class="cx">${i.checkin?'✔':'☐'}</td><td><b>${esc(i.nome)}</b>${i.meia?' <i>(meia)</i>':''}${i.crianca?' 🎈':''}${i.eqNome&&!filtroEq?'<br><small>👥 '+esc(i.eqNome)+'</small>':''}</td><td>${esc(i.codigo)}</td><td>${esc(cpfM(i.cpf))}</td>${px?`<td>${sit(i)}</td>`:''}${fa&&!fl?`<td>${esc(nomeFila(filaDe(i,ev),ev))}</td>`:''}<td style="width:22%"></td></tr>`;});
   const w=window.open('','_blank');if(!w)return toast('Permita abrir janelas para imprimir');
   w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lista - ${esc(ev.titulo)}</title>
 <style>body{font-family:system-ui,sans-serif;margin:14px;font-size:12px;color:#000}h1{font-size:17px;margin:0 0 2px}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{border:1px solid #888;padding:5px 6px;text-align:left;vertical-align:top}th{background:#eee}.L td{background:#d9d9d9;font-weight:800;font-size:14px}.cx{width:18px;text-align:center;font-size:15px}button{font-size:16px;padding:10px 18px;margin:8px 0}@media print{button{display:none}tr{page-break-inside:avoid}}</style></head><body>
-<h1>${esc(ev.titulo)}${fl?' — '+esc(nomeFila(fl,ev)):''}</h1><div>${l.length} pessoa(s) · ${l.filter(i=>i.checkin).length} já presente(s) · gerada em ${new Date().toLocaleString('pt-BR')}</div>
+<h1>${esc(ev.titulo)}${fl?' — '+esc(nomeFila(fl,ev)):''}${nomeEq?' — '+esc(nomeEq):''}</h1><div>${l.length} pessoa(s) · ${l.filter(i=>i.checkin).length} já presente(s) · gerada em ${new Date().toLocaleString('pt-BR')}</div>
 <button onclick="print()">🖨 Imprimir / salvar PDF</button>
 <table><tr><th class="cx">✓</th><th>Nome</th><th>Código</th><th>CPF</th>${px?'<th>Pagamento</th>':''}${fa&&!fl?'<th>Fila</th>':''}<th>Obs.</th></tr>${linhas}</table></body></html>`);
   w.document.close();
