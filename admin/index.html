@@ -360,6 +360,7 @@ function novoOrg(){
     <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:10px"><input type="checkbox" id="fPodeCriar" style="width:20px;height:20px;flex:0 0 auto;margin-top:2px"> <span>O organizador pode <b>criar e excluir</b> eventos<br><span class="muted small">Desmarcado: você cria o evento (em "Entrar como suporte") e ele só edita e configura. Bom para cobrança por evento ou por inscrito.</span></span></label>
     ${camposMP()}
     ${camposCobranca()}
+    <label style="display:flex;gap:10px;align-items:flex-start;color:var(--text);margin-top:12px"><input type="checkbox" id="fContrato" checked style="width:20px;height:20px;flex:0 0 auto;margin-top:2px"> <span>📝 Pedir o <b>aceite dos termos de uso</b> no primeiro acesso<br><span class="muted small">O responsável lê os combinados (taxa, garantia mínima, fechamento) e aceita com nome e CPF antes de usar o app.</span></span></label>
     <div style="height:14px"></div>
     <div class="row"><button class="btn" onclick="fechar()">Cancelar</button><button class="btn pri" id="fOk" onclick="criarOrg()">Criar organizador e login</button></div>`);
   planoUI();
@@ -380,7 +381,7 @@ async function criarOrg(){
     if(u.exists)return volta(`Este e-mail já está no organizador “${u.data().orgId}”`);
     const nova=await criarLogin(email,senha);
     const b=db.batch();
-    b.set(db.collection('organizadores').doc(id),{nome,donoNome,donoEmail:email,status:'ativo',podeCriarEventos:$('fPodeCriar').checked,...lerCobranca(),...lerMP(),criadoEm:TS()});
+    b.set(db.collection('organizadores').doc(id),{nome,donoNome,donoEmail:email,status:'ativo',podeCriarEventos:$('fPodeCriar').checked,...lerCobranca(),...lerMP(),contratoVersao:$('fContrato').checked?1:0,criadoEm:TS()});
     b.set(db.collection('usuarios').doc(email),{orgId:id,papel:'dono'});
     await b.commit();
     fechar();toast('Organizador criado!');
@@ -441,6 +442,7 @@ async function detalhe(id){
     <div class="kv"><span>Pix automático:</span> ${o.mpLiberado?(o.mp&&o.mp.conectado?`<b style="color:var(--ok)">Mercado Pago conectado</b>${o.mp.teste?' (teste)':''} · comissão ${String(o.comissaoMP||0).replace('.',',')}%`:`liberado (${String(o.comissaoMP||0).replace('.',',')}%) · <b>aguardando o organizador conectar a conta</b>`):'não liberado'}</div>
     ${o.mpLiberado&&!(o.mp&&o.mp.conectado)?`<button class="btn full" style="margin-top:6px" id="btnLinkMP" onclick="linkConexaoMP('${esc(id)}')">📲 Enviar link para o organizador conectar o Mercado Pago</button>`:''}
     <div class="kv" id="dUso"><span>Uso:</span> carregando…</div>
+    ${o.plano==='proprio'?'':`<div class="kv" id="dContrato"><span>Termos de uso:</span> ${o.contratoVersao?'verificando…':'não pedido'}</div><div id="dContratoBt"></div>`}
     ${proprio?'':secaoCobranca(o)}
     <h3>Links</h3>
     <div class="muted small" style="margin-top:6px">Área do organizador (o responsável entra com o login dele)</div><div class="linkbox">${esc(L.controle)}</div>
@@ -461,7 +463,37 @@ async function detalhe(id){
     // (as inscrições só são lidas no fechamento do evento, para economizar leituras)
     const [ev,eq]=await Promise.all([r.collection('eventos').get(),r.collection('equipe').get()]);
     if($('dUso'))$('dUso').innerHTML=`<span>Uso:</span> ${ev.size} evento(s) · ${eq.size} na equipe`;
+    if($('dContrato'))situacaoContrato(o);
   }catch(e){if($('dUso'))$('dUso').innerHTML='<span>Uso:</span> não foi possível contar';}
+}
+/* ---- Contrato online (termos de uso aceitos pelo responsável no app) ---- */
+const ACEITES={};
+async function situacaoContrato(o){
+  const v=Number(o.contratoVersao||0),el=$('dContrato'),bt=$('dContratoBt');if(!el)return;
+  if(!v){el.innerHTML='<span>Termos de uso:</span> não pedido';bt.innerHTML=`<button class="btn full" style="margin-top:6px" onclick="pedirAceite('${esc(o.id)}')">📝 Pedir aceite dos termos de uso</button>`;return;}
+  let a=null;try{const d=await db.collection('organizadores').doc(o.id).collection('contrato').doc('v'+v).get();if(d.exists)a=d.data();}catch(e){}
+  ACEITES[o.id]=a;if(!$('dContrato'))return;
+  if(a){const dt=a.em&&a.em.toDate?a.em.toDate():null,doc=String(a.cpf||'');
+    el.innerHTML=`<span>Termos de uso:</span> <b style="color:var(--ok)">✅ aceitos</b> em ${dt?dt.toLocaleDateString('pt-BR')+' às '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'} por ${esc(a.nome)} (${doc.length===11?'CPF':'CNPJ'} •••${esc(doc.slice(-5))})${v>1?' · versão '+v:''}`;
+    bt.innerHTML=`<div class="row" style="margin-top:6px"><button class="btn" onclick="verAceite('${esc(o.id)}')">📄 Ver termos aceitos</button><button class="btn" onclick="pedirAceite('${esc(o.id)}')">🔁 Pedir novo aceite</button></div>`;}
+  else{el.innerHTML=`<span>Termos de uso:</span> <b style="color:var(--warn)">⏳ aguardando o aceite</b>${v>1?' (versão '+v+')':''} — aparece para o responsável ao entrar no app`;
+    bt.innerHTML=`<button class="btn full" style="margin-top:6px" onclick="avisarAceite('${esc(o.id)}')">💬 Avisar o responsável pelo WhatsApp</button>`;}
+}
+async function pedirAceite(id){
+  const o=S.orgs.find(x=>x.id===id),v=Number(o.contratoVersao||0)+1;
+  if(!confirm(v>1?`Pedir um novo aceite dos termos a ${o.nome}?\n\nNo próximo acesso, o responsável verá os termos atualizados (taxa, garantia mínima etc.) e só continua depois de aceitar.`:`Pedir o aceite dos termos de uso a ${o.nome}?\n\nNo próximo acesso ao app, o responsável lê os termos e aceita com nome e CPF.`))return;
+  try{await db.collection('organizadores').doc(id).update({contratoVersao:v});registrarAdm(id,'config',`Pediu o aceite dos termos de uso (versão ${v})`);toast('Pronto: o aceite será pedido no próximo acesso');detalhe(id);}catch(e){toast(erroMsg(e));}
+}
+function verAceite(id){
+  const a=ACEITES[id];if(!a)return;const dt=a.em&&a.em.toDate?a.em.toDate():null;
+  abrir(`<h2>📄 Termos aceitos</h2><div class="muted small">${esc(a.nome)} · ${esc(a.email)} · ${dt?dt.toLocaleString('pt-BR'):''} · ${esc(a.disp||'')}</div>
+    <div class="log" style="max-height:55vh;margin-top:8px;font-family:inherit;font-size:13px">${esc(a.texto||'')}</div>
+    <div style="height:10px"></div><div class="row"><button class="btn" onclick="copiar(${esc(JSON.stringify((a.texto||'')+'\n\nAceito por '+a.nome+' (CPF/CNPJ '+a.cpf+') — '+a.email+' — '+(dt?dt.toLocaleString('pt-BR'):'')))})">Copiar</button><button class="btn" onclick="detalhe('${esc(id)}')">Voltar</button></div>`);
+}
+function avisarAceite(id){
+  const o=S.orgs.find(x=>x.id===id);
+  const t=`Olá, ${o.donoNome||''}! Para usar o sistema de inscrições (${o.nome}), abra o app e aceite os termos de uso: são os combinados da taxa e do fechamento do evento. Leva um minuto.\n\n📲 ${links(o.id).controle}`;
+  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
 }
 // Link de autorização do Mercado Pago para o organizador abrir no celular dele (vale 7 dias)
 async function linkConexaoMP(id){
@@ -715,7 +747,11 @@ async function salvarEdicao(id){
   const o0=S.orgs.find(x=>x.id===id)||{};
   const nome=$('fNome').value.trim(),donoNome=$('fDono').value.trim();
   if(!nome)return toast('Informe o nome');
-  try{const c=lerCobranca(),pc=$('fPodeCriar').checked,m=lerMP();await db.collection('organizadores').doc(id).update({nome,donoNome,podeCriarEventos:pc,...c,...m});
+  try{const c=lerCobranca(),pc=$('fPodeCriar').checked,m=lerMP();
+    const mudou=['plano','valor','minimo','previstos','pisoPct'].some(k=>(c[k]||0)!==(o0[k]||0))||Number(m.comissaoMP||0)!==Number(o0.comissaoMP||0);
+    const extra=o0.contratoVersao&&mudou&&confirm('A cobrança mudou. Pedir que o responsável aceite os termos atualizados no próximo acesso?')?{contratoVersao:Number(o0.contratoVersao)+1}:{};
+    await db.collection('organizadores').doc(id).update({nome,donoNome,podeCriarEventos:pc,...c,...m,...extra});
+    if(extra.contratoVersao)registrarAdm(id,'config',`Pediu novo aceite dos termos de uso (versão ${extra.contratoVersao})`);
     if(m.mpLiberado!==!!o0.mpLiberado||m.comissaoMP!==o0.comissaoMP)registrarAdm(id,'config',m.mpLiberado?`Pix automático (Mercado Pago) liberado — comissão ${String(m.comissaoMP).replace('.',',')}%`:'Pix automático (Mercado Pago) desativado');if(pc!==(o0.podeCriarEventos!==false))registrarAdm(id,'config',pc?'Organizador liberado para criar e excluir eventos':'Criação e exclusão de eventos reservadas ao administrador');registrarAdm(id,'cobranca',`Cobrança atualizada: ${nomePlano(c.plano)} — ${resumoPlano({...c,...m})}`);toast('Salvo');detalhe(id);}catch(e){toast(erroMsg(e));}
 }
 async function apagarColecao(ref,log){
