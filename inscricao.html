@@ -76,6 +76,8 @@ input.err,select.err,textarea.err{border-color:var(--bad)}
 .qtd span{min-width:24px;text-align:center;font-weight:800;font-size:19px}
 .selRes{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .selRes .btn{width:auto;margin:0;padding:8px 14px;font-size:14px}
+.eqTop{display:flex;gap:12px;align-items:center}.eqTop .ic{font-size:30px;line-height:1}.eqTop small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;display:block}.eqTop b{font-size:18px}
+.mb{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}.mb:last-child{border-bottom:0}.mb span{color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -275,7 +277,8 @@ let evento=null;
 function listaMeus(){
   topo('Inscrição','Meus vouchers');
   const l=meus();
-  tela(`<div class="card">${l.length?l.map(v=>`<a class="item" href="?${v.org?'o='+encodeURIComponent(v.org)+'&':''}v=${esc(v.id)}"><b>${esc(v.titulo)}</b><br><span class="muted">${esc(v.nome)} · ${esc(v.codigo||'')}</span></a>`).join(''):'<p class="muted center">Nenhum voucher salvo neste aparelho.<br>Use o link de inscrição enviado pelo organizador.</p>'}</div>`);
+  const eqs=minhasEquipes();
+  tela(`${eqs.length?`<div class="card"><b>👥 Equipes que você criou</b>${eqs.map(q=>`<a class="item" href="${esc(q.link)}"><b>${esc(q.nome)}</b><br><span class="muted">${esc(q.titulo)} · código ${esc(q.id)}</span></a>`).join('')}</div>`:''}<div class="card">${l.length?l.map(v=>`<a class="item" href="?${v.org?'o='+encodeURIComponent(v.org)+'&':''}v=${esc(v.id)}"><b>${esc(v.titulo)}</b><br><span class="muted">${esc(v.nome)} · ${esc(v.codigo||'')}</span></a>`).join(''):'<p class="muted center">Nenhum voucher salvo neste aparelho.<br>Use o link de inscrição enviado pelo organizador.</p>'}</div>`);
 }
 
 /* ================== Formulário (uma ou várias pessoas) ================== */
@@ -288,6 +291,10 @@ async function abrirFormulario(eid){
   topo('Inscrição',evento.titulo,metaEv(evento));
   const ja=meus().filter(v=>v.eventoId===eid);
   const aviso=ja.length?`<div class="msg ok">Já existe inscrição feita neste aparelho para este evento. <a href="${qo()}vs=${esc(ja.map(v=>v.id).join(','))}"><b>Ver voucher${ja.length>1?'s':''}</b></a></div>`:'';
+  // Inscrição por equipes: ?eq=CODIGO entra na equipe; ?ver=1 mostra a página da equipe (para o líder e integrantes)
+  EQUIPE=null;let eqErro=false;const eqCod=(P.get('eq')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(evento.equipes&&eqCod){const t=await col('equipesInsc').doc(eqCod).get().catch(()=>null);if(t&&t.exists&&t.data().eventoId===eid)EQUIPE={id:t.id,...t.data()};else eqErro=true;}
+  if(EQUIPE&&P.get('ver'))return telaEquipe();
   if(!evento.aberto){tela(`<div class="card">${banner(evento)}${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}<div class="msg bad">As inscrições para este evento estão encerradas.</div>${aviso}</div>`);return;}
   seqP=0;TIPOS_ON=usaTipos(evento);FORM_ON=!TIPOS_ON;QTD={int:1,meia:0,cri:0};
   tela(`<div class="card">
@@ -295,6 +302,7 @@ async function abrirFormulario(eid){
     ${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
     ${TIPOS_ON?'':cobra(evento)?`${precoLinha('Valor por pessoa',Number(evento.pix.valor),evento)}${temMeia(evento)?precoLinha('Meia-entrada'+(evento.pix.meiaQuem?' <small>('+esc(evento.pix.meiaQuem)+')</small>':''),Number(evento.pix.valorMeia),evento):''}<div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
   </div>
+  ${evento.equipes?cartaoEquipe(eqErro):''}
   ${TIPOS_ON?'<div class="card" id="selTipos"></div>':''}
   <form id="form" novalidate class="${FORM_ON?'':'hidden'}">
     <div id="pessoas"></div>
@@ -313,6 +321,93 @@ async function abrirFormulario(eid){
   if(TIPOS_ON)renderSel(true);else addPessoa(true);
   $('form').onsubmit=e=>{e.preventDefault();enviar();};
 }
+/* ---- Inscrição por equipes (o líder cria a equipe e manda o link; cada integrante se inscreve e paga o seu) ---- */
+let EQUIPE=null;
+const nomeCurto=n=>{const p=String(n||'').trim().split(/\s+/);return (p[0]+(p.length>1?' '+p[p.length-1].charAt(0)+'.':'')).slice(0,40);};
+const linkEquipe=(c,ver)=>BASE+qo()+'e='+encodeURIComponent(evento.id)+'&eq='+c+(ver?'&ver=1':'');
+function minhasEquipes(){try{return JSON.parse(localStorage.getItem('minhasEquipes')||'[]');}catch(e){return[];}}
+function cartaoEquipe(eqErro){
+  if(EQUIPE)return `<div class="card"><div class="eqTop"><div class="ic">👥</div><div style="flex:1;min-width:0"><small>Inscrição na equipe</small><b>${esc(EQUIPE.nome)}</b>
+      <div class="muted">Líder: ${esc(EQUIPE.liderNome)} · ${(EQUIPE.membros||[]).length} inscrito(s)</div></div></div>
+    <div class="row"><button class="btn" type="button" onclick="location.href=linkEquipe(EQUIPE.id,true)">Ver a equipe</button><button class="btn" type="button" onclick="semEquipe()">Inscrever sem equipe</button></div></div>`;
+  return `<div class="card"><b style="font-size:17px">👥 Vai participar com uma equipe?</b>
+    ${eqErro?'<div class="msg bad">Código de equipe não encontrado. Confira com o líder ou faça a inscrição sem equipe.</div>':''}
+    <div class="muted" style="margin-top:4px">Peça o link ao líder da sua equipe ou digite o código. Se você é o líder, crie a equipe e mande o link no grupo.</div>
+    <div class="row" style="margin-top:10px"><input id="eqCod" placeholder="Código da equipe" maxlength="6" autocapitalize="characters" style="text-transform:uppercase;flex:1"><button class="btn" type="button" style="margin:0;width:auto;flex:0 0 auto" onclick="entrarEquipe()">Entrar</button></div>
+    <button class="btn" type="button" onclick="telaCriarEquipe()">⭐ Sou líder: criar equipe</button>
+    <div class="muted center" style="margin-top:8px">Sem equipe? É só seguir abaixo.</div></div>`;
+}
+function entrarEquipe(){const c=$('eqCod').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(c.length!==6)return alert('O código da equipe tem 6 letras e números.');location.href=linkEquipe(c);}
+function semEquipe(){location.href=BASE+qo()+'e='+encodeURIComponent(evento.id);}
+function telaCriarEquipe(){
+  if(!evento.aberto)return;
+  tela(`<div class="card"><b style="font-size:18px">⭐ Criar equipe</b>
+    <div class="muted" style="margin-top:4px">Você será o <b>líder da equipe</b>. Depois de criar, você recebe um link para mandar no grupo: cada integrante faz a própria inscrição e paga o seu Pix, e todos aparecem juntos na equipe.</div>
+    <label>Nome da equipe *</label><input id="eqNome" maxlength="60" placeholder="Ex.: Pedal Ibitinga">
+    <label>Seu nome (líder) *</label><input id="eqLider" maxlength="120" autocomplete="name">
+    <label>Seu WhatsApp *</label><input id="eqTel" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" oninput="mascaraTel(this)">
+    <div id="eqErro"></div>
+    <button class="btn pri" id="eqOk" type="button" onclick="criarEquipe()">Criar equipe</button>
+    <button class="btn" type="button" onclick="semEquipe()">Voltar</button>
+    <p class="priv">O nome e o WhatsApp do líder ficam visíveis para a organização do evento.</p></div>`);
+  window.scrollTo(0,0);$('eqNome').focus();
+}
+async function criarEquipe(){
+  const nome=$('eqNome').value.trim().replace(/\s+/g,' '),lider=$('eqLider').value.trim().replace(/\s+/g,' '),tel=$('eqTel').value.trim();
+  const erro=m=>{$('eqErro').innerHTML=`<div class="msg bad">${esc(m)}</div>`;};
+  if(nome.length<2)return erro('Informe o nome da equipe.');
+  if(lider.length<3)return erro('Informe o seu nome completo.');
+  if(tel.replace(/\D/g,'').length<10)return erro('Informe o seu WhatsApp com DDD.');
+  const b=$('eqOk');b.disabled=true;b.textContent='Criando…';
+  try{
+    let cod='';
+    for(let t=0;t<4&&!cod;t++){const c=gerarCodigo();if(!(await col('equipesInsc').doc(c).get()).exists)cod=c;}
+    if(!cod)throw new Error('Tente de novo.');
+    await col('equipesInsc').doc(cod).set({eventoId:evento.id,nome,liderNome:lider,liderTel:tel,membros:[],criadoEm:firebase.firestore.FieldValue.serverTimestamp()});
+    const l=minhasEquipes().filter(q=>q.id!==cod);l.unshift({id:cod,nome,titulo:evento.titulo,link:linkEquipe(cod,true)});
+    try{localStorage.setItem('minhasEquipes',JSON.stringify(l.slice(0,20)));}catch(x){}
+    location.href=linkEquipe(cod,true)+'&novo=1';
+  }catch(e){b.disabled=false;b.textContent='Criar equipe';erro(e.code==='permission-denied'?'Não foi possível criar a equipe: as inscrições podem estar encerradas.':msgErro(e));}
+}
+// Página da equipe: link para compartilhar e quem já se inscreveu (atualiza sozinha)
+const ROT_EQ={int:'Inteira',meia:'Meia-entrada',cri:'Gratuita'};
+function telaEquipe(){
+  const q=EQUIPE,novo=!!P.get('novo'),link=linkEquipe(q.id);
+  topo('Equipe',evento.titulo,metaEv(evento));
+  tela(`${novo?'<div class="card"><div class="msg ok" style="margin-top:0">✅ <b>Equipe criada!</b> Agora mande o link abaixo no grupo da equipe. Guarde esta página: é por ela que você acompanha quem já se inscreveu.</div></div>':''}
+    <div class="card center">${banner(evento)}
+      <div style="font-size:38px;line-height:1">👥</div>
+      <div class="muted" style="margin-top:6px;text-transform:uppercase;font-size:12px;letter-spacing:.06em">Equipe</div>
+      <div class="nome" style="font-size:24px;font-weight:800;margin:2px 0">${esc(q.nome)}</div>
+      <div class="muted">Líder: ${esc(q.liderNome)}</div>
+      <div class="codigo" style="margin-top:12px">${esc(q.id)}</div><div class="muted">código da equipe</div>
+    </div>
+    <div class="card"><b>Link de inscrição da equipe</b>
+      <div class="muted" style="margin-top:4px">Quem se inscreve por este link entra direto na equipe. Cada um preenche os próprios dados${cobra(evento)?' e paga o seu Pix':''}.</div>
+      <textarea class="copia" readonly onclick="this.select()" style="margin-top:8px;min-height:56px">${esc(link)}</textarea>
+      <button class="btn pri" type="button" onclick="zapEquipe()">📤 Mandar no WhatsApp</button>
+      <div class="row"><button class="btn" type="button" onclick="copiarTexto(linkEquipe(EQUIPE.id),'Link da equipe copiado!')">🔗 Copiar link</button>
+        ${evento.aberto?`<button class="btn" type="button" onclick="location.href=linkEquipe(EQUIPE.id)">✍ Fazer inscrição</button>`:''}</div>
+      ${evento.aberto?'':'<div class="msg bad">As inscrições para este evento estão encerradas.</div>'}
+    </div>
+    <div class="card"><b>Inscritos na equipe (<span id="eqN">0</span>)</b><div id="eqLista" style="margin-top:6px"></div></div>`);
+  if(telaEquipe.u)telaEquipe.u();
+  telaEquipe.u=col('equipesInsc').doc(q.id).onSnapshot(d=>{if(!d.exists)return;EQUIPE={id:d.id,...d.data()};renderMembros();},()=>renderMembros());
+  renderMembros();
+}
+function renderMembros(){
+  const m=EQUIPE.membros||[];if(!$('eqLista'))return;
+  $('eqN').textContent=m.length;
+  const cont={int:0,meia:0,cri:0};m.forEach(x=>cont[x.t]=(cont[x.t]||0)+1);
+  const res=Object.entries(cont).filter(([k,v])=>v).map(([k,v])=>v+' '+ROT_EQ[k].toLowerCase()).join(' · ');
+  $('eqLista').innerHTML=m.length?(res&&(cont.meia||cont.cri)?`<div class="muted" style="margin-bottom:4px">${esc(res)}</div>`:'')+m.map((x,k)=>`<div class="mb"><b>${k+1}. ${esc(x.n)}</b><span>${esc(ROT_EQ[x.t]||'')}</span></div>`).join(''):'<p class="muted center">Ninguém se inscreveu ainda. Mande o link no grupo da equipe.</p>';
+}
+function zapEquipe(){
+  const q=EQUIPE,d=fmtData(evento);
+  const t=`👥 Equipe *${q.nome}* no *${evento.titulo}*${d?' ('+d+')':''}!\n\nFaça a sua inscrição por este link (você já entra na nossa equipe):\n${linkEquipe(q.id)}\n\nCada um preenche os próprios dados${cobra(evento)?' e paga o seu Pix':''} e recebe o seu voucher com QR code.`;
+  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
+}
+
 /* ---- Etapa 1: tipo e quantidade de inscrições (eventos pagos com meia-entrada e/ou criança grátis) ---- */
 let TIPOS_ON=false,FORM_ON=true,QTD={int:1,meia:0,cri:0};
 function usaTipos(ev){return cobra(ev)&&(temMeia(ev)||criancasGratis(ev));}
@@ -472,10 +567,11 @@ async function enviar(){
   const ok=[],falhas=[];let encerrado=false;
   for(let k=0;k<pessoas.length;k++){
     const p=pessoas[k],ref=refs[k];
-    const dados={eventoId:evento.id,codigo:gerarCodigo(),nome:p.nome,cpf:p.cpf,telefone:p.telefone,email:p.email,extra:'',respostas:p.respostas,...grupo,...(criancasGratis(evento)?{crianca:p.crianca,nascimento:p.nasc,isento:p.crianca}:{}),...(p.meia?{meia:true,meiaMotivo:p.meiaMotivo.slice(0,80)}:{}),...(termoAtivo(evento)?{termoAceito:true,termoAceitoEm:firebase.firestore.FieldValue.serverTimestamp(),termoVersao:evento.termo.versao||1,termoAceitoPor:pessoas[0].nome}:{}),
+    const dados={eventoId:evento.id,codigo:gerarCodigo(),nome:p.nome,cpf:p.cpf,telefone:p.telefone,email:p.email,extra:'',respostas:p.respostas,...grupo,...(criancasGratis(evento)?{crianca:p.crianca,nascimento:p.nasc,isento:p.crianca}:{}),...(p.meia?{meia:true,meiaMotivo:p.meiaMotivo.slice(0,80)}:{}),...(EQUIPE?{eqId:EQUIPE.id,eqNome:EQUIPE.nome}:{}),...(termoAtivo(evento)?{termoAceito:true,termoAceitoEm:firebase.firestore.FieldValue.serverTimestamp(),termoVersao:evento.termo.versao||1,termoAceitoPor:pessoas[0].nome}:{}),
       checkin:false,checkinEm:null,pago:false,pagoEm:null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};
     const bt=db.batch();bt.set(ref,dados);
     if(c.cpf&&p.cpf)bt.set(col('bloqueios').doc(evento.id+'_'+p.cpf),{eventoId:evento.id,inscricaoId:ref.id});
+    if(EQUIPE)bt.update(col('equipesInsc').doc(EQUIPE.id),{membros:firebase.firestore.FieldValue.arrayUnion({n:nomeCurto(p.nome),t:p.crianca?'cri':p.meia?'meia':'int',k:gerarCodigo().slice(0,4)})});
     try{
       await bt.commit();ok.push({id:ref.id,...dados,pessoa:k});
       guardar({id:ref.id,eventoId:evento.id,titulo:evento.titulo,nome:p.nome,codigo:dados.codigo});
@@ -528,7 +624,7 @@ function mostrarVouchers(lista,ev,o,liberar){
   const liberados=atual.liberar.length;
   tela(`
     ${liberados?`<div class="card"><div class="msg ok" style="margin-top:0">✅ <b>Pagamento confirmado!</b> ${liberados>1?'Os QR codes foram liberados':'Seu QR code foi liberado'}. Salve o voucher para apresentar na entrada.</div></div>`:''}
-    ${o.novo?`<div class="card"><div class="msg ok" style="margin-top:0">✅ ${varios?lista.length+' inscrições realizadas!':'Inscrição realizada!'}${px&&pend.length?' Falta só o pagamento via Pix (abaixo).':''}</div>
+    ${o.novo?`<div class="card"><div class="msg ok" style="margin-top:0">✅ ${varios?lista.length+' inscrições realizadas!':'Inscrição realizada!'}${px&&pend.length?' Falta só o pagamento via Pix (abaixo).':''}${lista[0].eqNome?`<br>👥 Equipe <b>${esc(lista[0].eqNome)}</b>`:''}</div>
       ${o.falhas.length?`<div class="msg bad">Não foi possível inscrever:<br>${o.falhas.map(f=>'• '+esc(f.nome)+' — '+esc(f.motivo)).join('<br>')}</div>`:''}
       ${varios?`<div class="muted" style="margin-top:10px">Cada pessoa tem o seu voucher abaixo. Salve ou compartilhe todos.</div>
         <button class="btn pri" onclick="compartilharTodos()">📤 Compartilhar todos os vouchers</button>
@@ -578,6 +674,7 @@ function cartaoVoucher(i,ev,k,varios){
     ${i.isento?'<div style="margin-top:4px"><span class="st ok">🎈 Criança — inscrição gratuita</span></div>':px?`<div style="margin-top:4px"><span class="st ${i.pago?'ok':'pend'}">${i.pago?'✔ Pagamento confirmado':'⏳ Pagamento pendente'}</span>${i.meia?' <span class="st pend">🎟 Meia-entrada</span>':''}</div>`:''}
     <div class="muted" style="margin-top:12px">${varios?'Participante '+(k+1):'Participante'}</div>
     <div class="nome">${esc(i.nome)}</div>
+    ${i.eqNome?`<div class="muted">👥 Equipe ${esc(i.eqNome)}</div>`:''}
     <div class="qrbox ${travado(i,ev)||atual.liberar.includes(i.id)?'travado':''}" id="qb${k}"><div class="qrin" id="qr${k}"></div>${travado(i,ev)||atual.liberar.includes(i.id)?'<div class="tarja">⏳ AGUARDANDO PAGAMENTO<small>liberado após a confirmação do Pix</small></div>':''}</div>
     <div class="muted">Código</div><div class="codigo">${esc(i.codigo)}</div>
     ${travado(i,ev)?`<p class="muted">O QR code é liberado aqui assim que a organização confirmar o pagamento. Esta página se atualiza sozinha.</p>
