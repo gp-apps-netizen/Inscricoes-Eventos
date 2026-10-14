@@ -277,8 +277,7 @@ let evento=null;
 function listaMeus(){
   topo('Inscrição','Meus vouchers');
   const l=meus();
-  const eqs=minhasEquipes();
-  tela(`${eqs.length?`<div class="card"><b>👥 Equipes que você criou</b>${eqs.map(q=>`<a class="item" href="${esc(q.link)}"><b>${esc(q.nome)}</b><br><span class="muted">${esc(q.titulo)} · código ${esc(q.id)}</span></a>`).join('')}</div>`:''}<div class="card">${l.length?l.map(v=>`<a class="item" href="?${v.org?'o='+encodeURIComponent(v.org)+'&':''}v=${esc(v.id)}"><b>${esc(v.titulo)}</b><br><span class="muted">${esc(v.nome)} · ${esc(v.codigo||'')}</span></a>`).join(''):'<p class="muted center">Nenhum voucher salvo neste aparelho.<br>Use o link de inscrição enviado pelo organizador.</p>'}</div>`);
+  tela(`<div class="card">${l.length?l.map(v=>`<a class="item" href="?${v.org?'o='+encodeURIComponent(v.org)+'&':''}v=${esc(v.id)}"><b>${esc(v.titulo)}</b><br><span class="muted">${esc(v.nome)} · ${esc(v.codigo||'')}</span></a>`).join(''):'<p class="muted center">Nenhum voucher salvo neste aparelho.<br>Use o link de inscrição enviado pelo organizador.</p>'}</div>`);
 }
 
 /* ================== Formulário (uma ou várias pessoas) ================== */
@@ -321,61 +320,28 @@ async function abrirFormulario(eid){
   if(TIPOS_ON)renderSel(true);else addPessoa(true);
   $('form').onsubmit=e=>{e.preventDefault();enviar();};
 }
-/* ---- Inscrição por equipes (o líder cria a equipe e manda o link; cada integrante se inscreve e paga o seu) ---- */
+/* ---- Inscrição por equipes (o organizador cria a equipe e envia o link ao líder; cada integrante se inscreve e paga o seu) ---- */
 let EQUIPE=null;
 const nomeCurto=n=>{const p=String(n||'').trim().split(/\s+/);return (p[0]+(p.length>1?' '+p[p.length-1].charAt(0)+'.':'')).slice(0,40);};
 const linkEquipe=(c,ver)=>BASE+qo()+'e='+encodeURIComponent(evento.id)+'&eq='+c+(ver?'&ver=1':'');
-function minhasEquipes(){try{return JSON.parse(localStorage.getItem('minhasEquipes')||'[]');}catch(e){return[];}}
 function cartaoEquipe(eqErro){
   if(EQUIPE)return `<div class="card"><div class="eqTop"><div class="ic">👥</div><div style="flex:1;min-width:0"><small>Inscrição na equipe</small><b>${esc(EQUIPE.nome)}</b>
       <div class="muted">Líder: ${esc(EQUIPE.liderNome)} · ${(EQUIPE.membros||[]).length} inscrito(s)</div></div></div>
     <div class="row"><button class="btn" type="button" onclick="location.href=linkEquipe(EQUIPE.id,true)">Ver a equipe</button><button class="btn" type="button" onclick="semEquipe()">Inscrever sem equipe</button></div></div>`;
-  return `<div class="card"><b style="font-size:17px">👥 Vai participar com uma equipe?</b>
-    ${eqErro?'<div class="msg bad">Código de equipe não encontrado. Confira com o líder ou faça a inscrição sem equipe.</div>':''}
-    <div class="muted" style="margin-top:4px">Peça o link ao líder da sua equipe ou digite o código. Se você é o líder, crie a equipe e mande o link no grupo.</div>
+  return `<div class="card"><b style="font-size:17px">👥 Faz parte de uma equipe?</b>
+    ${eqErro?'<div class="msg bad">Código de equipe não encontrado. Confira com o líder da equipe ou faça a inscrição sem equipe.</div>':''}
+    <div class="muted" style="margin-top:4px">Use o link enviado pelo líder da sua equipe ou digite o código da equipe.</div>
     <div class="row" style="margin-top:10px"><input id="eqCod" placeholder="Código da equipe" maxlength="6" autocapitalize="characters" style="text-transform:uppercase;flex:1"><button class="btn" type="button" style="margin:0;width:auto;flex:0 0 auto" onclick="entrarEquipe()">Entrar</button></div>
-    <button class="btn" type="button" onclick="telaCriarEquipe()">⭐ Sou líder: criar equipe</button>
     <div class="muted center" style="margin-top:8px">Sem equipe? É só seguir abaixo.</div></div>`;
 }
 function entrarEquipe(){const c=$('eqCod').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(c.length!==6)return alert('O código da equipe tem 6 letras e números.');location.href=linkEquipe(c);}
 function semEquipe(){location.href=BASE+qo()+'e='+encodeURIComponent(evento.id);}
-function telaCriarEquipe(){
-  if(!evento.aberto)return;
-  tela(`<div class="card"><b style="font-size:18px">⭐ Criar equipe</b>
-    <div class="muted" style="margin-top:4px">Você será o <b>líder da equipe</b>. Depois de criar, você recebe um link para mandar no grupo: cada integrante faz a própria inscrição e paga o seu Pix, e todos aparecem juntos na equipe.</div>
-    <label>Nome da equipe *</label><input id="eqNome" maxlength="60" placeholder="Ex.: Pedal Ibitinga">
-    <label>Seu nome (líder) *</label><input id="eqLider" maxlength="120" autocomplete="name">
-    <label>Seu WhatsApp *</label><input id="eqTel" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" oninput="mascaraTel(this)">
-    <div id="eqErro"></div>
-    <button class="btn pri" id="eqOk" type="button" onclick="criarEquipe()">Criar equipe</button>
-    <button class="btn" type="button" onclick="semEquipe()">Voltar</button>
-    <p class="priv">O nome e o WhatsApp do líder ficam visíveis para a organização do evento.</p></div>`);
-  window.scrollTo(0,0);$('eqNome').focus();
-}
-async function criarEquipe(){
-  const nome=$('eqNome').value.trim().replace(/\s+/g,' '),lider=$('eqLider').value.trim().replace(/\s+/g,' '),tel=$('eqTel').value.trim();
-  const erro=m=>{$('eqErro').innerHTML=`<div class="msg bad">${esc(m)}</div>`;};
-  if(nome.length<2)return erro('Informe o nome da equipe.');
-  if(lider.length<3)return erro('Informe o seu nome completo.');
-  if(tel.replace(/\D/g,'').length<10)return erro('Informe o seu WhatsApp com DDD.');
-  const b=$('eqOk');b.disabled=true;b.textContent='Criando…';
-  try{
-    let cod='';
-    for(let t=0;t<4&&!cod;t++){const c=gerarCodigo();if(!(await col('equipesInsc').doc(c).get()).exists)cod=c;}
-    if(!cod)throw new Error('Tente de novo.');
-    await col('equipesInsc').doc(cod).set({eventoId:evento.id,nome,liderNome:lider,liderTel:tel,membros:[],criadoEm:firebase.firestore.FieldValue.serverTimestamp()});
-    const l=minhasEquipes().filter(q=>q.id!==cod);l.unshift({id:cod,nome,titulo:evento.titulo,link:linkEquipe(cod,true)});
-    try{localStorage.setItem('minhasEquipes',JSON.stringify(l.slice(0,20)));}catch(x){}
-    location.href=linkEquipe(cod,true)+'&novo=1';
-  }catch(e){b.disabled=false;b.textContent='Criar equipe';erro(e.code==='permission-denied'?'Não foi possível criar a equipe: as inscrições podem estar encerradas.':msgErro(e));}
-}
 // Página da equipe: link para compartilhar e quem já se inscreveu (atualiza sozinha)
 const ROT_EQ={int:'Inteira',meia:'Meia-entrada',cri:'Gratuita'};
 function telaEquipe(){
-  const q=EQUIPE,novo=!!P.get('novo'),link=linkEquipe(q.id);
+  const q=EQUIPE,link=linkEquipe(q.id);
   topo('Equipe',evento.titulo,metaEv(evento));
-  tela(`${novo?'<div class="card"><div class="msg ok" style="margin-top:0">✅ <b>Equipe criada!</b> Agora mande o link abaixo no grupo da equipe. Guarde esta página: é por ela que você acompanha quem já se inscreveu.</div></div>':''}
-    <div class="card center">${banner(evento)}
+  tela(`<div class="card center">${banner(evento)}
       <div style="font-size:38px;line-height:1">👥</div>
       <div class="muted" style="margin-top:6px;text-transform:uppercase;font-size:12px;letter-spacing:.06em">Equipe</div>
       <div class="nome" style="font-size:24px;font-weight:800;margin:2px 0">${esc(q.nome)}</div>
@@ -404,7 +370,7 @@ function renderMembros(){
 }
 function zapEquipe(){
   const q=EQUIPE,d=fmtData(evento);
-  const t=`👥 Equipe *${q.nome}* no *${evento.titulo}*${d?' ('+d+')':''}!\n\nFaça a sua inscrição por este link (você já entra na nossa equipe):\n${linkEquipe(q.id)}\n\nCada um preenche os próprios dados${cobra(evento)?' e paga o seu Pix':''} e recebe o seu voucher com QR code.`;
+  const t=`👥 Equipe *${q.nome}* no *${evento.titulo}*${d?' ('+d+')':''}!\n\nFaça a sua inscrição por este link (você já entra na nossa equipe):\n${linkEquipe(q.id)}\n\nCada um preenche os próprios dados${cobra(evento)?', paga o seu Pix':''} e recebe o seu voucher com QR code.`;
   window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
 }
 

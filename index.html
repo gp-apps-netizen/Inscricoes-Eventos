@@ -937,7 +937,7 @@ function abrirEvento(id){
 
     <div class="secao">Inscrição por equipes</div>
     <label class="chk"><input type="checkbox" id="evEquipes" ${e.equipes?'checked':''}> 👥 Permitir inscrição por equipes</label>
-    <div class="muted">O líder de cada equipe cria a equipe na página de inscrição e manda o link no grupo. Cada integrante se inscreve com os próprios dados e paga o seu Pix, já dentro da equipe. Na aba Inscritos dá para filtrar e ver o resumo por equipe.</div>
+    <div class="muted">Você cadastra cada equipe (aba Inscritos → 👥 Equipes → + Nova equipe) e envia o link para o líder. Ele manda no grupo, e cada integrante se inscreve com os próprios dados e paga o seu Pix, já dentro da equipe.</div>
 
     <div class="secao">Situação</div>
     <label class="chk"><input type="checkbox" id="evAberto" ${e.aberto?'checked':''}> <b>Inscrições abertas</b></label>
@@ -1308,24 +1308,75 @@ function equipesDoEvento(){
   const m={};inscritos.forEach(i=>{if(!i.eqId)return;const q=m[i.eqId]||(m[i.eqId]={id:i.eqId,nome:i.eqNome||i.eqId,n:0});q.n++;});
   return Object.values(m).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
 }
+let EQS=[];   // equipes do evento aberto no resumo
+const linkEquipe=(c,ver)=>linkInscricao(selId)+'&eq='+c+(ver?'&ver=1':'');
 async function resumoEquipes(){
   const ev=eventoSel();if(!ev)return;
-  abrirModal(`<h2>👥 Equipes</h2><div class="muted">${esc(ev.titulo)}</div><div id="eqRes" style="margin-top:10px"><div class="empty">Carregando…</div></div><div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
+  abrirModal(`<h2>👥 Equipes</h2><div class="muted">${esc(ev.titulo)}</div>
+    ${ehDono()?`<button class="btn pri full" style="margin-top:10px" onclick="novaEquipe()">+ Nova equipe</button>`:''}
+    <div id="eqRes" style="margin-top:10px"><div class="empty">Carregando…</div></div><div style="height:8px"></div><button class="btn full" onclick="fecharModal()">Fechar</button>`);
   let docs=[];try{docs=(await col('equipesInsc').where('eventoId','==',ev.id).get()).docs.map(d=>({id:d.id,...d.data()}));}catch(e){}
   const px=cobra(ev),m={};
   docs.forEach(d=>m[d.id]={...d,l:[]});
   inscritos.forEach(i=>{if(!i.eqId)return;(m[i.eqId]||(m[i.eqId]={id:i.eqId,nome:i.eqNome,l:[]})).l.push(i);});
-  const l=Object.values(m).sort((a,b)=>b.l.length-a.l.length||String(a.nome).localeCompare(String(b.nome),'pt-BR'));
+  EQS=Object.values(m).sort((a,b)=>b.l.length-a.l.length||String(a.nome).localeCompare(String(b.nome),'pt-BR'));
   const sem=inscritos.filter(i=>!i.eqId).length;
   if(!$('eqRes'))return;
-  $('eqRes').innerHTML=(l.length?`<div class="muted" style="margin-bottom:8px">${l.length} equipe(s) · ${inscritos.length-sem} inscrito(s) em equipes · ${sem} sem equipe</div>`:'<div class="empty">Nenhuma equipe criada ainda.<br>O líder cria a equipe na página de inscrição do evento.</div>')+
-    l.map(q=>{const pg=q.l.filter(i=>i.pago).length,dev=q.l.filter(devePagar).length,pr=q.l.filter(i=>i.checkin).length,tel=String(q.liderTel||'').replace(/\D/g,'');
+  $('eqRes').innerHTML=(EQS.length?`<div class="muted" style="margin-bottom:8px">${EQS.length} equipe(s) · ${inscritos.length-sem} inscrito(s) em equipes · ${sem} sem equipe</div>`:`<div class="empty">Nenhuma equipe cadastrada ainda.${ehDono()?'<br>Toque em <b>+ Nova equipe</b>, informe o líder e envie o link para ele.':''}</div>`)+
+    EQS.map((q,k)=>{const pg=q.l.filter(i=>i.pago).length,dev=q.l.filter(devePagar).length,pr=q.l.filter(i=>i.checkin).length;
       return `<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:16px">${esc(q.nome)}</b>
         <div class="muted">${q.liderNome?'Líder: '+esc(q.liderNome)+' · ':''}código ${esc(q.id)}</div></div><span class="tag neu">${q.l.length}</span></div>
-        <div class="muted" style="margin-top:4px">${px?`${pg} pago(s)${dev?' · <b style="color:var(--warn)">'+dev+' a pagar</b>':''} · `:''}${pr} presente(s)</div>
-        <div class="row" style="margin-top:6px"><button class="btn" onclick="filtroEq='${esc(q.id)}';fecharModal();renderInscritos()">Ver inscritos</button>
-          <button class="btn" onclick="copiar('${linkInscricao(ev.id)}&eq=${esc(q.id)}')">🔗 Link</button>
-          ${tel?`<button class="btn" onclick="window.open('https://wa.me/55${tel}','_blank')">💬 Líder</button>`:''}</div></div>`;}).join('');
+        <div class="muted" style="margin-top:4px">${q.l.length?(px?`${pg} pago(s)${dev?' · <b style="color:var(--warn)">'+dev+' a pagar</b>':''} · `:'')+pr+' presente(s)':'Ninguém inscrito ainda'}</div>
+        <div class="row" style="margin-top:6px">${q.liderNome?`<button class="btn ok" onclick="enviarLider(${k})">📤 Enviar ao líder</button>`:''}
+          <button class="btn" onclick="copiar('${linkEquipe(q.id)}')">🔗 Link</button>
+          ${q.l.length?`<button class="btn" onclick="filtroEq='${esc(q.id)}';fecharModal();renderInscritos()">Ver inscritos</button>`:ehDono()&&q.liderNome?`<button class="btn bad" onclick="excluirEquipe(${k})">Excluir</button>`:''}</div></div>`;}).join('');
+}
+function novaEquipe(){
+  const ev=eventoSel();if(!ev)return;
+  abrirModal(`<h2>+ Nova equipe</h2><div class="muted">${esc(ev.titulo)}</div>
+    <label>Nome da equipe *</label><input id="nqNome" maxlength="60" placeholder="Ex.: Pedal Ibitinga">
+    <label>Nome do líder da equipe *</label><input id="nqLider" maxlength="120">
+    <label>WhatsApp do líder *</label><input id="nqTel" inputmode="tel" placeholder="(00) 00000-0000">
+    <div class="muted" style="margin-top:8px">Depois de criar, envie o link para o líder. Ele manda no grupo da equipe, e cada integrante se inscreve e paga o seu Pix já dentro da equipe.</div>
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn" onclick="resumoEquipes()">Voltar</button><button class="btn pri" id="nqOk" onclick="criarEquipe()">Criar equipe</button></div>`);
+}
+async function criarEquipe(){
+  const nome=$('nqNome').value.trim().replace(/\s+/g,' '),lider=$('nqLider').value.trim().replace(/\s+/g,' '),tel=$('nqTel').value.trim();
+  if(nome.length<2)return toast('Informe o nome da equipe');
+  if(lider.length<3)return toast('Informe o nome do líder');
+  if(tel.replace(/\D/g,'').length<10)return toast('Informe o WhatsApp do líder com DDD');
+  const ev=eventoSel();
+  if(EQS.some(q=>String(q.nome).toLowerCase()===nome.toLowerCase())&&!confirm(`Já existe uma equipe "${nome}" neste evento. Criar outra com o mesmo nome?`))return;
+  const b=$('nqOk');b.disabled=true;
+  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',cod=()=>{let s='';crypto.getRandomValues(new Uint8Array(6)).forEach(n=>s+=A[n%A.length]);return s;};
+  try{
+    let c='';for(let t=0;t<4&&!c;t++){const x=cod();if(!(await col('equipesInsc').doc(x).get()).exists)c=x;}
+    if(!c)throw new Error('tente de novo');
+    const q={eventoId:ev.id,nome,liderNome:lider,liderTel:tel,membros:[],criadoEm:TS()};
+    await col('equipesInsc').doc(c).set(q);
+    registrar('evento_editado',`Criou a equipe "${nome}" (líder ${lider}) no evento "${ev.titulo}"`,{eventoId:ev.id});
+    EQS.push({id:c,...q,l:[]});
+    abrirModal(`<h2>✅ Equipe criada</h2><div class="kv"><span>Equipe:</span> <b>${esc(nome)}</b></div><div class="kv"><span>Líder:</span> ${esc(lider)} · ${esc(tel)}</div><div class="kv"><span>Código:</span> <b>${c}</b></div>
+      <div style="height:12px"></div><button class="btn ok full" onclick="enviarLider(${EQS.length-1})">📤 Enviar o link para o líder (WhatsApp)</button>
+      <div style="height:8px"></div><button class="btn full" onclick="resumoEquipes()">Ver todas as equipes</button>`);
+  }catch(e){b.disabled=false;toast('Erro: '+e.message);}
+}
+function textoLider(q){
+  const ev=eventoSel(),d=fmtData(ev);
+  return `Olá, ${q.liderNome}! A equipe *${q.nome}* está cadastrada no *${ev.titulo}*${d?' ('+d+')':''}. 👥\n\n`+
+    `📲 *Link de inscrição da equipe* (mande no grupo da sua equipe):\n${linkEquipe(q.id)}\n\n`+
+    `Quem se inscrever por esse link já entra na equipe. Cada integrante preenche os próprios dados${cobra(ev)?', paga o seu Pix':''} e recebe o seu voucher com QR code.\n\n`+
+    `👀 *Para você acompanhar quem já se inscreveu:*\n${linkEquipe(q.id,true)}`;
+}
+function enviarLider(k){
+  const q=EQS[k];if(!q)return;const tel=String(q.liderTel||'').replace(/\D/g,'');
+  window.open('https://wa.me/'+(tel?(tel.length<=11?'55':'')+tel:'')+'?text='+encodeURIComponent(textoLider(q)),'_blank');
+}
+async function excluirEquipe(k){
+  const q=EQS[k];if(!q||q.l.length)return;
+  if(!confirm(`Excluir a equipe "${q.nome}"? O link dela deixa de funcionar.`))return;
+  try{await col('equipesInsc').doc(q.id).delete();registrar('evento_editado',`Excluiu a equipe "${q.nome}"`,{eventoId:selId});toast('Equipe excluída');resumoEquipes();}catch(e){toast('Erro: '+e.message);}
 }
 function detalhe(id){
   const i=inscritos.find(x=>x.id===id);if(!i)return;
