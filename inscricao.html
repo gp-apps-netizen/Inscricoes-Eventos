@@ -308,7 +308,8 @@ async function abrirFormulario(eid){
   if(evento.equipes&&eqCod){const t=await col('equipesInsc').doc(eqCod).get().catch(()=>null);if(t&&t.exists&&t.data().eventoId===eid)EQUIPE={id:t.id,...t.data()};else eqErro=true;}
   if(EQUIPE&&P.get('ver'))return telaEquipe();
   if(!evento.aberto){tela(`<div class="card">${banner(evento)}${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}<div class="msg bad">As inscrições para este evento estão encerradas.</div>${aviso}</div>`);return;}
-  seqP=0;TIPOS_ON=usaTipos(evento);FORM_ON=!TIPOS_ON;QTD={int:1,meia:0,cri:0};
+  if(listaTipos().every(t=>tipoCheio(evento,t.k))){tela(`<div class="card">${banner(evento)}${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}<div class="msg bad">As vagas deste evento estão esgotadas.</div></div>`);return;}
+  seqP=0;TIPOS_ON=usaTipos(evento);FORM_ON=!TIPOS_ON;QTD={int:tipoCheio(evento,'int')?0:1,meia:0,cri:0};
   const corpo=`${evento.descricao?`<p class="desc">${esc(evento.descricao)}</p>`:''}${aviso}
     ${TIPOS_ON?'':cobra(evento)?`${precoLinha('Valor por pessoa',Number(evento.pix.valor),evento)}${temMeia(evento)?precoLinha('Meia-entrada'+(evento.pix.meiaQuem?' <small>('+esc(evento.pix.meiaQuem)+')</small>':''),Number(evento.pix.valorMeia),evento):''}<div class="muted">O pagamento é feito por Pix logo após a inscrição.</div>`:''}
 `;
@@ -391,6 +392,8 @@ function zapEquipe(){
 /* ---- Etapa 1: tipo e quantidade de inscrições (eventos pagos com meia-entrada e/ou criança grátis) ---- */
 let TIPOS_ON=false,FORM_ON=true,QTD={int:1,meia:0,cri:0};
 function usaTipos(ev){return cobra(ev)&&(temMeia(ev)||criancasGratis(ev));}
+// Tipo marcado como esgotado pelo organizador (o painel marca quando as vagas acabam)
+function tipoCheio(ev,k){return !!(ev&&ev.esgotados&&ev.esgotados[k]);}
 function listaTipos(){
   const pix=evento.pix,l=[{k:'int',nome:'Inteira',sub:'Adulto',valor:Number(pix.valor)}];
   if(temMeia(evento))l.push({k:'meia',nome:'Meia-entrada',sub:pix.meiaQuem||'Com comprovante no dia',valor:Number(pix.valorMeia)});
@@ -410,16 +413,16 @@ function renderSel(aberto){
   }
   box.innerHTML=`<b style="font-size:17px">Quais inscrições você quer fazer?</b>
     <div class="muted" style="margin-top:2px">Escolha o tipo e a quantidade. Depois você preenche os dados de cada pessoa.</div>
-    ${listaTipos().map(t=>{const tx=taxaServ(evento,t.valor);return `<div class="tipo"><div class="nm"><b>${esc(t.nome)}</b><small>${esc(t.sub)}</small>
+    ${listaTipos().map(t=>{const tx=taxaServ(evento,t.valor),esg=tipoCheio(evento,t.k);return `<div class="tipo"><div class="nm"><b>${esc(t.nome)}</b><small>${esc(t.sub)}</small>${esg?'<small><b>Esgotado</b></small>':''}
       <div class="pr">${t.valor?esc(moeda(t.valor+tx))+(tx?' <small style="display:inline;font-weight:400">(com taxa de serviço)</small>':''):'Grátis'}</div></div>
-      <div class="qtd"><button type="button" aria-label="Menos" onclick="mudaQtd('${t.k}',-1)" ${QTD[t.k]?'':'disabled'}>−</button><span>${QTD[t.k]}</span><button type="button" aria-label="Mais" onclick="mudaQtd('${t.k}',1)" ${cheio?'disabled':''}>+</button></div></div>`;}).join('')}
+      <div class="qtd"><button type="button" aria-label="Menos" onclick="mudaQtd('${t.k}',-1)" ${QTD[t.k]?'':'disabled'}>−</button><span>${QTD[t.k]}</span><button type="button" aria-label="Mais" onclick="mudaQtd('${t.k}',1)" ${cheio||esg?'disabled':''}>+</button></div></div>`;}).join('')}
     <div class="preco" style="margin-top:14px"><span>${tot} inscriç${tot===1?'ão':'ões'}</span><b>${esc(moeda(totalSel()))}</b></div>
     ${cheio?`<div class="muted">Máximo de ${MAX_GRUPO} pessoas por vez.</div>`:''}
     <div class="muted" style="margin-top:6px">O pagamento é feito por Pix logo após a inscrição.</div>
     <button class="btn pri" type="button" onclick="continuarSel()" ${tot?'':'disabled'}>${FORM_ON?'Pronto':'Continuar'} →</button>`;
 }
 function mudaQtd(k,d){
-  const n=QTD[k]+d;if(n<0||(d>0&&totQtd()>=MAX_GRUPO))return;
+  const n=QTD[k]+d;if(n<0||(d>0&&(totQtd()>=MAX_GRUPO||tipoCheio(evento,k))))return;
   QTD[k]=n;renderSel(true);if(FORM_ON&&totQtd())montarPessoas();
 }
 function continuarSel(){

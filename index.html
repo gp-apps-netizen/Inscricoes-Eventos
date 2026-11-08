@@ -399,6 +399,16 @@ function beep(ok){try{navigator.vibrate&&navigator.vibrate(ok?120:[250,100,250])
 function moeda(v){if(typeof verValores==='function'&&!verValores())return 'R$ •••';return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function cobra(ev){return !!(ev&&ev.pix&&ev.pix.ativo);}
 function lerValor(s){s=String(s||'').replace(/[^\d,.]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:Math.round(n*100)/100;}
+// Vagas por tipo: número inteiro > 0, ou null (sem limite)
+function lerVaga(id){const v=parseInt(String(($(id)&&$(id).value)||'').replace(/\D/g,''),10);return v>0?v:null;}
+// Conta as inscrições por tipo (só do evento selecionado, que é o que o painel carrega)
+function contarVagas(ev){const u={int:0,meia:0,cri:0};inscritos.forEach(i=>{if(i.eventoId===ev.id)u[i.crianca?'cri':i.meia?'meia':'int']++;});return u;}
+function vagasTxt(e){const v=e.vagas||{},esg=e.esgotados||{},u=e.id===selId?contarVagas(e):null,nomes={int:'inteira',meia:'meia-entrada',cri:'gratuita'};return ['int','meia','cri'].filter(k=>v[k]).map(k=>`${nomes[k]} ${u?u[k]+'/':''}${v[k]}${esg[k]?' (esgotado)':''}`).join(' · ');}
+// Marca no evento os tipos que lotaram; a página de inscrição lê essa marca.
+// Roda enquanto o painel estiver aberto com o evento selecionado.
+function sincronizarVagas(){const ev=eventoSel();if(!ev)return;const v=ev.vagas||{},esg=ev.esgotados||{},u=contarVagas(ev),novo={};let mudou=false;
+  ['int','meia','cri'].forEach(k=>{const cheio=!!v[k]&&u[k]>=v[k];novo[k]=cheio;if(!!esg[k]!==cheio)mudou=true;});
+  if(mudou)col('eventos').doc(ev.id).update({esgotados:novo}).catch(err=>toast('Erro ao atualizar vagas: '+err.message));}
 function comprimirImagem(file){
   return new Promise((res,rej)=>{
     const img=new Image();
@@ -769,6 +779,7 @@ function assinarInscritos(){
   unsubI=col('inscricoes').where('eventoId','==',selId).onSnapshot({includeMetadataChanges:true},s=>{
     inscritos=s.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'}),_pend:d.metadata.hasPendingWrites})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
     pendentes=inscritos.filter(i=>i._pend).length;
+    sincronizarVagas();
     renderInscritos();renderEventos();renderNet();
   },err=>{
     if(err.code==='permission-denied'){alert('Esta conta não tem permissão para acessar o controle. Peça ao organizador para cadastrar seu e-mail na Equipe.');auth.signOut();}
@@ -835,6 +846,7 @@ function renderEventos(){
         <div class="tags"><span class="tag ${e.aberto?'ok':'bad'}">${e.aberto?'Aberto':'Encerrado'}</span>${termoAtivo(e)?'<span class="tag neu">Termo</span>':''}
         ${cobra(e)&&verValores()?`<span class="tag neu">Pix ${esc(moeda(e.pix.valor))}${e.pix.meia?' · meia '+esc(moeda(e.pix.valorMeia)):''}</span>`:''}</div>
       </div>${cont}
+      ${vagasTxt(e)?`<div class="muted" style="margin-top:6px">🎟 Vagas: ${esc(vagasTxt(e))}</div>`:''}
       <div class="row" style="margin-top:10px">
         ${sel?'':`<button class="btn sm" onclick="selecionarEvento('${e.id}')">Selecionar</button>`}
         <button class="btn sm" onclick="mostrarLink('${e.id}')">🔗 Link / QR</button>
@@ -1003,6 +1015,12 @@ function abrirEvento(id){
       </div>
       <div class="muted" style="margin-top:6px">O participante vê o QR code e o Pix copia e cola com o valor já preenchido. Você confirma o pagamento na lista de inscritos ou na hora da leitura do voucher.</div>
     </div>
+
+    <div class="secao">Vagas por tipo de inscrição</div>
+    <label>Vagas para inteira</label><input id="vagInt" inputmode="numeric" placeholder="sem limite" value="${esc((e.vagas&&e.vagas.int)||'')}">
+    <label>Vagas para meia-entrada <span class="muted">(vale se aceitar meia-entrada)</span></label><input id="vagMeia" inputmode="numeric" placeholder="sem limite" value="${esc((e.vagas&&e.vagas.meia)||'')}">
+    <label>Vagas para gratuita (criança) <span class="muted">(vale se crianças não pagarem)</span></label><input id="vagCri" inputmode="numeric" placeholder="sem limite" value="${esc((e.vagas&&e.vagas.cri)||'')}">
+    <div class="muted">Deixe vazio para não limitar. Quando as vagas de um tipo acabam, a página de inscrição mostra esgotado só para ele.</div>
 
     <div class="secao">Termo de responsabilidade</div>
     <label class="chk"><input type="checkbox" id="trAtivo" ${e.termo&&e.termo.ativo?'checked':''} onchange="$('trBox').classList.toggle('hidden',!this.checked);if(this.checked&&!$('trTexto').value.trim())$('trTexto').value=MODELO_TERMO"> Exigir aceite de termo na inscrição</label>
@@ -1178,7 +1196,8 @@ async function salvarEvento(id){
   }
   const d={titulo,cor:$('evCorOn').checked&&hexOk($('evCor').value)?$('evCor').value:'',data:$('evData').value,hora:$('evHora').value,local:$('evLocal').value.trim(),descricao:$('evDesc').value.trim(),
     aberto:$('evAberto').checked,campos:{cpf:$('cCpf').checked,telefone:$('cTel').checked,email:$('cEmail').checked,extra},
-    extraLabel:'',camposExtras,pix,equipes:$('evEquipes').checked,atualizadoEm:TS()};
+    extraLabel:'',camposExtras,pix,equipes:$('evEquipes').checked,atualizadoEm:TS(),
+    vagas:{int:lerVaga('vagInt'),meia:$('pxMeia').checked?lerVaga('vagMeia'):null,cri:$('pxCri').checked?lerVaga('vagCri'):null}};
   const antigo=id?(eventos.find(x=>x.id===id)||{}).termo||{}:{};
   const trTexto=$('trTexto').value.trim();
   if($('trAtivo').checked&&trTexto.length<20)return toast('Escreva o texto do termo (ou use o modelo)');
@@ -1574,7 +1593,8 @@ async function fazerCheckinLista(id){try{const off=semRede();await gravar(col('i
 async function desfazerCheckin(id){if(!confirm('Desfazer a entrada desta pessoa?'))return;try{await gravar(col('inscricoes').doc(id).update({checkin:false,checkinEm:null,checkinLocal:null,checkinPor:null,checkinPorNome:null}));registrar('checkin_desfeito',`Desfez o check-in de ${nomeIns(id)}`,{eventoId:selId,inscricaoId:id});fecharModal();toast('Entrada desfeita');}catch(e){toast('Erro: '+e.message);}}
 async function excluirInscricao(id){
   const i=inscritos.find(x=>x.id===id);if(!confirm(`Excluir a inscrição de ${i.nome}?`))return;
-  try{const b=db.batch();b.delete(col('inscricoes').doc(id));if(i.cpf)b.delete(col('bloqueios').doc(i.eventoId+'_'+i.cpf));await b.commit();registrar('inscricao_excluida',`Excluiu a inscrição de ${i.nome} (${i.codigo})`,{eventoId:i.eventoId,inscricaoId:id});fecharModal();toast('Inscrição excluída');}
+  try{const b=db.batch();b.delete(col('inscricoes').doc(id));if(i.cpf)b.delete(col('bloqueios').doc(i.eventoId+'_'+i.cpf));
+    await b.commit();registrar('inscricao_excluida',`Excluiu a inscrição de ${i.nome} (${i.codigo})`,{eventoId:i.eventoId,inscricaoId:id});fecharModal();toast('Inscrição excluída');}
   catch(e){toast('Erro: '+e.message);}
 }
 function exportarCSV(){

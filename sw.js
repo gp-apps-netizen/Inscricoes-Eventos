@@ -1,7 +1,7 @@
 /* Inscrições de Eventos — modo offline
    Guarda o app e as bibliotecas no celular para abrir mesmo sem internet.
    Os dados (eventos e inscritos) ficam no cache do próprio Firebase. */
-const CACHE = 'insc-offline-v1';
+const CACHE = 'insc-offline-v2';
 const LIBS = [
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
